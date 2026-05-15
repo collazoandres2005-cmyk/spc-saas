@@ -73,8 +73,7 @@
     }
     .cap-sublbl { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
 
-    .chart-cap  { height: 300px; }
-    .chart-hist { height: 280px; }
+    .chart-cap  { height: 420px; }
 
     .rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width:700px) { .rec-grid { grid-template-columns: 1fr; } }
@@ -337,11 +336,6 @@
           <div class="chart-cap"><canvas id="cap-chart"></canvas></div>
         </div>
 
-        <div class="chart-wrap">
-          <div class="chart-title">Histograma de mediciones</div>
-          <div class="chart-hist"><canvas id="hist-chart"></canvas></div>
-        </div>
-
         <div class="card">
           <div class="card-header"><div class="card-title">Recomendaciones automáticas</div></div>
           <div class="card-body">
@@ -588,9 +582,7 @@
       ]);
 
       document.getElementById('process-crumb').textContent = `· ${capResult.process.name}`;
-      renderCapability(capResult);
-      renderHistogram('hist-chart', histResult.histogram, histResult.normalCurve,
-        capResult.process.usl, capResult.process.lsl, capResult.process.nominal);
+      renderCapability(capResult, histResult.histogram);
       document.getElementById('result-area').classList.remove('hidden');
 
       if (capResult.statisticalTests) {
@@ -607,7 +599,7 @@
   }
 
   // ── Render capacidad ───────────────────────────────────────
-  function renderCapability({ process, capability }) {
+  function renderCapability({ process, capability }, histogram = null) {
     const { cp, cpk, cpu, cpl, xbar, sigma, sigmaTotal, sigmaMethod, status, n,
             n_subgroups, subgroup_size, tolerance, distToUsl, distToLsl, distToNominal } = capability;
 
@@ -704,7 +696,7 @@
 
     renderCapabilityChart('cap-chart',
       parseFloat(process.usl), parseFloat(process.lsl),
-      parseFloat(process.nominal), xbar, sigma);
+      parseFloat(process.nominal), xbar, sigma, histogram);
 
     renderRecommendations(capability, process);
   }

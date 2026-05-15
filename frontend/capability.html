@@ -181,69 +181,6 @@
         </div>
       </div>
 
-      <!-- ── Toma de datos (colapsible) ──────────────────────── -->
-      <div id="data-card" class="card" style="display:none;margin-bottom:20px;overflow:hidden">
-        <div id="data-hdr" class="data-hdr" onclick="toggleData()">
-          <div class="data-hdr-left">
-            <span class="data-title">Toma de datos</span>
-            <span id="meas-count-pill" class="data-count-pill">0 mediciones</span>
-          </div>
-          <span id="data-arrow" class="data-arrow">▶</span>
-        </div>
-        <div id="data-body" style="display:none">
-          <div class="data-body">
-            <div id="data-msg" style="margin-bottom:10px"></div>
-            <div class="input-panel">
-
-              <!-- Manual -->
-              <div>
-                <div class="panel-sub">Ingreso manual</div>
-                <div class="form-group">
-                  <label>Valores <span class="text-muted">(uno por línea, coma o punto y coma)</span></label>
-                  <textarea id="cap-values" rows="5"
-                    placeholder="499.2&#10;501.3&#10;500.8&#10;502.1&#10;498.9"></textarea>
-                </div>
-                <div class="form-group">
-                  <label>ID de subgrupo <span class="lbl-opt">(opcional)</span></label>
-                  <input type="number" id="cap-subgroup" min="1" placeholder="—"
-                         style="width:130px">
-                  <div class="field-hint">
-                    Opcional. El módulo puede simular agrupación automáticamente.
-                  </div>
-                </div>
-                <button class="btn btn-primary" onclick="insertCap()" id="btn-cap">
-                  Insertar mediciones
-                </button>
-              </div>
-
-              <!-- Import -->
-              <div>
-                <div class="panel-sub">Importar CSV o Excel</div>
-                <div class="form-group">
-                  <label>Archivo</label>
-                  <input type="file" id="cap-file" accept=".csv,.txt,.xlsx,.xls"
-                         style="padding:6px">
-                  <div class="field-hint">
-                    Formatos: <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.csv</strong>
-                  </div>
-                </div>
-                <div class="alert alert-info" style="font-size:12px;margin-bottom:12px">
-                  <div>
-                    Columna obligatoria: <code>value</code>.<br>
-                    <code>subgroup_id</code> es opcional.<br>
-                    <code style="font-size:11px">value<br>499.2<br>501.3<br>500.8</code>
-                  </div>
-                </div>
-                <button class="btn btn-primary" onclick="importCapFile()" id="btn-cap-file">
-                  Importar archivo
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="msg"></div>
 
       <!-- ── Resultados ─────────────────────────────────────── -->
@@ -367,7 +304,6 @@
 
   let currentProcess  = null;
   let specsPanelOpen  = false;
-  let dataPanelOpen   = false;
 
   // ── Inicialización ─────────────────────────────────────────
   async function init() {
@@ -394,12 +330,8 @@
       currentProcess = await processesApi.get(pid);
       document.getElementById('process-crumb').textContent = `· ${currentProcess.name}`;
 
-      // Show helper cards
       document.getElementById('specs-card').style.display = 'block';
-      document.getElementById('data-card').style.display  = 'block';
-
       populateSpecEditor(currentProcess);
-      loadMeasCount(pid);
       loadCapability();
     } catch (err) {
       showAlert(document.getElementById('msg'), err.message, 'error');
@@ -474,94 +406,6 @@
       showAlert(msg, err.message, 'error');
     } finally {
       btn.disabled = false; btn.textContent = 'Guardar especificaciones';
-    }
-  }
-
-  // ── Data panel ─────────────────────────────────────────────
-  function toggleData() {
-    dataPanelOpen = !dataPanelOpen;
-    document.getElementById('data-body').style.display = dataPanelOpen ? 'block' : 'none';
-    document.getElementById('data-hdr').classList[dataPanelOpen ? 'add' : 'remove']('open');
-    document.getElementById('data-arrow').textContent = dataPanelOpen ? '▼' : '▶';
-  }
-
-  async function loadMeasCount(pid) {
-    try {
-      const r = await measurementsApi.list(pid, 1, 0);
-      document.getElementById('meas-count-pill').textContent = `${r.total} mediciones`;
-      if (r.total === 0 && !dataPanelOpen) toggleData();
-    } catch {}
-  }
-
-  function parseTextarea(raw) {
-    const primary = raw.split(/[\n;]+/).map(s => s.trim()).filter(Boolean);
-    const nums = [], bad = [];
-    for (const entry of primary) {
-      const n = parseDecimal(entry);
-      if (!isNaN(n)) { nums.push(n); continue; }
-      for (const p of entry.split(',').map(s => s.trim()).filter(Boolean)) {
-        const n2 = parseDecimal(p);
-        if (!isNaN(n2)) nums.push(n2); else bad.push(p);
-      }
-    }
-    return { nums, bad };
-  }
-
-  async function insertCap() {
-    const pid = document.getElementById('process-select').value;
-    const raw = document.getElementById('cap-values').value.trim();
-    const sg  = document.getElementById('cap-subgroup').value.trim();
-    const btn = document.getElementById('btn-cap');
-    const msg = document.getElementById('data-msg');
-
-    msg.innerHTML = '';
-    if (!raw) return showAlert(msg, 'Ingresa al menos un valor.', 'error');
-
-    const { nums, bad } = parseTextarea(raw);
-    if (bad.length)   return showAlert(msg, `Valores inválidos: ${bad.join(', ')}`, 'error');
-    if (!nums.length) return showAlert(msg, 'No se encontraron valores numéricos.', 'error');
-
-    btn.disabled = true; btn.textContent = 'Insertando...';
-    try {
-      const items = nums.map(v => ({
-        process_id:  pid,
-        value:       v,
-        subgroup_id: sg ? parseInt(sg) : null
-      }));
-      const result = await measurementsApi.createBatch(items);
-      showAlert(msg, `${result.inserted} medición(es) insertada(s).`, 'success');
-      document.getElementById('cap-values').value   = '';
-      document.getElementById('cap-subgroup').value = '';
-      await loadMeasCount(pid);
-      loadCapability();
-    } catch (err) {
-      showAlert(msg, err.message, 'error');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Insertar mediciones';
-    }
-  }
-
-  async function importCapFile() {
-    const pid  = document.getElementById('process-select').value;
-    const file = document.getElementById('cap-file').files[0];
-    const btn  = document.getElementById('btn-cap-file');
-    const msg  = document.getElementById('data-msg');
-
-    msg.innerHTML = '';
-    if (!file) return showAlert(msg, 'Selecciona un archivo.', 'error');
-
-    btn.disabled = true; btn.textContent = 'Importando...';
-    try {
-      const result = await measurementsApi.importCSV(pid, file);
-      const extra  = result.errors.length ? ` Errores: ${result.errors.join('; ')}` : '';
-      showAlert(msg, `${result.inserted} de ${result.total_rows} filas importadas.${extra}`, 'success');
-      document.getElementById('cap-file').value = '';
-      await loadMeasCount(pid);
-      loadCapability();
-    } catch (err) {
-      showAlert(msg, err.message, 'error');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Importar archivo';
     }
   }
 

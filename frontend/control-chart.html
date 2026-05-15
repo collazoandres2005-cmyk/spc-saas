@@ -126,72 +126,6 @@
         </div>
       </div>
 
-      <!-- ── Toma de datos (colapsible) ──────────────────────── -->
-      <div id="data-card" class="card" style="display:none;margin-bottom:20px;overflow:hidden">
-        <div id="data-hdr" class="data-hdr" onclick="toggleData()">
-          <div class="data-hdr-left">
-            <span class="data-title">Toma de datos</span>
-            <span id="meas-count-pill" class="data-count-pill">0 mediciones</span>
-          </div>
-          <span id="data-arrow" class="data-arrow">▶</span>
-        </div>
-        <div id="data-body" style="display:none">
-          <div class="data-body">
-            <div id="data-msg" style="margin-bottom:10px"></div>
-            <div class="input-panel">
-
-              <!-- Manual -->
-              <div>
-                <div class="panel-sub">Ingreso manual</div>
-                <div class="form-group">
-                  <label>Valores <span class="text-muted">(uno por línea, coma o punto y coma)</span></label>
-                  <textarea id="manual-values" rows="5"
-                    placeholder="499.2&#10;501.3&#10;500.8&#10;&#10;o: 499,2; 501,3; 500,8"></textarea>
-                </div>
-                <div class="form-group">
-                  <label>
-                    ID de subgrupo
-                    <span class="lbl-req">* requerido para X̄-R / X̄-S</span>
-                  </label>
-                  <input type="number" id="manual-subgroup" min="1"
-                         placeholder="ej. 1" style="width:130px">
-                  <div class="field-hint">
-                    Número que identifica el subgrupo. Deja vacío para carta I-MR.
-                  </div>
-                </div>
-                <button class="btn btn-primary" onclick="insertManual()" id="btn-manual">
-                  Insertar mediciones
-                </button>
-              </div>
-
-              <!-- Importar CSV / Excel -->
-              <div>
-                <div class="panel-sub">Importar CSV o Excel</div>
-                <div class="form-group">
-                  <label>Archivo</label>
-                  <input type="file" id="cc-file" accept=".csv,.txt,.xlsx,.xls"
-                         style="padding:6px">
-                  <div class="field-hint">
-                    Formatos: <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.csv</strong>
-                  </div>
-                </div>
-                <div class="alert alert-info" style="font-size:12px;margin-bottom:12px">
-                  <div>
-                    <strong>X̄-R / X̄-S:</strong> columnas <code>value</code> + <code>subgroup_id</code><br>
-                    <strong>I-MR:</strong> solo columna <code>value</code><br>
-                    <code style="font-size:11px">value,subgroup_id<br>499.2,1<br>501.3,1<br>500.8,2</code>
-                  </div>
-                </div>
-                <button class="btn btn-primary" onclick="importFile()" id="btn-csv">
-                  Importar archivo
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="msg"></div>
 
       <!-- ── Resultados de la carta ───────────────────────────── -->
@@ -252,8 +186,6 @@
   initSidebar('control-chart');
   initTopBar('Cartas de Control');
 
-  let dataPanelOpen = false;
-
   // ── Inicialización ─────────────────────────────────────────
   async function init() {
     try {
@@ -283,14 +215,6 @@
     const pid  = document.getElementById('process-select').value;
     const type = document.getElementById('chart-type').value;
 
-    // Data entry card
-    if (pid) {
-      document.getElementById('data-card').style.display = 'block';
-      loadMeasCount(pid);
-    } else {
-      document.getElementById('data-card').style.display = 'none';
-    }
-
     // Simulation panel visibility
     const simPanel = document.getElementById('simulate-panel');
     if (type === 'xbar_r' || type === 'xbar_s') {
@@ -311,100 +235,6 @@
   }
 
   function onSimulateNChange() { loadChart(); }
-
-  // ── Toma de datos: panel colapsible ────────────────────────
-  function toggleData() {
-    dataPanelOpen = !dataPanelOpen;
-    document.getElementById('data-body').style.display = dataPanelOpen ? 'block' : 'none';
-    document.getElementById('data-hdr').classList[dataPanelOpen ? 'add' : 'remove']('open');
-    document.getElementById('data-arrow').textContent = dataPanelOpen ? '▼' : '▶';
-  }
-
-  async function loadMeasCount(pid) {
-    try {
-      const r = await measurementsApi.list(pid, 1, 0);
-      document.getElementById('meas-count-pill').textContent = `${r.total} mediciones`;
-      if (r.total === 0 && !dataPanelOpen) toggleData();
-    } catch {}
-  }
-
-  // ── Parse textarea ─────────────────────────────────────────
-  function parseTextarea(raw) {
-    const primary = raw.split(/[\n;]+/).map(s => s.trim()).filter(Boolean);
-    const nums = [], bad = [];
-    for (const entry of primary) {
-      const n = parseDecimal(entry);
-      if (!isNaN(n)) { nums.push(n); continue; }
-      for (const p of entry.split(',').map(s => s.trim()).filter(Boolean)) {
-        const n2 = parseDecimal(p);
-        if (!isNaN(n2)) nums.push(n2); else bad.push(p);
-      }
-    }
-    return { nums, bad };
-  }
-
-  // ── Insertar manual ────────────────────────────────────────
-  async function insertManual() {
-    const pid = document.getElementById('process-select').value;
-    const raw = document.getElementById('manual-values').value.trim();
-    const sg  = document.getElementById('manual-subgroup').value.trim();
-    const btn = document.getElementById('btn-manual');
-    const msg = document.getElementById('data-msg');
-
-    msg.innerHTML = '';
-    if (!pid)  return showAlert(msg, 'Selecciona un proceso primero.', 'error');
-    if (!raw)  return showAlert(msg, 'Ingresa al menos un valor.', 'error');
-
-    const { nums, bad } = parseTextarea(raw);
-    if (bad.length)  return showAlert(msg, `Valores inválidos: ${bad.join(', ')}`, 'error');
-    if (!nums.length) return showAlert(msg, 'No se encontraron valores numéricos.', 'error');
-
-    btn.disabled = true; btn.textContent = 'Insertando...';
-    try {
-      const items = nums.map(v => ({
-        process_id:  pid,
-        value:       v,
-        subgroup_id: sg ? parseInt(sg) : null
-      }));
-      const result = await measurementsApi.createBatch(items);
-      showAlert(msg,
-        `${result.inserted} medición(es) insertada(s)${sg ? ` en subgrupo ${sg}` : ''}.`, 'success');
-      document.getElementById('manual-values').value   = '';
-      document.getElementById('manual-subgroup').value = '';
-      await loadMeasCount(pid);
-      loadChart();
-    } catch (err) {
-      showAlert(msg, err.message, 'error');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Insertar mediciones';
-    }
-  }
-
-  // ── Importar archivo ───────────────────────────────────────
-  async function importFile() {
-    const pid  = document.getElementById('process-select').value;
-    const file = document.getElementById('cc-file').files[0];
-    const btn  = document.getElementById('btn-csv');
-    const msg  = document.getElementById('data-msg');
-
-    msg.innerHTML = '';
-    if (!pid)  return showAlert(msg, 'Selecciona un proceso primero.', 'error');
-    if (!file) return showAlert(msg, 'Selecciona un archivo.', 'error');
-
-    btn.disabled = true; btn.textContent = 'Importando...';
-    try {
-      const result = await measurementsApi.importCSV(pid, file);
-      const extra  = result.errors.length ? ` Errores: ${result.errors.join('; ')}` : '';
-      showAlert(msg, `${result.inserted} de ${result.total_rows} filas importadas.${extra}`, 'success');
-      document.getElementById('cc-file').value = '';
-      await loadMeasCount(pid);
-      loadChart();
-    } catch (err) {
-      showAlert(msg, err.message, 'error');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Importar archivo';
-    }
-  }
 
   // ── Calcular carta ─────────────────────────────────────────
   async function loadChart() {

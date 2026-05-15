@@ -202,7 +202,7 @@
               <div class="card-body" style="padding:12px 14px">
                 <div class="mon-stats">
                   <div class="mon-stat">
-                    <div class="mon-stat-lbl">Total en BD</div>
+                    <div class="mon-stat-lbl">Puntos en carta</div>
                     <div class="mon-stat-val" id="stat-total">—</div>
                   </div>
                   <div class="mon-stat">
@@ -305,15 +305,25 @@
   initSidebar('monitoring');
   initTopBar('Monitoreo en Tiempo Real');
 
-  let processId     = null;
-  let chartType     = 'imr';
-  let sgSize        = 5;
-  let nextSgId      = 1;
-  let sessionCount  = 0;
-  let sessionLog    = [];
-  let undoStack     = [];   // [{ ids: [...], sgId: N|null }]
-  let mainChartInst = null;
-  let secChartInst  = null;
+  let processId      = null;
+  let chartType      = 'imr';
+  let sgSize         = 5;
+  let nextSgId       = 1;
+  let sessionCount   = 0;
+  let sessionLog     = [];
+  let undoStack      = [];   // [{ ids: [...], sgId: N|null }]
+  let mainChartInst  = null;
+  let secChartInst   = null;
+  let sessionValues  = [];   // I-MR: flat value array
+  let sessionSubgroups = []; // X̄-R/X̄-S: array of value arrays
+
+  // SPC constants indexed by subgroup size n
+  const _A2 = [0,0,1.880,1.023,0.729,0.577,0.483,0.419,0.373,0.337,0.308];
+  const _D3 = [0,0,0,    0,    0,    0,    0,    0.076,0.136,0.184,0.223 ];
+  const _D4 = [0,0,3.267,2.574,2.282,2.114,2.004,1.924,1.864,1.816,1.777 ];
+  const _A3 = [0,0,2.659,1.954,1.628,1.427,1.287,1.182,1.099,1.032,0.975 ];
+  const _B3 = [0,0,0,    0,    0,    0,    0.030,0.118,0.185,0.239,0.284 ];
+  const _B4 = [0,0,3.267,2.568,2.266,2.089,1.970,1.882,1.815,1.761,1.716 ];
 
   // ── Inicialización ──────────────────────────────────────────
   async function init() {
@@ -367,35 +377,29 @@
       document.getElementById('process-crumb').textContent = `· ${p.name}`;
     } catch {}
 
-    // Cargar total y determinar próximo ID de subgrupo
-    try {
-      const sample = await measurementsApi.list(pid, 500, 0);
-      document.getElementById('stat-total').textContent = sample.total;
-      if (isSubgroup) {
-        const maxSg = (sample.data || []).reduce((m, r) => Math.max(m, r.subgroup_id || 0), 0);
-        nextSgId = maxSg + 1;
-        document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
-      }
-    } catch {}
-
     // Destruir gráficos anteriores al cambiar de proceso/tipo
     if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
     if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
 
     // Reiniciar sesión
-    sessionCount = 0;
-    sessionLog   = [];
-    undoStack    = [];
+    sessionCount     = 0;
+    sessionLog       = [];
+    undoStack        = [];
+    sessionValues    = [];
+    sessionSubgroups = [];
+    nextSgId         = 1;
+    if (isSubgroup) document.getElementById('sg-id-lbl').textContent = '#1';
     setUndoEnabled(false);
     renderLog();
     document.getElementById('stat-session').textContent = '0';
+    document.getElementById('stat-total').textContent   = '—';
     document.getElementById('stat-last').textContent    = '—';
     document.getElementById('stat-status').textContent  = '—';
     document.getElementById('ooc-banner').style.display = 'none';
 
     document.getElementById('monitor-area').style.display = '';
 
-    await refreshChart();
+    showWaitingState();
 
     // Focus al input principal
     const inp = isSubgroup
@@ -459,10 +463,11 @@
         undoStack.push({ ids, sgId: null });
         setUndoEnabled(true);
         sessionCount++;
+        sessionValues.push(val);
         addToLog(val, null);
         inp.value = '';
         inp.focus();
-        await refreshChart();
+        refreshChart();
       } catch (err) {
         showAlert(entryMsg, err.message, 'error');
       } finally {
@@ -492,13 +497,14 @@
         undoStack.push({ ids, sgId: nextSgId });
         setUndoEnabled(true);
         sessionCount++;
+        sessionSubgroups.push([...vals]);
         const xbar = vals.reduce((a, b) => a + b, 0) / vals.length;
         addToLog(xbar, nextSgId, vals);
         nextSgId++;
         document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
         for (let i = 0; i < sgSize; i++) document.getElementById(`sg-v-${i}`).value = '';
         document.getElementById('sg-v-0').focus();
-        await refreshChart();
+        refreshChart();
       } catch (err) {
         showAlert(entryMsg, err.message, 'error');
       } finally {
@@ -552,12 +558,13 @@
     try {
       await Promise.all(entry.ids.map(id => measurementsApi.delete(id)));
       undoStack.pop();
-      // Revertir subgrupo ID si aplica
       if (entry.sgId != null) {
+        sessionSubgroups.pop();
         nextSgId = entry.sgId;
         document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
+      } else {
+        sessionValues.pop();
       }
-      // Quitar última entrada del log
       sessionLog.shift();
       sessionCount = Math.max(0, sessionCount - 1);
       document.getElementById('stat-session').textContent = sessionCount;
@@ -565,7 +572,7 @@
       renderLog();
       setUndoEnabled(undoStack.length > 0);
       document.getElementById('ooc-banner').style.display = 'none';
-      await refreshChart();
+      refreshChart();
     } catch (err) {
       showAlert(entryMsg, `Error al deshacer: ${err.message}`, 'error');
       btn.disabled = false;
@@ -585,14 +592,72 @@
     renderLog();
   }
 
-  // ── Refrescar gráfico ───────────────────────────────────────
-  async function refreshChart() {
-    try {
-      const result = await analysisApi.controlChart(processId, chartType, null);
-      renderChartPanel(result);
-    } catch (err) {
-      showWaitingState();
+  // ── Calcular carta desde datos de sesión ───────────────────
+  function computeSessionChart() {
+    if (chartType === 'imr') {
+      const v = sessionValues;
+      if (v.length < 2) return null;
+      const xbar  = v.reduce((a, b) => a + b, 0) / v.length;
+      const mrs   = v.slice(1).map((x, i) => Math.abs(x - v[i]));
+      const mrbar = mrs.reduce((a, b) => a + b, 0) / mrs.length;
+      const sigma = mrbar / 1.128;
+      const iUcl = xbar + 3 * sigma, iLcl = xbar - 3 * sigma;
+      const ooc = v.map((x, i) => (x > iUcl || x < iLcl) ? i : -1).filter(i => i >= 0);
+      return {
+        type: 'imr', violations: [], outOfControl: ooc,
+        labels: v.map((_, i) => `${i + 1}`),
+        chartData: {
+          i:  { ucl: iUcl,         cl: xbar,  lcl: iLcl, points: [...v]   },
+          mr: { ucl: 3.267 * mrbar, cl: mrbar, lcl: 0,    points: [...mrs] }
+        }
+      };
     }
+
+    const sgs = sessionSubgroups;
+    if (sgs.length < 2) return null;
+    const n = sgSize;
+    const xbars = sgs.map(sg => sg.reduce((a, b) => a + b, 0) / n);
+    const xbbar = xbars.reduce((a, b) => a + b, 0) / sgs.length;
+    const labels = sgs.map((_, i) => `SG ${i + 1}`);
+
+    if (chartType === 'xbar_r') {
+      const ranges = sgs.map(sg => Math.max(...sg) - Math.min(...sg));
+      const rbar   = ranges.reduce((a, b) => a + b, 0) / sgs.length;
+      const a2 = _A2[n] || 0, d3 = _D3[n] || 0, d4 = _D4[n] || 3.267;
+      const xUcl = xbbar + a2 * rbar, xLcl = xbbar - a2 * rbar;
+      const ooc = xbars.map((x, i) => (x > xUcl || x < xLcl) ? i : -1).filter(i => i >= 0);
+      return {
+        type: 'xbar_r', violations: [], outOfControl: ooc, labels,
+        chartData: {
+          xbar: { ucl: xUcl,       cl: xbbar, lcl: xLcl,       points: [...xbars]  },
+          r:    { ucl: d4 * rbar,  cl: rbar,  lcl: d3 * rbar,  points: [...ranges] }
+        }
+      };
+    }
+
+    // xbar_s
+    const stds = sgs.map(sg => {
+      const m = sg.reduce((a, b) => a + b, 0) / n;
+      return Math.sqrt(sg.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1));
+    });
+    const sbar = stds.reduce((a, b) => a + b, 0) / sgs.length;
+    const a3 = _A3[n] || 0, b3 = _B3[n] || 0, b4 = _B4[n] || 3.267;
+    const xUcl = xbbar + a3 * sbar, xLcl = xbbar - a3 * sbar;
+    const ooc = xbars.map((x, i) => (x > xUcl || x < xLcl) ? i : -1).filter(i => i >= 0);
+    return {
+      type: 'xbar_s', violations: [], outOfControl: ooc, labels,
+      chartData: {
+        xbar: { ucl: xUcl,      cl: xbbar, lcl: xLcl,      points: [...xbars] },
+        s:    { ucl: b4 * sbar, cl: sbar,  lcl: b3 * sbar, points: [...stds]  }
+      }
+    };
+  }
+
+  // ── Refrescar gráfico ───────────────────────────────────────
+  function refreshChart() {
+    const result = computeSessionChart();
+    if (!result) { showWaitingState(); return; }
+    renderChartPanel(result);
   }
 
   function showWaitingState() {
@@ -697,7 +762,8 @@
     }
 
     // Estadísticas
-    document.getElementById('stat-total').textContent = main.points.length;
+    const chartPts = chartType === 'imr' ? sessionValues.length : sessionSubgroups.length;
+    document.getElementById('stat-total').textContent = chartPts;
     const statusEl = document.getElementById('stat-status');
     if (outOfControl.length > 0) {
       statusEl.textContent = `${outOfControl.length} señal${outOfControl.length > 1 ? 'es' : ''}`;

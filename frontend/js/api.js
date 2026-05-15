@@ -308,13 +308,16 @@ function initSidebar(activePage) {
   const user    = Auth.getUser();
   const company = Auth.getCompany();
 
+  const topPages = [
+    { id: 'dashboard',    href: '/dashboard.html',    label: 'Panel de Control'   },
+    { id: 'measurements', href: '/measurements.html', label: 'Historial de datos' },
+  ];
+
   const fase1Pages = [
-    { id: 'dashboard',     href: '/dashboard.html',     label: 'Panel de Control'  },
     { id: 'processes',     href: '/processes.html',      label: 'Procesos'          },
     { id: 'data-entry',    href: '/data-entry.html',     label: 'Entrada de Datos'  },
     { id: 'control-chart', href: '/control-chart.html',  label: 'Cartas de Control' },
     { id: 'capability',    href: '/capability.html',     label: 'Capacidad'         },
-    { id: 'measurements',  href: '/measurements.html',   label: 'Historial de datos'},
   ];
 
   const fase2Pages = [
@@ -330,6 +333,7 @@ function initSidebar(activePage) {
       ${escHtml(p.label)}
     </a>`;
 
+  const topHtml   = topPages.map(makeNavItem).join('');
   const fase1Html = fase1Pages.map(makeNavItem).join('');
   const fase2Html = fase2Pages.map(makeNavItem).join('');
 
@@ -350,6 +354,7 @@ function initSidebar(activePage) {
       </div>
     </div>
     <nav class="sidebar-nav">
+      ${topHtml}
       <div class="nav-section">Fase 1</div>
       ${fase1Html}
       <div class="nav-section">Fase 2</div>

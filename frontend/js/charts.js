@@ -1,19 +1,22 @@
 /* Funciones de gráficos con Chart.js */
 
 const COLORS = {
-  blue:    '#2563eb',
-  red:     '#dc2626',
-  green:   '#16a34a',
-  amber:   '#d97706',
-  gray:    '#94a3b8',
-  navy:    '#1a2e4a',
-  cl:      '#2563eb',
-  ucl:     '#dc2626',
-  lcl:     '#dc2626',
-  point:   '#1a2e4a',
-  outCtrl: '#dc2626',
-  normal:  'rgba(37,99,235,0.15)'
+  blue:    '#1761b0',
+  red:     '#b91c1c',
+  green:   '#15803d',
+  amber:   '#b45309',
+  gray:    '#667085',
+  navy:    '#0e1621',
+  cl:      '#1761b0',
+  ucl:     '#b91c1c',
+  lcl:     '#b91c1c',
+  point:   '#0d1117',
+  outCtrl: '#b91c1c',
+  normal:  'rgba(23,97,176,0.12)'
 };
+
+const _FONT_DATA = "'JetBrains Mono', 'Consolas', 'Courier New', monospace";
+const _FONT_UI   = "'Inter', 'Segoe UI', system-ui, sans-serif";
 
 const CHART_DEFAULTS = {
   responsive: true,
@@ -23,22 +26,24 @@ const CHART_DEFAULTS = {
     tooltip: {
       mode: 'index',
       intersect: false,
-      backgroundColor: '#1a2e4a',
-      titleColor: '#e2eaf2',
-      bodyColor: '#c8d8ea',
-      borderColor: '#243d5c',
+      backgroundColor: '#0e1621',
+      titleColor: '#c8cdd6',
+      bodyColor: '#98a2b0',
+      borderColor: '#1e2d3f',
       borderWidth: 1,
-      padding: 10
+      padding: 10,
+      titleFont: { family: _FONT_UI, size: 11 },
+      bodyFont:  { family: _FONT_DATA, size: 11 }
     }
   },
   scales: {
     x: {
-      grid: { color: '#f1f5f9' },
-      ticks: { color: '#94a3b8', font: { size: 11 }, maxTicksLimit: 20 }
+      grid: { color: '#e4e7ec' },
+      ticks: { color: '#667085', font: { family: _FONT_UI, size: 11 }, maxTicksLimit: 20 }
     },
     y: {
-      grid: { color: '#f1f5f9' },
-      ticks: { color: '#94a3b8', font: { size: 11 } }
+      grid: { color: '#e4e7ec' },
+      ticks: { color: '#667085', font: { family: _FONT_DATA, size: 11 } }
     }
   },
   elements: {
@@ -130,7 +135,7 @@ function renderControlChart(canvasId, chartData, outOfControl = [], labels = [])
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#344054' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -169,9 +174,9 @@ function renderSecondaryChart(canvasId, chartData, labels = []) {
 
   const sigma    = (secData.ucl - secData.cl) / 3;
   const ptColors = secData.points.map(v =>
-    v > secData.ucl ? COLORS.red : v > secData.cl + 2 * sigma ? '#f97316' : COLORS.amber);
+    v > secData.ucl ? COLORS.red : v > secData.cl + 2 * sigma ? '#c2410c' : COLORS.amber);
   const ptBg     = secData.points.map(v =>
-    v > secData.ucl ? '#fecaca' : 'rgba(217,119,6,0.12)');
+    v > secData.ucl ? '#fee2e2' : 'rgba(180,83,9,0.10)');
   const ptRadii  = secData.points.map(v => v > secData.ucl ? 7 : 4);
   const ptBorderW = secData.points.map(v => v > secData.ucl ? 3 : 2);
 
@@ -207,7 +212,7 @@ function renderSecondaryChart(canvasId, chartData, labels = []) {
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#344054' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -259,10 +264,10 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
 
     const barBg  = (midpoints || []).map(x =>
       (lsl != null && x < lsl) || (usl != null && x > usl)
-        ? 'rgba(220,38,38,0.40)' : 'rgba(37,99,235,0.28)');
+        ? 'rgba(185,28,28,0.35)' : 'rgba(23,97,176,0.25)');
     const barBrd = (midpoints || []).map(x =>
       (lsl != null && x < lsl) || (usl != null && x > usl)
-        ? 'rgba(220,38,38,0.75)' : 'rgba(37,99,235,0.60)');
+        ? 'rgba(185,28,28,0.70)' : 'rgba(23,97,176,0.55)');
 
     const densityData = (midpoints || []).map((x, i) => ({
       x,
@@ -290,8 +295,8 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
     label: 'Distribución Normal teórica',
     data: pts,
     parsing: false,
-    borderColor: '#1a2e4a',
-    borderWidth: 3,
+    borderColor: '#0e1621',
+    borderWidth: 2.5,
     fill: 'origin',
     pointRadius: 0,
     tension: 0.4,
@@ -300,8 +305,8 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
       backgroundColor: ctx2 => {
         const x = pts[ctx2.p1DataIndex]?.x ?? 0;
         if ((lsl != null && x < lsl) || (usl != null && x > usl))
-          return 'rgba(220,38,38,0.18)';
-        return 'rgba(37,99,235,0.10)';
+          return 'rgba(185,28,28,0.15)';
+        return 'rgba(23,97,176,0.09)';
       }
     }
   });
@@ -317,15 +322,10 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#344054' }
         },
         tooltip: {
-          backgroundColor: '#1a2e4a',
-          titleColor: '#e2eaf2',
-          bodyColor: '#c8d8ea',
-          borderColor: '#243d5c',
-          borderWidth: 1,
-          padding: 10,
+          ...CHART_DEFAULTS.plugins.tooltip,
           callbacks: {
             label: ctx => {
               const v = ctx.raw?.y ?? ctx.raw;
@@ -342,10 +342,10 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
           type: 'linear',
           min: xMin,
           max: xMax,
-          grid: { color: '#f1f5f9' },
+          grid: { color: '#e4e7ec' },
           ticks: {
-            color: '#94a3b8',
-            font: { size: 10 },
+            color: '#667085',
+            font: { family: _FONT_DATA, size: 10 },
             maxTicksLimit: 10,
             callback: v => Number(v).toFixed(2)
           }
@@ -353,9 +353,9 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
         y: {
           min: 0,
           max: yMaxCurve,
-          grid: { color: '#f1f5f9' },
-          ticks: { color: '#94a3b8', font: { size: 10 } },
-          title: { display: true, text: 'Densidad de probabilidad', color: '#94a3b8', font: { size: 11 } }
+          grid: { color: '#e4e7ec' },
+          ticks: { color: '#667085', font: { family: _FONT_DATA, size: 10 } },
+          title: { display: true, text: 'Densidad de probabilidad', color: '#667085', font: { family: _FONT_UI, size: 11 } }
         }
       }
     }
@@ -381,8 +381,8 @@ function buildHistogramAnnotations(usl, lsl, nominal, midpoints, binWidth) {
       label: {
         content: `LSI: ${Number(lsl).toFixed(3)}`, display: true,
         position: 'end', yAdjust: -8,
-        backgroundColor: 'rgba(220,38,38,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(185,28,28,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -399,8 +399,8 @@ function buildHistogramAnnotations(usl, lsl, nominal, midpoints, binWidth) {
       label: {
         content: `LSE: ${Number(usl).toFixed(3)}`, display: true,
         position: 'end', yAdjust: -8,
-        backgroundColor: 'rgba(220,38,38,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(185,28,28,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -419,8 +419,8 @@ function buildHistogramAnnotations(usl, lsl, nominal, midpoints, binWidth) {
       label: {
         content: `Nominal: ${Number(nominal).toFixed(3)}`, display: true,
         position: 'start', yAdjust: 8,
-        backgroundColor: 'rgba(22,163,74,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(21,128,61,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -442,8 +442,8 @@ function buildCapabilityAnnotations(usl, lsl, nominal, xbar, xMin, xMax, yMax) {
       label: {
         content: `LSI: ${Number(lsl).toFixed(3)}`, display: true,
         position: 'end', yAdjust: -8,
-        backgroundColor: 'rgba(220,38,38,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(185,28,28,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -459,8 +459,8 @@ function buildCapabilityAnnotations(usl, lsl, nominal, xbar, xMin, xMax, yMax) {
       label: {
         content: `LSE: ${Number(usl).toFixed(3)}`, display: true,
         position: 'end', yAdjust: -8,
-        backgroundColor: 'rgba(220,38,38,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(185,28,28,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -479,8 +479,8 @@ function buildCapabilityAnnotations(usl, lsl, nominal, xbar, xMin, xMax, yMax) {
       label: {
         content: `Nominal: ${Number(nominal).toFixed(3)}`, display: true,
         position: 'start', yAdjust: 8,
-        backgroundColor: 'rgba(22,163,74,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(21,128,61,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -492,8 +492,8 @@ function buildCapabilityAnnotations(usl, lsl, nominal, xbar, xMin, xMax, yMax) {
       label: {
         content: `X̄: ${Number(xbar).toFixed(3)}`, display: true,
         position: 'start', yAdjust: 38,
-        backgroundColor: 'rgba(37,99,235,0.88)', color: '#fff',
-        font: { size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 4
+        backgroundColor: 'rgba(23,97,176,0.90)', color: '#fff',
+        font: { family: _FONT_DATA, size: 11, weight: 'bold' }, padding: { x: 6, y: 3 }, borderRadius: 3
       }
     };
   }
@@ -547,8 +547,8 @@ function renderMiniSparkline(canvasId, values) {
       labels: values.map((_, i) => i + 1),
       datasets: [{
         data: values,
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59,130,246,0.1)',
+        borderColor: '#1761b0',
+        backgroundColor: 'rgba(23,97,176,0.08)',
         fill: true,
         pointRadius: 0,
         tension: 0.3

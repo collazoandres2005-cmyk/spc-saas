@@ -305,13 +305,15 @@
   initSidebar('monitoring');
   initTopBar('Monitoreo en Tiempo Real');
 
-  let processId    = null;
-  let chartType    = 'imr';
-  let sgSize       = 5;
-  let nextSgId     = 1;
-  let sessionCount = 0;
-  let sessionLog   = [];
-  let undoStack    = [];   // [{ ids: [...], sgId: N|null }]
+  let processId     = null;
+  let chartType     = 'imr';
+  let sgSize        = 5;
+  let nextSgId      = 1;
+  let sessionCount  = 0;
+  let sessionLog    = [];
+  let undoStack     = [];   // [{ ids: [...], sgId: N|null }]
+  let mainChartInst = null;
+  let secChartInst  = null;
 
   // ── Inicialización ──────────────────────────────────────────
   async function init() {
@@ -375,6 +377,10 @@
         document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
       }
     } catch {}
+
+    // Destruir gráficos anteriores al cambiar de proceso/tipo
+    if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+    if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
 
     // Reiniciar sesión
     sessionCount = 0;
@@ -593,18 +599,16 @@
     ['lim-ucl','lim-cl','lim-lcl','lim2-ucl','lim2-cl','lim2-lcl']
       .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
     document.getElementById('limits-sec').style.display = 'none';
-    ['main-chart','sec-chart'].forEach(id => {
-      const c = Chart.getChart(id);
-      if (c) c.destroy();
-    });
+    if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+    if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
     document.getElementById('violations-body').innerHTML = `
       <div class="empty-state" style="padding:20px">
         <div class="empty-title">Esperando datos</div>
         <div class="empty-sub">Se necesitan al menos 2 observaciones para calcular la carta.</div>
       </div>`;
     document.getElementById('violations-count').style.display = 'none';
-    document.getElementById('stat-status').textContent  = 'Sin carta';
-    document.getElementById('stat-status').style.color  = '';
+    document.getElementById('stat-status').textContent = 'Sin carta';
+    document.getElementById('stat-status').style.color = '';
   }
 
   function renderChartPanel(result) {
@@ -624,7 +628,7 @@
     document.getElementById('sec-chart-title').textContent  = info.sec;
     document.getElementById('limits-title').textContent     = `${info.card} — Límites de control`;
 
-    // Límites
+    // Chips de límites
     document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
     document.getElementById('lim-cl').textContent  = formatNum(main.cl,  4);
     document.getElementById('lim-lcl').textContent = formatNum(main.lcl, 4);
@@ -637,30 +641,70 @@
       document.getElementById('limits-sec').style.display = 'none';
     }
 
-    // Gráficos
-    renderControlChart('main-chart', chartData, outOfControl, labels);
-    renderSecondaryChart('sec-chart', chartData, labels);
+    // ── Gráfico principal — actualizar en vivo o crear ──────────
+    const axisLabels   = labels.length ? labels : main.points.map((_, i) => `${i + 1}`);
+    const pointColors  = main.points.map((_, i) => outOfControl.includes(i) ? '#dc2626' : '#1a2e4a');
+    const pointBgColors = main.points.map((_, i) => outOfControl.includes(i) ? '#fee2e2' : '#eff6ff');
+
+    if (mainChartInst && mainChartInst.data.datasets.length === 4) {
+      mainChartInst.data.labels = axisLabels;
+      mainChartInst.data.datasets[0].data = main.points.map(() => main.ucl);
+      mainChartInst.data.datasets[1].data = main.points.map(() => main.cl);
+      mainChartInst.data.datasets[2].data = main.points.map(() => main.lcl);
+      mainChartInst.data.datasets[3].data = [...main.points];
+      mainChartInst.data.datasets[3].backgroundColor      = pointBgColors;
+      mainChartInst.data.datasets[3].pointBackgroundColor = pointBgColors;
+      mainChartInst.data.datasets[3].pointBorderColor     = pointColors;
+      mainChartInst.update();
+    } else {
+      if (mainChartInst) mainChartInst.destroy();
+      mainChartInst = renderControlChart('main-chart', chartData, outOfControl, labels);
+      if (mainChartInst) mainChartInst.options.animation = { duration: 500 };
+    }
+
+    // ── Gráfico secundario — actualizar en vivo o crear ─────────
+    if (sec) {
+      const hasLcl      = sec.lcl > 0;
+      const expectedDs  = hasLcl ? 4 : 3;
+      const secLabels   = labels.length
+        ? labels.slice(secKey === 'mr' ? 1 : 0)
+        : sec.points.map((_, i) => `${i + 1}`);
+
+      if (secChartInst && secChartInst.data.datasets.length === expectedDs) {
+        secChartInst.data.labels = secLabels;
+        secChartInst.data.datasets[0].data = sec.points.map(() => sec.ucl);
+        secChartInst.data.datasets[1].data = sec.points.map(() => sec.cl);
+        if (hasLcl) {
+          secChartInst.data.datasets[2].data = sec.points.map(() => sec.lcl);
+          secChartInst.data.datasets[3].data = [...sec.points];
+        } else {
+          secChartInst.data.datasets[2].data = [...sec.points];
+        }
+        secChartInst.update();
+      } else {
+        if (secChartInst) secChartInst.destroy();
+        secChartInst = renderSecondaryChart('sec-chart', chartData, labels);
+        if (secChartInst) secChartInst.options.animation = { duration: 500 };
+      }
+    }
 
     // Detectar si el último punto es fuera de control
-    const lastIdx   = main.points.length - 1;
-    const lastIsOoc = outOfControl.includes(lastIdx);
+    const lastIsOoc = outOfControl.includes(main.points.length - 1);
     if (sessionLog.length > 0 && lastIsOoc) {
       sessionLog[0].isOoc = true;
       renderLog();
       document.getElementById('ooc-banner').style.display = '';
     }
 
-    // Total en BD
+    // Estadísticas
     document.getElementById('stat-total').textContent = main.points.length;
-
-    // Estado de la carta
     const statusEl = document.getElementById('stat-status');
     if (outOfControl.length > 0) {
-      statusEl.textContent  = `${outOfControl.length} señal${outOfControl.length > 1 ? 'es' : ''}`;
-      statusEl.style.color  = 'var(--danger)';
+      statusEl.textContent = `${outOfControl.length} señal${outOfControl.length > 1 ? 'es' : ''}`;
+      statusEl.style.color = 'var(--danger)';
     } else {
-      statusEl.textContent  = 'Bajo control';
-      statusEl.style.color  = 'var(--success)';
+      statusEl.textContent = 'Bajo control';
+      statusEl.style.color = 'var(--success)';
     }
 
     // Violaciones

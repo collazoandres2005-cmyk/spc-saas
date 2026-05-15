@@ -123,12 +123,11 @@
             <div class="flex-center" style="gap:8px">
               <label style="margin:0;font-weight:600;white-space:nowrap">Carta:</label>
               <select id="chart-type" onchange="onChartTypeChange()">
-                <option value="imr">I-MR (Individuales)</option>
-                <option value="xbar_r">X̄-R (Subgrupos)</option>
+                <option value="xbar_r" selected>X̄-R (Subgrupos)</option>
                 <option value="xbar_s">X̄-S (Subgrupos)</option>
               </select>
             </div>
-            <div class="flex-center" id="n-wrap" style="gap:8px;display:none">
+            <div class="flex-center" id="n-wrap" style="gap:8px">
               <label style="margin:0;font-weight:600">n:</label>
               <select id="n-select" style="width:62px" onchange="onNChange()">
                 <option value="2">2</option>
@@ -163,18 +162,6 @@
               </div>
               <div class="card-body">
                 <div id="entry-msg" style="margin-bottom:8px"></div>
-
-                <!-- I-MR -->
-                <div id="imr-form">
-                  <div class="form-group" style="margin-bottom:0">
-                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">
-                      Valor individual
-                    </label>
-                    <input id="imr-val" class="big-input" type="text" inputmode="decimal"
-                           placeholder="0.000" autocomplete="off"
-                           onkeydown="if(event.key==='Enter'){event.preventDefault();addEntry()}">
-                  </div>
-                </div>
 
                 <!-- X̄-R / X̄-S -->
                 <div id="sg-form" style="display:none">
@@ -306,7 +293,7 @@
   initTopBar('Monitoreo en Tiempo Real');
 
   let processId      = null;
-  let chartType      = 'imr';
+  let chartType      = 'xbar_r';
   let sgSize         = 5;
   let nextSgId       = 1;
   let sessionCount   = 0;
@@ -314,8 +301,7 @@
   let undoStack      = [];   // [{ ids: [...], sgId: N|null }]
   let mainChartInst  = null;
   let secChartInst   = null;
-  let sessionValues    = [];   // I-MR: flat value array
-  let sessionSubgroups = [];  // X̄-R/X̄-S: array of value arrays
+  let sessionSubgroups = [];  // array of subgroup value arrays
   let phase1Limits     = null; // { type, main:{ucl,cl,lcl}, sec:{ucl,cl,lcl} }
 
   // ── Inicialización ──────────────────────────────────────────
@@ -329,10 +315,7 @@
     if (urlPid) sel.value = urlPid;
   }
 
-  function onChartTypeChange() {
-    const isSubgroup = document.getElementById('chart-type').value !== 'imr';
-    document.getElementById('n-wrap').style.display = isSubgroup ? '' : 'none';
-  }
+  function onChartTypeChange() { /* ambas cartas usan subgrupos */ }
 
   function onNChange() {
     sgSize = parseInt(document.getElementById('n-select').value);
@@ -353,16 +336,10 @@
     sgSize    = parseInt(document.getElementById('n-select').value) || 5;
     processId = pid;
 
-    const isSubgroup = chartType !== 'imr';
-    document.getElementById('imr-form').style.display = isSubgroup ? 'none' : '';
-    document.getElementById('sg-form').style.display  = isSubgroup ? '' : 'none';
-    if (isSubgroup) buildSgInputs();
-
-    const typeLabel = chartType === 'imr' ? 'Individual' : 'Subgrupo';
-    document.getElementById('btn-add').textContent  = `+ Agregar ${typeLabel}`;
-    document.getElementById('entry-title').textContent = isSubgroup
-      ? `Subgrupo n = ${sgSize}`
-      : 'Valor individual';
+    document.getElementById('sg-form').style.display = '';
+    buildSgInputs();
+    document.getElementById('btn-add').textContent     = '+ Agregar Subgrupo';
+    document.getElementById('entry-title').textContent = `Subgrupo n = ${sgSize}`;
 
     // Nombre del proceso
     try {
@@ -378,7 +355,6 @@
     sessionCount     = 0;
     sessionLog       = [];
     undoStack        = [];
-    sessionValues    = [];
     sessionSubgroups = [];
     phase1Limits     = null;
     nextSgId         = 1;
@@ -397,8 +373,8 @@
     // Cargar límites de Fase 1
     try {
       const p1 = await analysisApi.controlChart(pid, chartType, null);
-      const mainKey = chartType === 'imr' ? 'i' : 'xbar';
-      const secKey  = chartType === 'imr' ? 'mr' : chartType === 'xbar_r' ? 'r' : 's';
+      const mainKey = 'xbar';
+      const secKey  = chartType === 'xbar_r' ? 'r' : 's';
       phase1Limits = {
         type: chartType,
         main: p1.chartData[mainKey],
@@ -415,10 +391,7 @@
       document.getElementById('stat-status').style.color = 'var(--danger)';
     }
 
-    // Focus al input principal
-    const inp = isSubgroup
-      ? document.querySelector('.sg-cell-inp')
-      : document.getElementById('imr-val');
+    const inp = document.querySelector('.sg-cell-inp');
     if (inp) inp.focus();
   }
 
@@ -461,34 +434,7 @@
     const btn      = document.getElementById('btn-add');
     entryMsg.innerHTML = '';
 
-    if (chartType === 'imr') {
-      const raw = document.getElementById('imr-val').value.trim();
-      const val = parseDecimal(raw);
-      const inp = document.getElementById('imr-val');
-
-      if (!raw)       { inp.classList.add('bad'); return; }
-      if (isNaN(val)) { inp.classList.add('bad'); showAlert(entryMsg, 'Valor inválido.', 'error'); return; }
-      inp.classList.remove('bad');
-
-      btn.disabled = true; btn.textContent = 'Guardando...';
-      try {
-        const result = await measurementsApi.createBatch([{ process_id: processId, value: val, subgroup_id: null }]);
-        const ids = (result.data || []).map(r => r.id);
-        undoStack.push({ ids, sgId: null });
-        setUndoEnabled(true);
-        sessionCount++;
-        sessionValues.push(val);
-        addToLog(val, null);
-        inp.value = '';
-        inp.focus();
-        refreshChart();
-      } catch (err) {
-        showAlert(entryMsg, err.message, 'error');
-      } finally {
-        btn.disabled = false; btn.textContent = '+ Agregar Individual';
-      }
-
-    } else {
+    {
       const vals    = [];
       let hasError  = false;
       for (let i = 0; i < sgSize; i++) {
@@ -524,7 +470,6 @@
       } finally {
         btn.disabled = false; btn.textContent = '+ Agregar Subgrupo';
       }
-    }
   }
 
   // ── Registro de sesión ──────────────────────────────────────
@@ -572,13 +517,9 @@
     try {
       await Promise.all(entry.ids.map(id => measurementsApi.delete(id)));
       undoStack.pop();
-      if (entry.sgId != null) {
-        sessionSubgroups.pop();
-        nextSgId = entry.sgId;
-        document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
-      } else {
-        sessionValues.pop();
-      }
+      sessionSubgroups.pop();
+      nextSgId = entry.sgId;
+      document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
       sessionLog.shift();
       sessionCount = Math.max(0, sessionCount - 1);
       document.getElementById('stat-session').textContent = sessionCount;
@@ -610,9 +551,7 @@
   function applyLimitChips() {
     if (!phase1Limits) return;
     const { type, main, sec } = phase1Limits;
-    const typeInfo = {
-      imr:    'Carta I-MR', xbar_r: 'Carta X̄-R', xbar_s: 'Carta X̄-S'
-    };
+    const typeInfo = { xbar_r: 'Carta X̄-R', xbar_s: 'Carta X̄-S' };
     document.getElementById('limits-title').textContent =
       `${typeInfo[type] || 'Carta'} — Límites de control (Fase 1)`;
     document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
@@ -632,21 +571,6 @@
   function buildChartFromSession() {
     if (!phase1Limits) return null;
     const { type, main, sec } = phase1Limits;
-
-    if (type === 'imr') {
-      const v = sessionValues;
-      if (!v.length) return null;
-      const ooc = v.map((x, i) => (x > main.ucl || x < main.lcl) ? i : -1).filter(i => i >= 0);
-      const mrs = v.slice(1).map((x, i) => Math.abs(x - v[i]));
-      return {
-        type: 'imr', violations: [], outOfControl: ooc,
-        labels: v.map((_, i) => `${i + 1}`),
-        chartData: {
-          i:  { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: [...v]   },
-          mr: sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: [...mrs] } : null
-        }
-      };
-    }
 
     const sgs = sessionSubgroups;
     if (!sgs.length) return null;
@@ -692,7 +616,7 @@
           <div class="empty-sub">Ingresa el primer dato para comenzar el monitoreo.</div>
         </div>`;
       document.getElementById('violations-count').style.display = 'none';
-      const chartPts = chartType === 'imr' ? sessionValues.length : sessionSubgroups.length;
+      const chartPts = sessionSubgroups.length;
       document.getElementById('stat-total').textContent = chartPts;
       return;
     }
@@ -717,17 +641,16 @@
 
   function renderChartPanel(result) {
     const { chartData, violations, outOfControl, type, labels } = result;
-    const mainKey = type === 'imr' ? 'i' : 'xbar';
-    const secKey  = type === 'imr' ? 'mr' : type === 'xbar_r' ? 'r' : 's';
+    const mainKey = 'xbar';
+    const secKey  = type === 'xbar_r' ? 'r' : 's';
     const main    = chartData[mainKey];
     const sec     = chartData[secKey];
 
     const typeInfo = {
-      imr:    { main: 'Gráfico de Individuales (I)', sec: 'Rango Móvil (MR)',        card: 'Carta I-MR' },
-      xbar_r: { main: 'Gráfico de Medias (X̄)',       sec: 'Rangos (R)',               card: 'Carta X̄-R' },
-      xbar_s: { main: 'Gráfico de Medias (X̄)',       sec: 'Desv. Estándar (S)',       card: 'Carta X̄-S' }
+      xbar_r: { main: 'Gráfico de Medias (X̄)', sec: 'Rangos (R)',            card: 'Carta X̄-R' },
+      xbar_s: { main: 'Gráfico de Medias (X̄)', sec: 'Desv. Estándar (S)',    card: 'Carta X̄-S' }
     };
-    const info = typeInfo[type] || typeInfo.imr;
+    const info = typeInfo[type] || typeInfo.xbar_r;
     document.getElementById('main-chart-title').textContent = info.main;
     document.getElementById('sec-chart-title').textContent  = info.sec;
     document.getElementById('limits-title').textContent     = `${info.card} — Límites de control`;
@@ -761,7 +684,7 @@
       const hasLcl      = sec.lcl > 0;
       const expectedDs  = hasLcl ? 4 : 3;
       const secLabels   = labels.length
-        ? labels.slice(secKey === 'mr' ? 1 : 0)
+        ? labels
         : sec.points.map((_, i) => `${i + 1}`);
 
       if (secChartInst && secChartInst.data.datasets.length === expectedDs) {
@@ -791,7 +714,7 @@
     }
 
     // Estadísticas
-    const chartPts = chartType === 'imr' ? sessionValues.length : sessionSubgroups.length;
+    const chartPts = sessionSubgroups.length;
     document.getElementById('stat-total').textContent = chartPts;
     const statusEl = document.getElementById('stat-status');
     if (outOfControl.length > 0) {

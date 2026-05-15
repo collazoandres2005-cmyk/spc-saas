@@ -91,16 +91,15 @@
             <div class="flex-center" style="gap:8px">
               <label style="margin:0;white-space:nowrap">Tipo de carta:</label>
               <select id="chart-type" onchange="onSelectionChange()">
-                <option value="imr">I-MR (Individuales y Rango Móvil)</option>
-                <option value="xbar_r">X̄-R (Media y Rango)</option>
+                <option value="xbar_r" selected>X̄-R (Media y Rango)</option>
                 <option value="xbar_s">X̄-S (Media y Desv. Estándar)</option>
               </select>
             </div>
             <button class="btn btn-primary" onclick="loadChart()">Calcular</button>
           </div>
 
-          <!-- Simulación de subgrupos (X̄-R / X̄-S) -->
-          <div id="simulate-panel" class="sim-panel hidden">
+          <!-- Simulación de subgrupos -->
+          <div id="simulate-panel" class="sim-panel">
             <div class="flex-center" style="gap:16px;flex-wrap:wrap">
               <label class="flex-center"
                      style="gap:7px;cursor:pointer;margin:0;font-weight:600;font-size:13px;color:#1d4ed8">
@@ -133,7 +132,7 @@
 
         <div class="card" style="margin-bottom:20px">
           <div class="card-header">
-            <div class="card-title" id="chart-type-label">Carta I-MR — Límites de control</div>
+            <div class="card-title" id="chart-type-label">Carta X̄-R — Límites de control</div>
             <span id="simulated-badge" class="sim-badge" style="display:none">Subgrupos simulados</span>
           </div>
           <div class="card-body">
@@ -151,12 +150,12 @@
         </div>
 
         <div class="chart-wrap">
-          <div class="chart-title" id="main-chart-title">Gráfico de Individuales</div>
+          <div class="chart-title" id="main-chart-title">Gráfico de Medias (X̄)</div>
           <div class="chart-panel"><canvas id="main-chart"></canvas></div>
         </div>
 
         <div class="chart-wrap">
-          <div class="chart-title" id="sec-chart-title">Gráfico de Rango Móvil</div>
+          <div class="chart-title" id="sec-chart-title">Gráfico de Rangos (R)</div>
           <div class="chart-panel-sm"><canvas id="sec-chart"></canvas></div>
         </div>
 
@@ -215,16 +214,6 @@
     const pid  = document.getElementById('process-select').value;
     const type = document.getElementById('chart-type').value;
 
-    // Simulation panel visibility
-    const simPanel = document.getElementById('simulate-panel');
-    if (type === 'xbar_r' || type === 'xbar_s') {
-      simPanel.classList.remove('hidden');
-    } else {
-      simPanel.classList.add('hidden');
-      document.getElementById('simulate-toggle').checked = false;
-      document.getElementById('simulate-controls').classList.add('hidden');
-    }
-
     if (pid) loadChart();
   }
 
@@ -254,11 +243,8 @@
       document.getElementById('chart-area').classList.remove('hidden');
     } catch (err) {
       let errMsg = err.message;
-      if ((type === 'xbar_r' || type === 'xbar_s') && !simEnabled &&
-          err.message.toLowerCase().includes('subgrupo')) {
-        errMsg += ' — Activa "Simular subgrupos" para agrupar datos individuales.';
-        document.getElementById('simulate-panel').classList.remove('hidden');
-      }
+      if (!simEnabled && err.message.toLowerCase().includes('subgrupo'))
+        errMsg += ' — Activa "Simular subgrupos" para agrupar los datos.';
       showAlert(msg, errMsg, 'error');
       document.getElementById('chart-area').classList.add('hidden');
     }
@@ -266,8 +252,8 @@
 
   function renderChart(result) {
     const { chartData, violations, outOfControl, type, labels, simulated, simulate_n: simN } = result;
-    const mainKey = type === 'imr' ? 'i' : 'xbar';
-    const secKey  = type === 'imr' ? 'mr' : type === 'xbar_r' ? 'r' : 's';
+    const mainKey = 'xbar';
+    const secKey  = type === 'xbar_r' ? 'r' : 's';
     const main    = chartData[mainKey];
     const sec     = chartData[secKey];
 
@@ -280,11 +266,10 @@
     }
 
     const typeLabels = {
-      imr:    ['Gráfico de Individuales (I)', 'Gráfico de Rango Móvil (MR)', 'Carta I-MR'],
-      xbar_r: ['Gráfico de Medias (X̄)', 'Gráfico de Rangos (R)', 'Carta X̄-R'],
-      xbar_s: ['Gráfico de Medias (X̄)', 'Gráfico de Desv. Estándar (S)', 'Carta X̄-S']
+      xbar_r: ['Gráfico de Medias (X̄)', 'Gráfico de Rangos (R)',            'Carta X̄-R'],
+      xbar_s: ['Gráfico de Medias (X̄)', 'Gráfico de Desv. Estándar (S)',    'Carta X̄-S']
     };
-    const [mainTitle, secTitle, cardTitle] = typeLabels[type] || typeLabels.imr;
+    const [mainTitle, secTitle, cardTitle] = typeLabels[type] || typeLabels.xbar_r;
     document.getElementById('main-chart-title').textContent = mainTitle;
     document.getElementById('sec-chart-title').textContent  = secTitle;
     document.getElementById('chart-type-label').textContent = `${cardTitle} — Límites de control`;

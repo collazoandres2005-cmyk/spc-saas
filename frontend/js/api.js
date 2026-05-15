@@ -308,30 +308,34 @@ function initSidebar(activePage) {
   const user    = Auth.getUser();
   const company = Auth.getCompany();
 
-  const pages = [
-    { id: 'dashboard',     href: '/dashboard.html',     icon: '▦',  label: 'Panel de Control'  },
-    { id: 'processes',     href: '/processes.html',      icon: '⚙',  label: 'Procesos'          },
-    { id: 'data-entry',    href: '/data-entry.html',     icon: '📊', label: 'Entrada de Datos'  },
-    { id: 'control-chart', href: '/control-chart.html',  icon: '📈', label: 'Cartas de Control' },
-    { id: 'capability',    href: '/capability.html',     icon: '◎',  label: 'Capacidad'         },
-    { id: 'measurements',  href: '/measurements.html',   icon: '🗂',  label: 'Historial de datos'},
+  const fase1Pages = [
+    { id: 'dashboard',     href: '/dashboard.html',     label: 'Panel de Control'  },
+    { id: 'processes',     href: '/processes.html',      label: 'Procesos'          },
+    { id: 'data-entry',    href: '/data-entry.html',     label: 'Entrada de Datos'  },
+    { id: 'control-chart', href: '/control-chart.html',  label: 'Cartas de Control' },
+    { id: 'capability',    href: '/capability.html',     label: 'Capacidad'         },
+    { id: 'measurements',  href: '/measurements.html',   label: 'Historial de datos'},
+  ];
+
+  const fase2Pages = [
+    { id: 'monitoring', href: '/monitoring.html', label: 'Monitoreo en Tiempo Real' },
   ];
 
   const adminPages = [
-    { id: 'admin', href: '/admin.html', icon: '🛡', label: 'Administración' }
+    { id: 'admin', href: '/admin.html', label: 'Administración' }
   ];
 
-  const navHtml = pages.map(p => `
+  const makeNavItem = (p) => `
     <a href="${p.href}" class="nav-item ${activePage === p.id ? 'active' : ''}">
       ${escHtml(p.label)}
-    </a>`).join('');
+    </a>`;
+
+  const fase1Html = fase1Pages.map(makeNavItem).join('');
+  const fase2Html = fase2Pages.map(makeNavItem).join('');
 
   const adminHtml = user?.role === 'admin' ? `
     <div class="nav-section">Admin</div>
-    ${adminPages.map(p => `
-      <a href="${p.href}" class="nav-item ${activePage === p.id ? 'active' : ''}">
-        ${escHtml(p.label)}
-      </a>`).join('')}` : '';
+    ${adminPages.map(makeNavItem).join('')}` : '';
 
   const initials = user?.name?.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() || '??';
 
@@ -346,8 +350,10 @@ function initSidebar(activePage) {
       </div>
     </div>
     <nav class="sidebar-nav">
-      <div class="nav-section">Módulos</div>
-      ${navHtml}
+      <div class="nav-section">Fase 1</div>
+      ${fase1Html}
+      <div class="nav-section">Fase 2</div>
+      ${fase2Html}
       ${adminHtml}
     </nav>
     <div class="sidebar-footer">

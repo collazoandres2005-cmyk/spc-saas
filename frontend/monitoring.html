@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoreo — SPC SaaS</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 960px) { .monitor-grid { grid-template-columns: 1fr; } }
+
+    .entry-panel { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+    .big-input {
+      display: block; width: 100%; box-sizing: border-box;
+      font-size: 28px; font-weight: 700; padding: 12px 14px;
+      border: 2px solid var(--border); border-radius: var(--radius);
+      text-align: center; color: var(--text); outline: none;
+      transition: border-color .15s, background .15s;
+    }
+    .big-input:focus { border-color: var(--primary); background: #eff6ff; }
+    .big-input.bad   { border-color: var(--danger); background: #fff1f2; }
+
+    .sg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; }
+    .sg-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .sg-cell-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .sg-cell-inp {
+      width: 100%; box-sizing: border-box; text-align: center; padding: 7px 4px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-weight: 600; color: var(--text); outline: none;
+    }
+    .sg-cell-inp:focus { border-color: var(--primary); background: #eff6ff; }
+    .sg-cell-inp.bad   { border-color: var(--danger); background: #fff1f2; }
+
+    .btn-add-big { width: 100%; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 14px; }
+
+    .live-indicator {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: .5px; color: var(--success);
+    }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+      animation: live-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .mon-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mon-stat {
+      padding: 8px 12px; background: #f8fafc;
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .mon-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
+    .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
+
+    .session-log { max-height: 260px; overflow-y: auto; }
+    .log-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px;
+    }
+    .log-row:last-child { border-bottom: 0; }
+    .log-row.ooc { background: #fff5f5; }
+    .log-idx  { font-size: 10px; color: var(--text-muted); min-width: 22px; }
+    .log-val  { font-weight: 700; font-family: monospace; color: var(--text); flex: 1; }
+    .log-sg   { font-size: 10px; color: var(--text-muted); }
+    .log-time { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+    .log-ooc  { font-size: 10px; font-weight: 700; color: var(--danger);
+                padding: 1px 6px; background: var(--danger-bg); border-radius: 99px; white-space: nowrap; }
+
+    .ooc-banner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-radius: var(--radius);
+      background: var(--danger-bg); border: 1px solid rgba(220,38,38,.25);
+      font-size: 13px; color: var(--danger); font-weight: 600;
+      margin-bottom: 16px; animation: slide-in .3s ease;
+    }
+    @keyframes slide-in { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+
+    .limits-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .lim-chip { flex: 1; min-width: 80px; text-align: center; padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: #f8fafc; }
+    .lim-chip .lv { font-size: 17px; font-weight: 800; }
+    .lim-chip .ll { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin-top: 2px; }
+    .lim-chip.ucl .lv { color: #dc2626; }
+    .lim-chip.cl  .lv { color: #2563eb; }
+    .lim-chip.lcl .lv { color: #dc2626; }
+
+    .chart-main-h { height: 260px; }
+    .chart-sec-h  { height: 155px; }
+  </style>
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title" id="top-bar-title">Monitoreo en Tiempo Real</div>
+        <span class="top-bar-breadcrumb" id="process-crumb"></span>
+      </div>
+      <div class="top-bar-right">
+        <span class="sub-badge" id="sub-status-badge">...</span>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- ── Selector ─────────────────────────────────────────── -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-body" style="padding:14px 20px">
+          <div class="flex-center" style="gap:14px;flex-wrap:wrap">
+            <div class="flex-center" style="gap:8px">
+              <label style="margin:0;font-weight:600;white-space:nowrap">Proceso:</label>
+              <select id="process-select" style="min-width:220px">
+                <option value="">— Selecciona un proceso —</option>
+              </select>
+            </div>
+            <div class="flex-center" style="gap:8px">
+              <label style="margin:0;font-weight:600;white-space:nowrap">Carta:</label>
+              <select id="chart-type" onchange="onChartTypeChange()">
+                <option value="imr">I-MR (Individuales)</option>
+                <option value="xbar_r">X̄-R (Subgrupos)</option>
+                <option value="xbar_s">X̄-S (Subgrupos)</option>
+              </select>
+            </div>
+            <div class="flex-center" id="n-wrap" style="gap:8px;display:none">
+              <label style="margin:0;font-weight:600">n:</label>
+              <select id="n-select" style="width:62px" onchange="onNChange()">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5" selected>5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="startMonitoring()">Iniciar monitoreo</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="msg"></div>
+
+      <!-- ── Monitor ───────────────────────────────────────────── -->
+      <div id="monitor-area" style="display:none">
+        <div class="monitor-grid">
+
+          <!-- LEFT: panel de ingreso ───────────────────────────── -->
+          <div class="entry-panel">
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title" id="entry-title">Ingreso de datos</div>
+                <div class="live-indicator"><span class="live-dot"></span>EN VIVO</div>
+              </div>
+              <div class="card-body">
+                <div id="entry-msg" style="margin-bottom:8px"></div>
+
+                <!-- I-MR -->
+                <div id="imr-form">
+                  <div class="form-group" style="margin-bottom:0">
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">
+                      Valor individual
+                    </label>
+                    <input id="imr-val" class="big-input" type="text" inputmode="decimal"
+                           placeholder="0.000" autocomplete="off"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();addEntry()}">
+                  </div>
+                </div>
+
+                <!-- X̄-R / X̄-S -->
+                <div id="sg-form" style="display:none">
+                  <div class="form-group" style="margin-bottom:0">
+                    <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">
+                      Subgrupo <span id="sg-id-lbl" style="color:var(--primary);text-transform:none">#1</span>
+                    </label>
+                    <div id="sg-inputs" class="sg-grid" style="margin-top:6px"></div>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary btn-add-big" id="btn-add" onclick="addEntry()">
+                  + Agregar
+                </button>
+              </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="card">
+              <div class="card-body" style="padding:12px 14px">
+                <div class="mon-stats">
+                  <div class="mon-stat">
+                    <div class="mon-stat-lbl">Total en BD</div>
+                    <div class="mon-stat-val" id="stat-total">—</div>
+                  </div>
+                  <div class="mon-stat">
+                    <div class="mon-stat-lbl">Esta sesión</div>
+                    <div class="mon-stat-val" id="stat-session">0</div>
+                  </div>
+                  <div class="mon-stat">
+                    <div class="mon-stat-lbl">Último ingreso</div>
+                    <div class="mon-stat-val" id="stat-last" style="font-size:14px;word-break:break-all">—</div>
+                  </div>
+                  <div class="mon-stat">
+                    <div class="mon-stat-lbl">Estado carta</div>
+                    <div class="mon-stat-val" id="stat-status" style="font-size:12px;font-weight:700">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Registro de sesión -->
+            <div class="card">
+              <div class="card-header" style="padding:10px 14px">
+                <div class="card-title" style="font-size:13px">Registro de sesión</div>
+                <button class="btn btn-secondary btn-sm" onclick="clearLog()">Borrar</button>
+              </div>
+              <div class="session-log" id="session-log">
+                <div style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;font-style:italic">
+                  Sin entradas aún
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT: gráfico ──────────────────────────────────── -->
+          <div id="chart-side">
+
+            <div id="ooc-banner" style="display:none" class="ooc-banner">
+              ⚠ Punto fuera de control estadístico detectado. Investiga posibles causas asignables.
+              <button onclick="document.getElementById('ooc-banner').style.display='none'"
+                      style="margin-left:auto;background:transparent;border:1px solid rgba(220,38,38,.4);
+                             color:var(--danger);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:12px">
+                ✕
+              </button>
+            </div>
+
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-header">
+                <div class="card-title" id="limits-title">Carta I-MR — Límites de control</div>
+              </div>
+              <div class="card-body">
+                <div class="limits-row">
+                  <div class="lim-chip ucl"><div class="lv" id="lim-ucl">—</div><div class="ll">LCS</div></div>
+                  <div class="lim-chip cl" ><div class="lv" id="lim-cl" >—</div><div class="ll">LC</div></div>
+                  <div class="lim-chip lcl"><div class="lv" id="lim-lcl">—</div><div class="ll">LCI</div></div>
+                </div>
+                <div class="limits-row" id="limits-sec" style="display:none">
+                  <div class="lim-chip ucl"><div class="lv" id="lim2-ucl">—</div><div class="ll">LCS (2do)</div></div>
+                  <div class="lim-chip cl" ><div class="lv" id="lim2-cl" >—</div><div class="ll">LC (2do)</div></div>
+                  <div class="lim-chip lcl"><div class="lv" id="lim2-lcl">—</div><div class="ll">LCI (2do)</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-wrap">
+              <div class="chart-title" id="main-chart-title">Gráfico de Individuales (I)</div>
+              <div class="chart-main-h"><canvas id="main-chart"></canvas></div>
+            </div>
+
+            <div class="chart-wrap">
+              <div class="chart-title" id="sec-chart-title">Rango Móvil (MR)</div>
+              <div class="chart-sec-h"><canvas id="sec-chart"></canvas></div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+              <div class="card-header">
+                <div class="card-title">Señales de causas especiales</div>
+                <span class="badge badge-danger" id="violations-count" style="display:none">0</span>
+              </div>
+              <div class="card-body" id="violations-body">
+                <div class="empty-state" style="padding:20px">
+                  <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
+                  <div class="empty-sub">No se detectaron señales de causas especiales.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+              <div class="card-header"><div class="card-title">Reglas de Nelson aplicadas</div></div>
+              <div class="card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:var(--text-sec)">
+                  <div><strong>Regla 1:</strong> Un punto fuera de ±3σ (límites de control)</div>
+                  <div><strong>Regla 2:</strong> 9 puntos consecutivos del mismo lado de la LC</div>
+                  <div><strong>Regla 3:</strong> 6 puntos consecutivos en tendencia monótona</div>
+                  <div><strong>Regla 4:</strong> 14 puntos alternando arriba y abajo</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/charts.js"></script>
+<script>
+  if (!requireLogin()) {}
+  initSidebar('monitoring');
+  initTopBar('Monitoreo en Tiempo Real');
+
+  let processId    = null;
+  let chartType    = 'imr';
+  let sgSize       = 5;
+  let nextSgId     = 1;
+  let sessionCount = 0;
+  let sessionLog   = [];
+
+  // ── Inicialización ──────────────────────────────────────────
+  async function init() {
+    const processes = await processesApi.list().catch(() => []);
+    const sel = document.getElementById('process-select');
+    processes.forEach(p =>
+      sel.appendChild(new Option(`${p.name}${p.unit ? ` (${p.unit})` : ''}`, p.id))
+    );
+    const urlPid = new URLSearchParams(location.search).get('process_id');
+    if (urlPid) sel.value = urlPid;
+  }
+
+  function onChartTypeChange() {
+    const isSubgroup = document.getElementById('chart-type').value !== 'imr';
+    document.getElementById('n-wrap').style.display = isSubgroup ? '' : 'none';
+  }
+
+  function onNChange() {
+    sgSize = parseInt(document.getElementById('n-select').value);
+    if (document.getElementById('sg-form').style.display !== 'none') {
+      buildSgInputs();
+    }
+  }
+
+  // ── Iniciar monitoreo ───────────────────────────────────────
+  async function startMonitoring() {
+    const pid = document.getElementById('process-select').value;
+    const msg = document.getElementById('msg');
+    msg.innerHTML = '';
+
+    if (!pid) return showAlert(msg, 'Selecciona un proceso antes de iniciar.', 'error');
+
+    chartType = document.getElementById('chart-type').value;
+    sgSize    = parseInt(document.getElementById('n-select').value) || 5;
+    processId = pid;
+
+    const isSubgroup = chartType !== 'imr';
+    document.getElementById('imr-form').style.display = isSubgroup ? 'none' : '';
+    document.getElementById('sg-form').style.display  = isSubgroup ? '' : 'none';
+    if (isSubgroup) buildSgInputs();
+
+    const typeLabel = chartType === 'imr' ? 'Individual' : 'Subgrupo';
+    document.getElementById('btn-add').textContent  = `+ Agregar ${typeLabel}`;
+    document.getElementById('entry-title').textContent = isSubgroup
+      ? `Subgrupo n = ${sgSize}`
+      : 'Valor individual';
+
+    // Nombre del proceso
+    try {
+      const p = await processesApi.get(pid);
+      document.getElementById('process-crumb').textContent = `· ${p.name}`;
+    } catch {}
+
+    // Cargar total y determinar próximo ID de subgrupo
+    try {
+      const sample = await measurementsApi.list(pid, 500, 0);
+      document.getElementById('stat-total').textContent = sample.total;
+      if (isSubgroup) {
+        const maxSg = (sample.data || []).reduce((m, r) => Math.max(m, r.subgroup_id || 0), 0);
+        nextSgId = maxSg + 1;
+        document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
+      }
+    } catch {}
+
+    // Reiniciar sesión
+    sessionCount = 0;
+    sessionLog   = [];
+    renderLog();
+    document.getElementById('stat-session').textContent = '0';
+    document.getElementById('stat-last').textContent    = '—';
+    document.getElementById('stat-status').textContent  = '—';
+    document.getElementById('ooc-banner').style.display = 'none';
+
+    document.getElementById('monitor-area').style.display = '';
+
+    await refreshChart();
+
+    // Focus al input principal
+    const inp = isSubgroup
+      ? document.querySelector('.sg-cell-inp')
+      : document.getElementById('imr-val');
+    if (inp) inp.focus();
+  }
+
+  // ── Inputs de subgrupo ──────────────────────────────────────
+  function buildSgInputs() {
+    const container = document.getElementById('sg-inputs');
+    container.innerHTML = '';
+    for (let i = 0; i < sgSize; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'sg-cell';
+      cell.innerHTML = `
+        <span class="sg-cell-lbl">X<sub>${i + 1}</sub></span>
+        <input class="sg-cell-inp" type="text" inputmode="decimal"
+               id="sg-v-${i}" autocomplete="off" placeholder="0"
+               data-idx="${i}" onkeydown="sgKeyNav(event,${i})">`;
+      container.appendChild(cell);
+    }
+  }
+
+  function sgKeyNav(e, idx) {
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      e.preventDefault();
+      if (idx + 1 < sgSize) {
+        document.getElementById(`sg-v-${idx + 1}`).focus();
+      } else {
+        addEntry();
+      }
+    } else if (e.key === 'ArrowRight' && idx + 1 < sgSize) {
+      e.preventDefault();
+      document.getElementById(`sg-v-${idx + 1}`).focus();
+    } else if (e.key === 'ArrowLeft' && idx > 0) {
+      e.preventDefault();
+      document.getElementById(`sg-v-${idx - 1}`).focus();
+    }
+  }
+
+  // ── Agregar dato / subgrupo ─────────────────────────────────
+  async function addEntry() {
+    const entryMsg = document.getElementById('entry-msg');
+    const btn      = document.getElementById('btn-add');
+    entryMsg.innerHTML = '';
+
+    if (chartType === 'imr') {
+      const raw = document.getElementById('imr-val').value.trim();
+      const val = parseDecimal(raw);
+      const inp = document.getElementById('imr-val');
+
+      if (!raw)       { inp.classList.add('bad'); return; }
+      if (isNaN(val)) { inp.classList.add('bad'); showAlert(entryMsg, 'Valor inválido.', 'error'); return; }
+      inp.classList.remove('bad');
+
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        await measurementsApi.createBatch([{ process_id: processId, value: val, subgroup_id: null }]);
+        sessionCount++;
+        addToLog(val, null);
+        inp.value = '';
+        inp.focus();
+        await refreshChart();
+      } catch (err) {
+        showAlert(entryMsg, err.message, 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = '+ Agregar Individual';
+      }
+
+    } else {
+      const vals    = [];
+      let hasError  = false;
+      for (let i = 0; i < sgSize; i++) {
+        const inp = document.getElementById(`sg-v-${i}`);
+        const raw = inp.value.trim();
+        const v   = parseDecimal(raw);
+        if (!raw || isNaN(v)) { inp.classList.add('bad'); hasError = true; }
+        else { inp.classList.remove('bad'); vals.push(v); }
+      }
+      if (hasError) {
+        showAlert(entryMsg, 'Completa todos los valores del subgrupo.', 'error');
+        return;
+      }
+
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      try {
+        const items = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId }));
+        await measurementsApi.createBatch(items);
+        sessionCount++;
+        const xbar = vals.reduce((a, b) => a + b, 0) / vals.length;
+        addToLog(xbar, nextSgId, vals);
+        nextSgId++;
+        document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
+        for (let i = 0; i < sgSize; i++) document.getElementById(`sg-v-${i}`).value = '';
+        document.getElementById('sg-v-0').focus();
+        await refreshChart();
+      } catch (err) {
+        showAlert(entryMsg, err.message, 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = '+ Agregar Subgrupo';
+      }
+    }
+  }
+
+  // ── Registro de sesión ──────────────────────────────────────
+  function addToLog(mainVal, sgId, rawVals = null) {
+    const now  = new Date();
+    const time = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const displayVal = sgId != null
+      ? `X̄=${mainVal.toFixed(3)}`
+      : mainVal.toString();
+    sessionLog.unshift({ displayVal, sgId, rawVals, isOoc: false, time, n: sessionCount });
+
+    document.getElementById('stat-session').textContent = sessionCount;
+    document.getElementById('stat-last').textContent    = displayVal;
+    renderLog();
+  }
+
+  function renderLog() {
+    const el = document.getElementById('session-log');
+    if (!sessionLog.length) {
+      el.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;font-style:italic">Sin entradas aún</div>';
+      return;
+    }
+    el.innerHTML = sessionLog.map(e => `
+      <div class="log-row${e.isOoc ? ' ooc' : ''}">
+        <span class="log-idx">${e.n}</span>
+        <span class="log-val">${escHtml(e.displayVal)}</span>
+        ${e.sgId != null ? `<span class="log-sg">SG #${e.sgId}</span>` : ''}
+        ${e.isOoc ? '<span class="log-ooc">Fuera de control</span>' : ''}
+        <span class="log-time">${e.time}</span>
+      </div>`).join('');
+  }
+
+  function clearLog() {
+    sessionLog   = [];
+    sessionCount = 0;
+    document.getElementById('stat-session').textContent = '0';
+    document.getElementById('stat-last').textContent    = '—';
+    renderLog();
+  }
+
+  // ── Refrescar gráfico ───────────────────────────────────────
+  async function refreshChart() {
+    try {
+      const result = await analysisApi.controlChart(processId, chartType, null);
+      renderChartPanel(result);
+    } catch (err) {
+      showWaitingState();
+    }
+  }
+
+  function showWaitingState() {
+    ['lim-ucl','lim-cl','lim-lcl','lim2-ucl','lim2-cl','lim2-lcl']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+    document.getElementById('limits-sec').style.display = 'none';
+    ['main-chart','sec-chart'].forEach(id => {
+      const c = Chart.getChart(id);
+      if (c) c.destroy();
+    });
+    document.getElementById('violations-body').innerHTML = `
+      <div class="empty-state" style="padding:20px">
+        <div class="empty-title">Esperando datos</div>
+        <div class="empty-sub">Se necesitan al menos 2 observaciones para calcular la carta.</div>
+      </div>`;
+    document.getElementById('violations-count').style.display = 'none';
+    document.getElementById('stat-status').textContent  = 'Sin carta';
+    document.getElementById('stat-status').style.color  = '';
+  }
+
+  function renderChartPanel(result) {
+    const { chartData, violations, outOfControl, type, labels } = result;
+    const mainKey = type === 'imr' ? 'i' : 'xbar';
+    const secKey  = type === 'imr' ? 'mr' : type === 'xbar_r' ? 'r' : 's';
+    const main    = chartData[mainKey];
+    const sec     = chartData[secKey];
+
+    const typeInfo = {
+      imr:    { main: 'Gráfico de Individuales (I)', sec: 'Rango Móvil (MR)',        card: 'Carta I-MR' },
+      xbar_r: { main: 'Gráfico de Medias (X̄)',       sec: 'Rangos (R)',               card: 'Carta X̄-R' },
+      xbar_s: { main: 'Gráfico de Medias (X̄)',       sec: 'Desv. Estándar (S)',       card: 'Carta X̄-S' }
+    };
+    const info = typeInfo[type] || typeInfo.imr;
+    document.getElementById('main-chart-title').textContent = info.main;
+    document.getElementById('sec-chart-title').textContent  = info.sec;
+    document.getElementById('limits-title').textContent     = `${info.card} — Límites de control`;
+
+    // Límites
+    document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
+    document.getElementById('lim-cl').textContent  = formatNum(main.cl,  4);
+    document.getElementById('lim-lcl').textContent = formatNum(main.lcl, 4);
+    if (sec) {
+      document.getElementById('limits-sec').style.display = '';
+      document.getElementById('lim2-ucl').textContent = formatNum(sec.ucl, 4);
+      document.getElementById('lim2-cl').textContent  = formatNum(sec.cl,  4);
+      document.getElementById('lim2-lcl').textContent = formatNum(sec.lcl, 4);
+    } else {
+      document.getElementById('limits-sec').style.display = 'none';
+    }
+
+    // Gráficos
+    renderControlChart('main-chart', chartData, outOfControl, labels);
+    renderSecondaryChart('sec-chart', chartData, labels);
+
+    // Detectar si el último punto es fuera de control
+    const lastIdx   = main.points.length - 1;
+    const lastIsOoc = outOfControl.includes(lastIdx);
+    if (sessionLog.length > 0 && lastIsOoc) {
+      sessionLog[0].isOoc = true;
+      renderLog();
+      document.getElementById('ooc-banner').style.display = '';
+    }
+
+    // Total en BD
+    document.getElementById('stat-total').textContent = main.points.length;
+
+    // Estado de la carta
+    const statusEl = document.getElementById('stat-status');
+    if (outOfControl.length > 0) {
+      statusEl.textContent  = `${outOfControl.length} señal${outOfControl.length > 1 ? 'es' : ''}`;
+      statusEl.style.color  = 'var(--danger)';
+    } else {
+      statusEl.textContent  = 'Bajo control';
+      statusEl.style.color  = 'var(--success)';
+    }
+
+    // Violaciones
+    const body  = document.getElementById('violations-body');
+    const badge = document.getElementById('violations-count');
+    if (!violations.length) {
+      badge.style.display = 'none';
+      body.innerHTML = `
+        <div class="empty-state" style="padding:20px">
+          <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
+          <div class="empty-sub">No se detectaron señales de causas especiales.</div>
+        </div>`;
+    } else {
+      badge.style.display = 'inline-flex';
+      badge.textContent   = violations.length;
+      body.innerHTML = `<ul class="violations-list">${violations.map(v => `
+        <li>
+          <span class="rule-chip">${v.rule}</span>
+          <div>
+            <strong>Observación #${v.index + 1}</strong><br>
+            <span style="font-size:12px;color:var(--text-sec)">${escHtml(v.description)}</span>
+          </div>
+        </li>`).join('')}</ul>`;
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

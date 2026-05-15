@@ -1,0 +1,10 @@
+name: spc-analisis
+title:
+username: spca
+account: spca
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17340801
+bundleId: 11981052
+url: https://spca.shinyapps.io/spc-analisis/
+version: 1

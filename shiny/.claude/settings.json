@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$j = [Console]::In.ReadToEnd() | ConvertFrom-Json; $f = $j.tool_input.file_path; if ($f -match '\\.R$') { & 'C:\\Program Files\\R\\R-4.6.0\\bin\\Rscript.exe' -e \"styler::style_file('$f')\" }",
+            "statusMessage": "Formateando app.R con styler..."
+          }
+        ]
+      }
+    ]
+  }
+}

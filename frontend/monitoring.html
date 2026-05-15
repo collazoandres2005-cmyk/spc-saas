@@ -189,6 +189,11 @@
                 <button class="btn btn-primary btn-add-big" id="btn-add" onclick="addEntry()">
                   + Agregar
                 </button>
+                <button class="btn btn-secondary btn-add-big" id="btn-undo"
+                        onclick="undoLast()" disabled
+                        style="margin-top:8px;opacity:.5">
+                  ↩ Deshacer último
+                </button>
               </div>
             </div>
 
@@ -306,6 +311,7 @@
   let nextSgId     = 1;
   let sessionCount = 0;
   let sessionLog   = [];
+  let undoStack    = [];   // [{ ids: [...], sgId: N|null }]
 
   // ── Inicialización ──────────────────────────────────────────
   async function init() {
@@ -373,6 +379,8 @@
     // Reiniciar sesión
     sessionCount = 0;
     sessionLog   = [];
+    undoStack    = [];
+    setUndoEnabled(false);
     renderLog();
     document.getElementById('stat-session').textContent = '0';
     document.getElementById('stat-last').textContent    = '—';
@@ -440,7 +448,10 @@
 
       btn.disabled = true; btn.textContent = 'Guardando...';
       try {
-        await measurementsApi.createBatch([{ process_id: processId, value: val, subgroup_id: null }]);
+        const result = await measurementsApi.createBatch([{ process_id: processId, value: val, subgroup_id: null }]);
+        const ids = (result.data || []).map(r => r.id);
+        undoStack.push({ ids, sgId: null });
+        setUndoEnabled(true);
         sessionCount++;
         addToLog(val, null);
         inp.value = '';
@@ -469,8 +480,11 @@
 
       btn.disabled = true; btn.textContent = 'Guardando...';
       try {
-        const items = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId }));
-        await measurementsApi.createBatch(items);
+        const items  = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId }));
+        const result = await measurementsApi.createBatch(items);
+        const ids    = (result.data || []).map(r => r.id);
+        undoStack.push({ ids, sgId: nextSgId });
+        setUndoEnabled(true);
         sessionCount++;
         const xbar = vals.reduce((a, b) => a + b, 0) / vals.length;
         addToLog(xbar, nextSgId, vals);
@@ -517,9 +531,49 @@
       </div>`).join('');
   }
 
+  function setUndoEnabled(enabled) {
+    const btn = document.getElementById('btn-undo');
+    btn.disabled = !enabled;
+    btn.style.opacity = enabled ? '1' : '.5';
+  }
+
+  async function undoLast() {
+    if (!undoStack.length) return;
+    const entry  = undoStack[undoStack.length - 1];
+    const btn    = document.getElementById('btn-undo');
+    const entryMsg = document.getElementById('entry-msg');
+    btn.disabled = true; btn.textContent = 'Deshaciendo...';
+    try {
+      await Promise.all(entry.ids.map(id => measurementsApi.delete(id)));
+      undoStack.pop();
+      // Revertir subgrupo ID si aplica
+      if (entry.sgId != null) {
+        nextSgId = entry.sgId;
+        document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
+      }
+      // Quitar última entrada del log
+      sessionLog.shift();
+      sessionCount = Math.max(0, sessionCount - 1);
+      document.getElementById('stat-session').textContent = sessionCount;
+      document.getElementById('stat-last').textContent    = sessionLog[0]?.displayVal || '—';
+      renderLog();
+      setUndoEnabled(undoStack.length > 0);
+      document.getElementById('ooc-banner').style.display = 'none';
+      await refreshChart();
+    } catch (err) {
+      showAlert(entryMsg, `Error al deshacer: ${err.message}`, 'error');
+      btn.disabled = false;
+    } finally {
+      btn.textContent = '↩ Deshacer último';
+      if (undoStack.length > 0) btn.disabled = false;
+    }
+  }
+
   function clearLog() {
     sessionLog   = [];
     sessionCount = 0;
+    undoStack    = [];
+    setUndoEnabled(false);
     document.getElementById('stat-session').textContent = '0';
     document.getElementById('stat-last').textContent    = '—';
     renderLog();

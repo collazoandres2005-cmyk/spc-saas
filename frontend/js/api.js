@@ -314,7 +314,6 @@ function initSidebar(activePage) {
     { id: 'data-entry',    href: '/data-entry.html',     icon: '📊', label: 'Entrada de Datos'  },
     { id: 'control-chart', href: '/control-chart.html',  icon: '📈', label: 'Cartas de Control' },
     { id: 'capability',    href: '/capability.html',     icon: '◎',  label: 'Capacidad'         },
-    { id: 'simulation',    href: '/simulation.html',     icon: '⚗',  label: 'Simulación'        },
     { id: 'measurements',  href: '/measurements.html',   icon: '🗂',  label: 'Historial de datos'},
   ];
 

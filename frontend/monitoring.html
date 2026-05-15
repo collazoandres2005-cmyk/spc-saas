@@ -314,16 +314,9 @@
   let undoStack      = [];   // [{ ids: [...], sgId: N|null }]
   let mainChartInst  = null;
   let secChartInst   = null;
-  let sessionValues  = [];   // I-MR: flat value array
-  let sessionSubgroups = []; // X̄-R/X̄-S: array of value arrays
-
-  // SPC constants indexed by subgroup size n
-  const _A2 = [0,0,1.880,1.023,0.729,0.577,0.483,0.419,0.373,0.337,0.308];
-  const _D3 = [0,0,0,    0,    0,    0,    0,    0.076,0.136,0.184,0.223 ];
-  const _D4 = [0,0,3.267,2.574,2.282,2.114,2.004,1.924,1.864,1.816,1.777 ];
-  const _A3 = [0,0,2.659,1.954,1.628,1.427,1.287,1.182,1.099,1.032,0.975 ];
-  const _B3 = [0,0,0,    0,    0,    0,    0.030,0.118,0.185,0.239,0.284 ];
-  const _B4 = [0,0,3.267,2.568,2.266,2.089,1.970,1.882,1.815,1.761,1.716 ];
+  let sessionValues    = [];   // I-MR: flat value array
+  let sessionSubgroups = [];  // X̄-R/X̄-S: array of value arrays
+  let phase1Limits     = null; // { type, main:{ucl,cl,lcl}, sec:{ucl,cl,lcl} }
 
   // ── Inicialización ──────────────────────────────────────────
   async function init() {
@@ -387,6 +380,7 @@
     undoStack        = [];
     sessionValues    = [];
     sessionSubgroups = [];
+    phase1Limits     = null;
     nextSgId         = 1;
     if (isSubgroup) document.getElementById('sg-id-lbl').textContent = '#1';
     setUndoEnabled(false);
@@ -394,12 +388,32 @@
     document.getElementById('stat-session').textContent = '0';
     document.getElementById('stat-total').textContent   = '—';
     document.getElementById('stat-last').textContent    = '—';
-    document.getElementById('stat-status').textContent  = '—';
+    document.getElementById('stat-status').textContent  = 'Cargando límites...';
     document.getElementById('ooc-banner').style.display = 'none';
 
     document.getElementById('monitor-area').style.display = '';
-
     showWaitingState();
+
+    // Cargar límites de Fase 1
+    try {
+      const p1 = await analysisApi.controlChart(pid, chartType, null);
+      const mainKey = chartType === 'imr' ? 'i' : 'xbar';
+      const secKey  = chartType === 'imr' ? 'mr' : chartType === 'xbar_r' ? 'r' : 's';
+      phase1Limits = {
+        type: chartType,
+        main: p1.chartData[mainKey],
+        sec:  p1.chartData[secKey] || null
+      };
+      applyLimitChips();
+      document.getElementById('stat-status').textContent = 'Límites Fase 1 listos';
+      document.getElementById('stat-status').style.color = 'var(--primary)';
+    } catch {
+      showAlert(msg,
+        'No se encontraron datos en Cartas de Control para este proceso. ' +
+        'Ingresa datos históricos en Fase 1 primero.', 'error');
+      document.getElementById('stat-status').textContent = 'Sin límites';
+      document.getElementById('stat-status').style.color = 'var(--danger)';
+    }
 
     // Focus al input principal
     const inp = isSubgroup
@@ -592,88 +606,113 @@
     renderLog();
   }
 
-  // ── Calcular carta desde datos de sesión ───────────────────
-  function computeSessionChart() {
-    if (chartType === 'imr') {
+  // ── Mostrar chips de límites de Fase 1 ─────────────────────
+  function applyLimitChips() {
+    if (!phase1Limits) return;
+    const { type, main, sec } = phase1Limits;
+    const typeInfo = {
+      imr:    'Carta I-MR', xbar_r: 'Carta X̄-R', xbar_s: 'Carta X̄-S'
+    };
+    document.getElementById('limits-title').textContent =
+      `${typeInfo[type] || 'Carta'} — Límites de control (Fase 1)`;
+    document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
+    document.getElementById('lim-cl').textContent  = formatNum(main.cl,  4);
+    document.getElementById('lim-lcl').textContent = formatNum(main.lcl, 4);
+    if (sec) {
+      document.getElementById('limits-sec').style.display = '';
+      document.getElementById('lim2-ucl').textContent = formatNum(sec.ucl, 4);
+      document.getElementById('lim2-cl').textContent  = formatNum(sec.cl,  4);
+      document.getElementById('lim2-lcl').textContent = formatNum(sec.lcl, 4);
+    } else {
+      document.getElementById('limits-sec').style.display = 'none';
+    }
+  }
+
+  // ── Construir resultado de carta desde sesión + límites Fase 1
+  function buildChartFromSession() {
+    if (!phase1Limits) return null;
+    const { type, main, sec } = phase1Limits;
+
+    if (type === 'imr') {
       const v = sessionValues;
-      if (v.length < 2) return null;
-      const xbar  = v.reduce((a, b) => a + b, 0) / v.length;
-      const mrs   = v.slice(1).map((x, i) => Math.abs(x - v[i]));
-      const mrbar = mrs.reduce((a, b) => a + b, 0) / mrs.length;
-      const sigma = mrbar / 1.128;
-      const iUcl = xbar + 3 * sigma, iLcl = xbar - 3 * sigma;
-      const ooc = v.map((x, i) => (x > iUcl || x < iLcl) ? i : -1).filter(i => i >= 0);
+      if (!v.length) return null;
+      const ooc = v.map((x, i) => (x > main.ucl || x < main.lcl) ? i : -1).filter(i => i >= 0);
+      const mrs = v.slice(1).map((x, i) => Math.abs(x - v[i]));
       return {
         type: 'imr', violations: [], outOfControl: ooc,
         labels: v.map((_, i) => `${i + 1}`),
         chartData: {
-          i:  { ucl: iUcl,         cl: xbar,  lcl: iLcl, points: [...v]   },
-          mr: { ucl: 3.267 * mrbar, cl: mrbar, lcl: 0,    points: [...mrs] }
+          i:  { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: [...v]   },
+          mr: sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: [...mrs] } : null
         }
       };
     }
 
     const sgs = sessionSubgroups;
-    if (sgs.length < 2) return null;
+    if (!sgs.length) return null;
     const n = sgSize;
     const xbars = sgs.map(sg => sg.reduce((a, b) => a + b, 0) / n);
-    const xbbar = xbars.reduce((a, b) => a + b, 0) / sgs.length;
+    const ooc = xbars.map((x, i) => (x > main.ucl || x < main.lcl) ? i : -1).filter(i => i >= 0);
     const labels = sgs.map((_, i) => `SG ${i + 1}`);
 
-    if (chartType === 'xbar_r') {
+    if (type === 'xbar_r') {
       const ranges = sgs.map(sg => Math.max(...sg) - Math.min(...sg));
-      const rbar   = ranges.reduce((a, b) => a + b, 0) / sgs.length;
-      const a2 = _A2[n] || 0, d3 = _D3[n] || 0, d4 = _D4[n] || 3.267;
-      const xUcl = xbbar + a2 * rbar, xLcl = xbbar - a2 * rbar;
-      const ooc = xbars.map((x, i) => (x > xUcl || x < xLcl) ? i : -1).filter(i => i >= 0);
       return {
         type: 'xbar_r', violations: [], outOfControl: ooc, labels,
         chartData: {
-          xbar: { ucl: xUcl,       cl: xbbar, lcl: xLcl,       points: [...xbars]  },
-          r:    { ucl: d4 * rbar,  cl: rbar,  lcl: d3 * rbar,  points: [...ranges] }
+          xbar: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: [...xbars]  },
+          r: sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: [...ranges] } : null
         }
       };
     }
 
-    // xbar_s
     const stds = sgs.map(sg => {
       const m = sg.reduce((a, b) => a + b, 0) / n;
       return Math.sqrt(sg.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1));
     });
-    const sbar = stds.reduce((a, b) => a + b, 0) / sgs.length;
-    const a3 = _A3[n] || 0, b3 = _B3[n] || 0, b4 = _B4[n] || 3.267;
-    const xUcl = xbbar + a3 * sbar, xLcl = xbbar - a3 * sbar;
-    const ooc = xbars.map((x, i) => (x > xUcl || x < xLcl) ? i : -1).filter(i => i >= 0);
     return {
       type: 'xbar_s', violations: [], outOfControl: ooc, labels,
       chartData: {
-        xbar: { ucl: xUcl,      cl: xbbar, lcl: xLcl,      points: [...xbars] },
-        s:    { ucl: b4 * sbar, cl: sbar,  lcl: b3 * sbar, points: [...stds]  }
+        xbar: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: [...xbars] },
+        s: sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: [...stds]  } : null
       }
     };
   }
 
   // ── Refrescar gráfico ───────────────────────────────────────
   function refreshChart() {
-    const result = computeSessionChart();
-    if (!result) { showWaitingState(); return; }
+    const result = buildChartFromSession();
+    if (!result) {
+      // No hay datos de sesión aún — limpiar lienzos pero mantener chips de límites
+      if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+      if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
+      document.getElementById('violations-body').innerHTML = `
+        <div class="empty-state" style="padding:20px">
+          <div class="empty-title" style="color:var(--primary)">Límites de Fase 1 listos</div>
+          <div class="empty-sub">Ingresa el primer dato para comenzar el monitoreo.</div>
+        </div>`;
+      document.getElementById('violations-count').style.display = 'none';
+      const chartPts = chartType === 'imr' ? sessionValues.length : sessionSubgroups.length;
+      document.getElementById('stat-total').textContent = chartPts;
+      return;
+    }
     renderChartPanel(result);
   }
 
   function showWaitingState() {
-    ['lim-ucl','lim-cl','lim-lcl','lim2-ucl','lim2-cl','lim2-lcl']
-      .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
-    document.getElementById('limits-sec').style.display = 'none';
+    if (!phase1Limits) {
+      ['lim-ucl','lim-cl','lim-lcl','lim2-ucl','lim2-cl','lim2-lcl']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+      document.getElementById('limits-sec').style.display = 'none';
+    }
     if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
     if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
     document.getElementById('violations-body').innerHTML = `
       <div class="empty-state" style="padding:20px">
-        <div class="empty-title">Esperando datos</div>
-        <div class="empty-sub">Se necesitan al menos 2 observaciones para calcular la carta.</div>
+        <div class="empty-title">Cargando límites de Fase 1...</div>
+        <div class="empty-sub">Obteniendo límites de control del historial.</div>
       </div>`;
     document.getElementById('violations-count').style.display = 'none';
-    document.getElementById('stat-status').textContent = 'Sin carta';
-    document.getElementById('stat-status').style.color = '';
   }
 
   function renderChartPanel(result) {
@@ -693,18 +732,8 @@
     document.getElementById('sec-chart-title').textContent  = info.sec;
     document.getElementById('limits-title').textContent     = `${info.card} — Límites de control`;
 
-    // Chips de límites
-    document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
-    document.getElementById('lim-cl').textContent  = formatNum(main.cl,  4);
-    document.getElementById('lim-lcl').textContent = formatNum(main.lcl, 4);
-    if (sec) {
-      document.getElementById('limits-sec').style.display = '';
-      document.getElementById('lim2-ucl').textContent = formatNum(sec.ucl, 4);
-      document.getElementById('lim2-cl').textContent  = formatNum(sec.cl,  4);
-      document.getElementById('lim2-lcl').textContent = formatNum(sec.lcl, 4);
-    } else {
-      document.getElementById('limits-sec').style.display = 'none';
-    }
+    // Chips: siempre refrescar desde phase1Limits (ya están cargados)
+    applyLimitChips();
 
     // ── Gráfico principal — actualizar en vivo o crear ──────────
     const axisLabels   = labels.length ? labels : main.points.map((_, i) => `${i + 1}`);

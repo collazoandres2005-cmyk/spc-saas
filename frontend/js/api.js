@@ -371,7 +371,102 @@ function initSidebar(activePage) {
       </div>
       <button onclick="authApi.logout()" class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px">Cerrar sesión</button>
     </div>`;
+
+  // ── Mobile sidebar toggle ──────────────────────────────────────
+  let backdrop = document.getElementById('sidebar-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'sidebar-backdrop';
+    backdrop.className = 'sidebar-backdrop';
+    backdrop.addEventListener('click', _closeSidebar);
+    document.body.appendChild(backdrop);
+  }
+
+  const topBar = document.querySelector('.top-bar');
+  if (topBar && !topBar.querySelector('.sidebar-menu-btn')) {
+    const btn = document.createElement('button');
+    btn.className = 'sidebar-menu-btn';
+    btn.setAttribute('aria-label', 'Menú');
+    btn.innerHTML = '&#9776;';
+    btn.addEventListener('click', _toggleSidebar);
+    topBar.prepend(btn);
+  }
+
+  // Close sidebar when clicking a nav link on mobile
+  document.querySelectorAll('#sidebar .nav-item').forEach(a => {
+    a.addEventListener('click', () => { if (window.innerWidth <= 768) _closeSidebar(); });
+  });
 }
+
+function _toggleSidebar() {
+  const s = document.getElementById('sidebar');
+  const b = document.getElementById('sidebar-backdrop');
+  const open = s.classList.toggle('open');
+  if (b) b.classList.toggle('open', open);
+}
+
+function _closeSidebar() {
+  document.getElementById('sidebar')?.classList.remove('open');
+  document.getElementById('sidebar-backdrop')?.classList.remove('open');
+}
+
+/* ── Slide Panel ─────────────────────────────────────────── */
+const slidePanel = (() => {
+  let _overlay = null, _panel = null, _titleEl = null, _bodyEl = null, _footerEl = null;
+
+  function _build() {
+    if (_overlay) return;
+    _overlay = document.createElement('div');
+    _overlay.className = 'slide-overlay';
+    _overlay.addEventListener('click', close);
+
+    _panel = document.createElement('div');
+    _panel.className = 'slide-panel';
+
+    _titleEl = document.createElement('div');
+    _titleEl.className = 'sp-title';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'sp-close';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', close);
+
+    const header = document.createElement('div');
+    header.className = 'sp-header';
+    header.append(_titleEl, closeBtn);
+
+    _bodyEl = document.createElement('div');
+    _bodyEl.className = 'sp-body';
+
+    _footerEl = document.createElement('div');
+    _footerEl.className = 'sp-footer';
+
+    _panel.append(header, _bodyEl, _footerEl);
+    document.body.append(_overlay, _panel);
+  }
+
+  function open({ title, body, footer = '' }) {
+    _build();
+    _titleEl.textContent = title;
+    _bodyEl.innerHTML = body;
+    _footerEl.innerHTML = footer;
+    _footerEl.style.display = footer ? 'flex' : 'none';
+    requestAnimationFrame(() => {
+      _overlay.classList.add('sp-open');
+      _panel.classList.add('sp-open');
+    });
+    document.body.style.overflow = 'hidden';
+  }
+
+  function close() {
+    if (!_overlay) return;
+    _overlay.classList.remove('sp-open');
+    _panel.classList.remove('sp-open');
+    document.body.style.overflow = '';
+  }
+
+  return { open, close };
+})();
 
 async function initTopBar(titleText) {
   const statusData = await billingApi.status().catch(() => null);

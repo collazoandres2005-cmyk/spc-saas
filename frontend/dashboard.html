@@ -127,6 +127,8 @@
   initSidebar('dashboard');
   initTopBar('Panel de Control');
 
+  let summariesMap = {};
+
   // Feature flag — poner en true para reactivar bloqueos de suscripción
   const REQUIRE_SUBSCRIPTION = false;
 
@@ -186,6 +188,7 @@
 
   function renderProcessCards(summaries) {
     const el = document.getElementById('processes-container');
+    summariesMap = {};
     if (!summaries.length) {
       el.innerHTML = `
         <div class="empty-state">
@@ -197,16 +200,17 @@
     }
 
     el.innerHTML = `<div class="process-grid">${summaries.map(p => {
+      summariesMap[p.id] = p;
       const status = p.status || 'sin_datos';
       const cpkTxt = p.cpk != null ? Number(p.cpk).toFixed(3) : '—';
       const specParts = [
-        p.lsl != null ? `<div class="spec-item"><span class="spec-label">LSI</span><span class="spec-val">${p.lsl} ${p.unit||''}</span></div>` : '',
+        p.lsl     != null ? `<div class="spec-item"><span class="spec-label">LSI</span><span class="spec-val">${p.lsl} ${p.unit||''}</span></div>` : '',
         p.nominal != null ? `<div class="spec-item"><span class="spec-label">Nominal</span><span class="spec-val">${p.nominal} ${p.unit||''}</span></div>` : '',
-        p.usl != null ? `<div class="spec-item"><span class="spec-label">LSE</span><span class="spec-val">${p.usl} ${p.unit||''}</span></div>` : ''
+        p.usl     != null ? `<div class="spec-item"><span class="spec-label">LSE</span><span class="spec-val">${p.usl} ${p.unit||''}</span></div>` : ''
       ].join('');
 
       return `
-        <a class="process-card" href="/capability.html?process_id=${p.id}">
+        <div class="process-card" onclick="openProcessPanel('${escHtml(String(p.id))}')">
           <div class="process-card-header">
             <div>
               <div class="process-name">${escHtml(p.name)}</div>
@@ -216,8 +220,67 @@
           </div>
           <div class="process-specs">${specParts}</div>
           <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">${cpkLabel(p.cpk)}</div>
-        </a>`;
+        </div>`;
     }).join('')}</div>`;
+  }
+
+  function openProcessPanel(id) {
+    const p = summariesMap[id];
+    if (!p) return;
+
+    const status   = p.status || 'sin_datos';
+    const cpkTxt   = p.cpk != null ? Number(p.cpk).toFixed(3) : '—';
+    const clr      = { capaz: 'var(--success)', marginal: 'var(--warning)', no_capaz: 'var(--danger)', sin_datos: 'var(--text-muted)' };
+    const bg       = { capaz: 'var(--success-bg)', marginal: 'var(--warning-bg)', no_capaz: 'var(--danger-bg)', sin_datos: 'var(--card-alt)' };
+    const bdr      = { capaz: 'var(--success-bdr)', marginal: 'var(--warning-bdr)', no_capaz: 'var(--danger-bdr)', sin_datos: 'var(--border)' };
+
+    const specs = [
+      p.lsl     != null ? { lbl: 'LSI',     val: `${p.lsl} ${p.unit || ''}`.trim()     } : null,
+      p.nominal != null ? { lbl: 'Nominal', val: `${p.nominal} ${p.unit || ''}`.trim() } : null,
+      p.usl     != null ? { lbl: 'LSE',     val: `${p.usl} ${p.unit || ''}`.trim()     } : null,
+    ].filter(Boolean);
+
+    const specsHtml = specs.length
+      ? specs.map(s => `
+          <div class="sp-spec-row">
+            <span class="sp-spec-lbl">${s.lbl}</span>
+            <span class="sp-spec-val">${escHtml(s.val)}</span>
+          </div>`).join('')
+      : '<div class="sp-spec-row" style="color:var(--text-muted);font-style:italic;font-size:12px">Sin especificaciones definidas</div>';
+
+    const body = `
+      <div style="padding:14px 16px;border-radius:var(--radius);border:1px solid ${bdr[status]};background:${bg[status]};margin-bottom:16px;display:flex;align-items:center;gap:14px">
+        <div style="font-size:34px;font-weight:900;font-family:var(--font-data);color:${clr[status]};line-height:1">${cpkTxt}</div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${clr[status]}">${cpkLabel(p.cpk)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px">${p.n} mediciones · ${escHtml(p.unit || 'sin unidad')}</div>
+        </div>
+      </div>
+
+      <div class="sp-info-grid">
+        <div class="sp-info-box">
+          <div class="sp-info-lbl">Cpk</div>
+          <div class="sp-info-val" style="color:${clr[status]}">${cpkTxt}</div>
+        </div>
+        <div class="sp-info-box">
+          <div class="sp-info-lbl">Mediciones</div>
+          <div class="sp-info-val">${p.n}</div>
+        </div>
+      </div>
+
+      <div class="sp-section-lbl">Especificaciones</div>
+      <div style="background:var(--card-alt);border:1px solid var(--border-lt);border-radius:var(--radius);margin-bottom:16px;overflow:hidden">
+        ${specsHtml}
+      </div>
+    `;
+
+    const footer = `
+      <a href="/capability.html?process_id=${p.id}" class="btn btn-primary btn-sm" style="flex:1;text-align:center">Análisis de Capacidad</a>
+      <a href="/monitoring.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Monitoreo</a>
+      <a href="/control-chart.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Cartas</a>
+    `;
+
+    slidePanel.open({ title: escHtml(p.name), body, footer });
   }
 
   async function startCheckout() {

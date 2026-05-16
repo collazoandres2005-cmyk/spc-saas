@@ -140,6 +140,7 @@
         <td style="font-size:12px;color:var(--text-sec)">${escHtml(p.created_by_name || '—')}</td>
         <td>
           <div class="flex" style="gap:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="openProcessPanel('${p.id}')">Detalles</button>
             <a href="/measurements.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Mediciones</a>
             <a href="/capability.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Capacidad</a>
             <button class="btn btn-secondary btn-sm" onclick="openModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">Editar</button>
@@ -237,6 +238,56 @@
     } catch (err) {
       showAlert(document.getElementById('msg'), err.message, 'error');
     }
+  }
+
+  function openProcessPanel(id) {
+    const p = processesData.find(x => String(x.id) === String(id));
+    if (!p) return;
+
+    const specs = [
+      p.lsl     != null ? { lbl: 'LSI',     val: `${p.lsl} ${p.unit || ''}`.trim()     } : null,
+      p.nominal != null ? { lbl: 'Nominal', val: `${p.nominal} ${p.unit || ''}`.trim() } : null,
+      p.usl     != null ? { lbl: 'LSE',     val: `${p.usl} ${p.unit || ''}`.trim()     } : null,
+    ].filter(Boolean);
+
+    const specsHtml = specs.length
+      ? specs.map(s => `
+          <div class="sp-spec-row">
+            <span class="sp-spec-lbl">${s.lbl}</span>
+            <span class="sp-spec-val">${escHtml(s.val)}</span>
+          </div>`).join('')
+      : '<div class="sp-spec-row" style="color:var(--text-muted);font-style:italic;font-size:12px">Sin especificaciones definidas</div>';
+
+    const body = `
+      ${p.description ? `<div style="font-size:13px;color:var(--text-sec);margin-bottom:16px;padding:10px 12px;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:var(--radius)">${escHtml(p.description)}</div>` : ''}
+
+      <div class="sp-info-grid">
+        <div class="sp-info-box">
+          <div class="sp-info-lbl">Mediciones</div>
+          <div class="sp-info-val">${p.measurement_count || 0}</div>
+        </div>
+        <div class="sp-info-box">
+          <div class="sp-info-lbl">Unidad</div>
+          <div class="sp-info-val">${escHtml(p.unit || '—')}</div>
+        </div>
+      </div>
+
+      <div class="sp-section-lbl">Especificaciones</div>
+      <div style="background:var(--card-alt);border:1px solid var(--border-lt);border-radius:var(--radius);margin-bottom:16px;overflow:hidden">
+        ${specsHtml}
+      </div>
+
+      <div class="sp-section-lbl">Creado por</div>
+      <div style="font-size:13px;color:var(--text-sec);padding:8px 0">${escHtml(p.created_by_name || '—')}</div>
+    `;
+
+    const footer = `
+      <a href="/capability.html?process_id=${p.id}" class="btn btn-primary btn-sm" style="flex:1;text-align:center">Análisis de Capacidad</a>
+      <a href="/monitoring.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Monitoreo</a>
+      <a href="/measurements.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Mediciones</a>
+    `;
+
+    slidePanel.open({ title: escHtml(p.name), body, footer });
   }
 
   loadProcesses();

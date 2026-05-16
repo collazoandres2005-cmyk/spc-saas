@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Procesos — SPC SaaS</title>
   <link rel="stylesheet" href="/css/main.css">
+  <style>
+    @media (max-width: 768px) {
+      /* Ocultar columnas menos críticas en móvil */
+      .col-lsi, .col-nom, .col-lse, .col-creado { display: none; }
+      /* Acciones en columna */
+      .action-cell { display: flex; flex-direction: column; gap: 4px; min-width: 90px; }
+      .action-cell .btn { width: 100%; justify-content: center; font-size: 10px; }
+    }
+  </style>
 </head>
 <body class="app-layout">
   <aside class="sidebar" id="sidebar"></aside>
@@ -33,11 +42,11 @@
               <tr>
                 <th>Proceso</th>
                 <th>Unidad</th>
-                <th>LSI</th>
-                <th>Nominal</th>
-                <th>LSE</th>
+                <th class="col-lsi">LSI</th>
+                <th class="col-nom">Nominal</th>
+                <th class="col-lse">LSE</th>
                 <th>Mediciones</th>
-                <th>Creado por</th>
+                <th class="col-creado">Creado por</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -133,15 +142,14 @@
       <tr>
         <td><strong>${escHtml(p.name)}</strong>${p.description ? `<br><span style="font-size:11px;color:var(--text-muted)">${escHtml(p.description)}</span>` : ''}</td>
         <td>${escHtml(p.unit || '—')}</td>
-        <td>${p.lsl != null ? p.lsl : '—'}</td>
-        <td>${p.nominal != null ? p.nominal : '—'}</td>
-        <td>${p.usl != null ? p.usl : '—'}</td>
+        <td class="col-lsi">${p.lsl != null ? p.lsl : '—'}</td>
+        <td class="col-nom">${p.nominal != null ? p.nominal : '—'}</td>
+        <td class="col-lse">${p.usl != null ? p.usl : '—'}</td>
         <td><span class="badge badge-blue">${p.measurement_count}</span></td>
-        <td style="font-size:12px;color:var(--text-sec)">${escHtml(p.created_by_name || '—')}</td>
+        <td class="col-creado" style="font-size:12px;color:var(--text-sec)">${escHtml(p.created_by_name || '—')}</td>
         <td>
-          <div class="flex" style="gap:6px;flex-wrap:wrap">
+          <div class="action-cell flex" style="gap:5px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="openProcessPanel('${p.id}')">Detalles</button>
-            <a href="/measurements.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Mediciones</a>
             <a href="/capability.html?process_id=${p.id}" class="btn btn-secondary btn-sm">Capacidad</a>
             <button class="btn btn-secondary btn-sm" onclick="openModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">Editar</button>
             <button class="btn btn-danger btn-sm" onclick="deleteProcess('${p.id}', '${escHtml(p.name).replace(/'/g,"\\'")}')">Eliminar</button>

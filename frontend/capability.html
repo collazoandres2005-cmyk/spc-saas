@@ -60,7 +60,12 @@
       display: grid; grid-template-columns: repeat(4, 1fr);
       gap: 14px; margin-bottom: 20px;
     }
-    @media (max-width:900px) { .cap-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 900px) { .cap-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
+    @media (max-width: 480px) { .cap-grid { grid-template-columns: 1fr 1fr; gap: 8px; } }
+    @media (max-width: 480px) {
+      .cap-val { font-size: 28px; }
+      .cap-card { padding: 14px 12px; }
+    }
     .cap-card {
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 18px 20px;
@@ -76,7 +81,11 @@
     .chart-cap  { height: 420px; }
 
     .rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width:700px) { .rec-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { .rec-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .tests-grid { grid-template-columns: 1fr !important; }
+      .chart-cap  { height: 300px; }
+    }
     .rec-item { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
     .rec-item.good { border-left: 3px solid var(--success); }
     .rec-item.warn { border-left: 3px solid var(--warning); }

@@ -48,6 +48,10 @@
     .limits-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
     }
+    @media (max-width: 768px) {
+      .chart-panel    { height: 210px; }
+      .chart-panel-sm { height: 140px; }
+    }
     .limit-box {
       background: #f8fafc; border: 1px solid var(--border);
       border-radius: var(--radius); padding: 10px 14px; text-align: center;

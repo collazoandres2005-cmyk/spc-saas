@@ -23,6 +23,10 @@
     }
     .panel { display: none; }
     .panel.active { display: block; }
+    @media (max-width: 480px) {
+      .auth-page { align-items: flex-start; padding-top: 24px; }
+      .auth-box  { border-radius: 0; border-left: 0; border-right: 0; max-width: 100%; }
+    }
   </style>
 </head>
 <body class="auth-page">

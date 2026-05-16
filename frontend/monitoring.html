@@ -92,6 +92,15 @@
 
     .chart-main-h { height: 260px; }
     .chart-sec-h  { height: 155px; }
+    @media (max-width: 768px) {
+      .chart-main-h { height: 200px; }
+      .chart-sec-h  { height: 130px; }
+      .mon-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .limits-row { gap: 6px; }
+      .lim-chip .lv { font-size: 14px; }
+      .sg-cell-inp { font-size: 16px; }
+      .btn-add-big { font-size: 13px; padding: 11px; }
+    }
   </style>
 </head>
 <body class="app-layout">

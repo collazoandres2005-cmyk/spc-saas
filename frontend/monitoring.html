@@ -367,7 +367,7 @@
     sessionSubgroups = [];
     phase1Limits     = null;
     nextSgId         = 1;
-    if (isSubgroup) document.getElementById('sg-id-lbl').textContent = '#1';
+    document.getElementById('sg-id-lbl').textContent = '#1';
     setUndoEnabled(false);
     renderLog();
     document.getElementById('stat-session').textContent = '0';
@@ -479,6 +479,7 @@
       } finally {
         btn.disabled = false; btn.textContent = '+ Agregar Subgrupo';
       }
+  }
   }
 
   // ── Registro de sesión ──────────────────────────────────────

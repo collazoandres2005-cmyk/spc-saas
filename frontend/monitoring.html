@@ -451,7 +451,7 @@
 
       btn.disabled = true; btn.textContent = 'Guardando...';
       try {
-        const items  = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId }));
+        const items  = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId, phase: 2 }));
         const result = await measurementsApi.createBatch(items);
         const ids    = (result.data || []).map(r => r.id);
         undoStack.push({ ids, sgId: nextSgId });

@@ -111,15 +111,36 @@ app.use((err, req, res, _next) => {
 
 // ── Inicio ────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log('=== Servidor SPC SaaS iniciado ===');
-  console.log(`  Puerto:    ${PORT}`);
-  console.log(`  Entorno:   ${process.env.NODE_ENV || 'development'}`);
-  console.log(`  CORS:      ${process.env.CORS_ALLOW_ALL === 'true' ? 'ABIERTO (todos los origenes)' : 'restringido por whitelist'}`);
-  console.log(`  DB:        ${process.env.DATABASE_URL ? 'variable configurada' : 'DATABASE_URL no definida'}`);
-  console.log(`  JWT:       ${process.env.JWT_SECRET   ? 'variable configurada' : 'JWT_SECRET no definida'}`);
-  console.log(`  Health:    http://localhost:${PORT}/health`);
-  console.log('==================================');
-});
+
+async function runMigrations(db) {
+  // Idempotente — seguro en cada arranque
+  await db.query(
+    `ALTER TABLE measurements ADD COLUMN IF NOT EXISTS phase SMALLINT NOT NULL DEFAULT 1`
+  );
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS idx_measurements_phase ON measurements(process_id, phase)`
+  );
+}
+
+(async () => {
+  const db = require('./db');
+  try {
+    await runMigrations(db);
+    console.log('  Migración DB: OK (columna phase lista)');
+  } catch (e) {
+    console.error('  Migración DB: ADVERTENCIA —', e.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log('=== Servidor SPC SaaS iniciado ===');
+    console.log(`  Puerto:    ${PORT}`);
+    console.log(`  Entorno:   ${process.env.NODE_ENV || 'development'}`);
+    console.log(`  CORS:      ${process.env.CORS_ALLOW_ALL === 'true' ? 'ABIERTO (todos los origenes)' : 'restringido por whitelist'}`);
+    console.log(`  DB:        ${process.env.DATABASE_URL ? 'variable configurada' : 'DATABASE_URL no definida'}`);
+    console.log(`  JWT:       ${process.env.JWT_SECRET   ? 'variable configurada' : 'JWT_SECRET no definida'}`);
+    console.log(`  Health:    http://localhost:${PORT}/health`);
+    console.log('==================================');
+  });
+})();
 
 module.exports = app;

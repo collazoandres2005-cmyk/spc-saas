@@ -15,7 +15,7 @@ async function getProcessValues(process_id, company_id) {
     ),
     db.query(
       `SELECT value, subgroup_id FROM measurements
-       WHERE process_id=$1 AND company_id=$2
+       WHERE process_id=$1 AND company_id=$2 AND phase = 1
        ORDER BY recorded_at ASC`,
       [process_id, company_id]
     )
@@ -211,7 +211,7 @@ router.get('/dashboard-summary', async (req, res) => {
       `SELECT p.id, p.name, p.unit, p.usl, p.lsl, p.nominal,
               COUNT(m.id)::int as n
        FROM processes p
-       LEFT JOIN measurements m ON m.process_id = p.id
+       LEFT JOIN measurements m ON m.process_id = p.id AND m.phase = 1
        WHERE p.company_id = $1
        GROUP BY p.id
        ORDER BY p.created_at DESC`,
@@ -224,7 +224,7 @@ router.get('/dashboard-summary', async (req, res) => {
           return { ...proc, cpk: null, status: 'sin_datos' };
         }
         const meas = await db.query(
-          'SELECT value FROM measurements WHERE process_id=$1 AND company_id=$2 ORDER BY recorded_at DESC LIMIT 100',
+          'SELECT value FROM measurements WHERE process_id=$1 AND company_id=$2 AND phase = 1 ORDER BY recorded_at DESC LIMIT 100',
           [proc.id, req.user.company_id]
         );
         const values = meas.rows.map(r => parseFloat(r.value));

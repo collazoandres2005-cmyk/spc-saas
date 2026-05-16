@@ -177,8 +177,8 @@ const processesApi = {
 
 /* ── Measurements API ────────────────────────────────────── */
 const measurementsApi = {
-  list(process_id, limit = 500, offset = 0) {
-    return apiFetch(`/measurements?process_id=${process_id}&limit=${limit}&offset=${offset}`);
+  list(process_id, limit = 500, offset = 0, phase = 1) {
+    return apiFetch(`/measurements?process_id=${process_id}&limit=${limit}&offset=${offset}&phase=${phase}`);
   },
   create(data) {
     return apiFetch('/measurements', { method: 'POST', body: JSON.stringify(data) });

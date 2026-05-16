@@ -11,15 +11,15 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 
 router.use(requireAuth, requireActiveSubscription);
 
-// GET /api/measurements?process_id=&limit=&offset=
+// GET /api/measurements?process_id=&limit=&offset=&phase=1
+// phase: 1 = Fase 1 (default), 2 = Fase 2 (monitoreo), all = ambas
 router.get('/', async (req, res) => {
-  const { process_id, limit = 500, offset = 0 } = req.query;
+  const { process_id, limit = 500, offset = 0, phase = '1' } = req.query;
   if (!process_id) {
     return res.status(400).json({ error: 'Se requiere process_id.' });
   }
 
   try {
-    // Verificar que el proceso pertenece a la empresa
     const proc = await db.query(
       'SELECT id FROM processes WHERE id=$1 AND company_id=$2',
       [process_id, req.user.company_id]
@@ -28,18 +28,20 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'Proceso no encontrado.' });
     }
 
+    const phaseFilter = phase === 'all' ? '' : `AND m.phase = ${phase === '2' ? 2 : 1}`;
+
     const result = await db.query(
-      `SELECT m.id, m.value, m.subgroup_id, m.recorded_at, u.name as recorded_by_name
+      `SELECT m.id, m.value, m.subgroup_id, m.phase, m.recorded_at, u.name as recorded_by_name
        FROM measurements m
        LEFT JOIN users u ON m.recorded_by = u.id
-       WHERE m.process_id=$1 AND m.company_id=$2
+       WHERE m.process_id=$1 AND m.company_id=$2 ${phaseFilter}
        ORDER BY m.recorded_at DESC
        LIMIT $3 OFFSET $4`,
       [process_id, req.user.company_id, parseInt(limit), parseInt(offset)]
     );
 
     const countResult = await db.query(
-      'SELECT COUNT(*) FROM measurements WHERE process_id=$1 AND company_id=$2',
+      `SELECT COUNT(*) FROM measurements WHERE process_id=$1 AND company_id=$2 ${phaseFilter}`,
       [process_id, req.user.company_id]
     );
 
@@ -82,19 +84,21 @@ router.post('/', async (req, res) => {
       const inserted = [];
 
       for (const item of items) {
-        const { value, subgroup_id, recorded_at } = item;
+        const { value, subgroup_id, recorded_at, phase } = item;
         if (value === undefined || value === null || value === '') {
           continue;
         }
         const numVal = parseFloat(value);
         if (isNaN(numVal)) continue;
+        const phaseVal = phase === 2 || phase === '2' ? 2 : 1;
 
         const r = await client.query(
-          `INSERT INTO measurements (process_id, company_id, value, subgroup_id, recorded_at, recorded_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING id, value, subgroup_id, recorded_at`,
+          `INSERT INTO measurements (process_id, company_id, value, subgroup_id, phase, recorded_at, recorded_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, value, subgroup_id, phase, recorded_at`,
           [process_id, req.user.company_id, numVal,
            subgroup_id || null,
+           phaseVal,
            recorded_at || new Date(),
            req.user.user_id]
         );

@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS measurements (
   company_id UUID REFERENCES companies(id),
   value NUMERIC NOT NULL,
   subgroup_id INTEGER,
+  phase SMALLINT NOT NULL DEFAULT 1,  -- 1 = Fase 1 (histórico), 2 = Fase 2 (monitoreo)
   recorded_at TIMESTAMPTZ DEFAULT NOW(),
   recorded_by UUID REFERENCES users(id)
 );
@@ -70,3 +71,4 @@ CREATE INDEX IF NOT EXISTS idx_processes_company ON processes(company_id);
 CREATE INDEX IF NOT EXISTS idx_measurements_process ON measurements(process_id);
 CREATE INDEX IF NOT EXISTS idx_measurements_company ON measurements(company_id);
 CREATE INDEX IF NOT EXISTS idx_measurements_recorded ON measurements(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_measurements_phase ON measurements(process_id, phase);

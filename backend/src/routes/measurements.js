@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
     const phaseFilter = phase === 'all' ? '' : `AND m.phase = ${phase === '2' ? 2 : 1}`;
 
     const result = await db.query(
-      `SELECT m.id, m.value, m.subgroup_id, m.phase, m.recorded_at, u.name as recorded_by_name
+      `SELECT m.id, m.value, m.subgroup_id, m.phase, m.sample_size, m.recorded_at, u.name as recorded_by_name
        FROM measurements m
        LEFT JOIN users u ON m.recorded_by = u.id
        WHERE m.process_id=$1 AND m.company_id=$2 ${phaseFilter}
@@ -84,21 +84,24 @@ router.post('/', async (req, res) => {
       const inserted = [];
 
       for (const item of items) {
-        const { value, subgroup_id, recorded_at, phase } = item;
+        const { value, subgroup_id, recorded_at, phase, sample_size } = item;
         if (value === undefined || value === null || value === '') {
           continue;
         }
         const numVal = parseFloat(value);
         if (isNaN(numVal)) continue;
-        const phaseVal = phase === 2 || phase === '2' ? 2 : 1;
+        const phaseVal    = phase === 2 || phase === '2' ? 2 : 1;
+        const sampleSizeV = sample_size != null && !isNaN(parseFloat(sample_size))
+          ? parseFloat(sample_size) : null;
 
         const r = await client.query(
-          `INSERT INTO measurements (process_id, company_id, value, subgroup_id, phase, recorded_at, recorded_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id, value, subgroup_id, phase, recorded_at`,
+          `INSERT INTO measurements (process_id, company_id, value, subgroup_id, phase, sample_size, recorded_at, recorded_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING id, value, subgroup_id, phase, sample_size, recorded_at`,
           [process_id, req.user.company_id, numVal,
            subgroup_id || null,
            phaseVal,
+           sampleSizeV,
            recorded_at || new Date(),
            req.user.user_id]
         );

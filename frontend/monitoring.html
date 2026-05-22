@@ -628,6 +628,25 @@
     if (adjWrap) adjWrap.style.display = (isAcademic && isXbar && phase1Limits) ? 'flex' : 'none';
   }
 
+  // ── Sesión activa (auto-restore) ──────────────────────────────
+  const ACTIVE_KEY = 'spc_mon_active';
+
+  function saveActiveSession() {
+    if (!processId) return;
+    const sel = document.getElementById('process-select');
+    localStorage.setItem(ACTIVE_KEY, JSON.stringify({
+      processId,
+      processName: sel.options[sel.selectedIndex]?.text || '',
+      chartType,
+      mode,
+      sgSize
+    }));
+  }
+
+  function clearActiveSession() {
+    localStorage.removeItem(ACTIVE_KEY);
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     setMode(mode);   // restore toggle appearance
@@ -636,13 +655,39 @@
     processes.forEach(p =>
       sel.appendChild(new Option(`${p.name}${p.unit ? ` (${p.unit})` : ''}`, p.id))
     );
+
+    // Prioridad: URL param > sesión activa guardada
     const urlPid = new URLSearchParams(location.search).get('process_id');
     if (urlPid) {
       sel.value = urlPid;
-      // Auto-detect chart type from process config
       const proc = processes.find(p => p.id === urlPid);
       if (proc?.chart_type) document.getElementById('chart-type').value = proc.chart_type;
+      return;
     }
+
+    // Auto-restaurar última sesión activa
+    try {
+      const active = JSON.parse(localStorage.getItem(ACTIVE_KEY) || 'null');
+      if (active?.processId) {
+        sel.value = active.processId;
+        if (active.chartType) document.getElementById('chart-type').value = active.chartType;
+        if (active.sgSize)    sgSize = active.sgSize;
+        setMode(active.mode || 'industrial');
+
+        // Banner de restauración
+        const msg = document.getElementById('msg');
+        msg.innerHTML = `
+          <div class="alert alert-info" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span>🔄 Se detectó una sesión anterior de <strong>${escHtml(active.processName || active.processId)}</strong>.</span>
+            <button class="btn btn-primary btn-sm" onclick="startMonitoring();this.closest('.alert').remove()">
+              Continuar sesión
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="clearActiveSession();this.closest('.alert').remove()">
+              Ignorar
+            </button>
+          </div>`;
+      }
+    } catch {}
   }
 
   // ── Iniciar monitoreo ─────────────────────────────────────────
@@ -703,12 +748,14 @@
         document.getElementById('btn-n-inc').disabled = sgSize >= 10;
       }
       setStatusBar('stable', 'Límites de Fase 1 listos', `${p1.chartData[mainKey].points?.length ?? 0} subgrupos históricos`);
+      saveActiveSession();   // ← guardar sesión activa una vez que los límites están listos
     } catch (err) {
       showAlert(msg,
         'Sin datos de Fase 1 para este proceso. ' +
         'Ingresa datos históricos en Cartas de Control primero.', 'error');
       setStatusBar('idle', 'Sin límites de control', 'Ingresa datos en Cartas de Control');
       document.getElementById('limits-sec-row').style.display = 'none';
+      clearActiveSession();
       return;
     }
 

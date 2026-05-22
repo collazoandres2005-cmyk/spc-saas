@@ -1108,10 +1108,15 @@
     const p1Sec  = isAcademic ? (phase1Data?.[secKey])  : null;
     const p1Len  = p1Main?.points?.length || 0;
 
-    const p2Labels  = labels.length ? labels : main.points.map((_, i) => `M-${i+1}`);
-    const p1Labels  = Array.from({ length: p1Len }, (_, i) => `F1-${i+1}`);
-    const allLabels = [...p1Labels, ...p2Labels];
-    const totalLen  = p1Len + main.points.length;
+    const LOOKAHEAD  = 12;
+    const p2Len      = main.points.length;
+    const p2VisLen   = Math.max(p2Len, LOOKAHEAD);
+    const futureExtra = p2VisLen - p2Len;
+    const p2Labels   = Array.from({ length: p2VisLen }, (_, i) =>
+      i < p2Len ? (labels[i] || `M-${i+1}`) : `M-${i+1}`);
+    const p1Labels   = Array.from({ length: p1Len }, (_, i) => `F1-${i+1}`);
+    const allLabels  = [...p1Labels, ...p2Labels];
+    const totalLen   = p1Len + p2VisLen;
 
     const p2Colors   = main.points.map((_, i) => outOfControl.includes(i) ? '#dc2626' : '#1a2e4a');
     const p2BgColors = main.points.map((_, i) => outOfControl.includes(i) ? '#fee2e2' : '#eff6ff');
@@ -1125,12 +1130,12 @@
       ds.datasets[0].data  = Array(totalLen).fill(main.ucl);
       ds.datasets[1].data  = Array(totalLen).fill(main.cl);
       ds.datasets[2].data  = Array(totalLen).fill(main.lcl);
-      ds.datasets[3].data  = p1Len ? [...(p1Main?.points || []), ...Array(main.points.length).fill(null)] : Array(totalLen).fill(null);
-      ds.datasets[4].data              = [...Array(p1Len).fill(null), ...main.points];
-      ds.datasets[4].pointBackgroundColor = [...Array(p1Len).fill('transparent'), ...p2BgColors];
-      ds.datasets[4].pointBorderColor     = [...Array(p1Len).fill('transparent'), ...p2Colors];
-      ds.datasets[4].pointRadius           = [...Array(p1Len).fill(0), ...p2Radii];
-      ds.datasets[4].pointBorderWidth      = [...Array(p1Len).fill(0), ...p2BorderW];
+      ds.datasets[3].data  = p1Len ? [...(p1Main?.points || []), ...Array(p2VisLen).fill(null)] : Array(totalLen).fill(null);
+      ds.datasets[4].data              = [...Array(p1Len).fill(null), ...main.points, ...Array(futureExtra).fill(null)];
+      ds.datasets[4].pointBackgroundColor = [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')];
+      ds.datasets[4].pointBorderColor     = [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')];
+      ds.datasets[4].pointRadius           = [...Array(p1Len).fill(0), ...p2Radii,  ...Array(futureExtra).fill(0)];
+      ds.datasets[4].pointBorderWidth      = [...Array(p1Len).fill(0), ...p2BorderW,...Array(futureExtra).fill(0)];
       mainChartInst.update({ duration: 400 });
     } else {
       const ctxM = document.getElementById('main-chart');
@@ -1154,7 +1159,7 @@
             { label: 'LCI', data: Array(totalLen).fill(main.lcl), borderColor: '#b91c1c', borderWidth: 2.5, pointRadius: 0, fill: false },
             {
               label: 'Fase 1 (ref.)',
-              data: p1Len ? [...(p1Main?.points || []), ...Array(main.points.length).fill(null)] : Array(totalLen).fill(null),
+              data: p1Len ? [...(p1Main?.points || []), ...Array(p2VisLen).fill(null)] : Array(totalLen).fill(null),
               borderColor: '#c8cdd6', borderWidth: 1.5, fill: false, spanGaps: false,
               pointBackgroundColor: Array(p1Len).fill('rgba(156,163,175,0.2)'),
               pointBorderColor: Array(p1Len).fill('#9ca3af'),
@@ -1163,14 +1168,14 @@
             },
             {
               label: 'Monitoreo',
-              data: [...Array(p1Len).fill(null), ...main.points],
+              data: [...Array(p1Len).fill(null), ...main.points, ...Array(futureExtra).fill(null)],
               borderColor: '#0e1621', borderWidth: 2, fill: false, spanGaps: false,
-              backgroundColor:      [...Array(p1Len).fill('transparent'), ...p2BgColors],
-              pointBackgroundColor: [...Array(p1Len).fill('transparent'), ...p2BgColors],
-              pointBorderColor:     [...Array(p1Len).fill('transparent'), ...p2Colors],
-              pointRadius:          [...Array(p1Len).fill(0), ...p2Radii],
-              pointHoverRadius:     [...Array(p1Len).fill(0), ...p2Radii.map(r=>r+2)],
-              pointBorderWidth:     [...Array(p1Len).fill(0), ...p2BorderW]
+              backgroundColor:      [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')],
+              pointBackgroundColor: [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')],
+              pointBorderColor:     [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')],
+              pointRadius:          [...Array(p1Len).fill(0), ...p2Radii,   ...Array(futureExtra).fill(0)],
+              pointHoverRadius:     [...Array(p1Len).fill(0), ...p2Radii.map(r=>r+2), ...Array(futureExtra).fill(0)],
+              pointBorderWidth:     [...Array(p1Len).fill(0), ...p2BorderW, ...Array(futureExtra).fill(0)]
             }
           ]
         },
@@ -1200,7 +1205,7 @@
       const p1SecPts    = p1Sec?.points || [];
       const p1SecLen    = p1SecPts.length;
       const allSecLbls  = [...Array.from({length:p1SecLen},(_,i)=>`F1-${i+1}`), ...p2Labels];
-      const secTotal    = p1SecLen + sec.points.length;
+      const secTotal    = p1SecLen + p2VisLen;
       const sigma3      = (sec.ucl - sec.cl) / 3 || 1;
       const p2Sc        = sec.points.map(v => v > sec.ucl ? '#b91c1c' : v > sec.cl + 2*sigma3 ? '#c2410c' : '#b45309');
       const p2SBg       = sec.points.map(v => v > sec.ucl ? '#fee2e2' : 'rgba(180,83,9,0.10)');
@@ -1212,11 +1217,11 @@
         ds.datasets[0].data  = Array(secTotal).fill(sec.ucl);
         ds.datasets[1].data  = Array(secTotal).fill(sec.cl);
         ds.datasets[2].data  = Array(secTotal).fill(sec.lcl);
-        ds.datasets[3].data  = [...p1SecPts, ...Array(sec.points.length).fill(null)];
-        ds.datasets[4].data              = [...Array(p1SecLen).fill(null), ...sec.points];
-        ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg];
-        ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc];
-        ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr];
+        ds.datasets[3].data  = [...p1SecPts, ...Array(p2VisLen).fill(null)];
+        ds.datasets[4].data              = [...Array(p1SecLen).fill(null), ...sec.points, ...Array(futureExtra).fill(null)];
+        ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')];
+        ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')];
+        ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)];
         secChartInst.update({ duration: 400 });
       } else {
         const ctxS = document.getElementById('sec-chart');
@@ -1232,7 +1237,7 @@
               { label: 'LCI', data: Array(secTotal).fill(sec.lcl), borderColor: '#b91c1c', borderWidth: 2, pointRadius: 0, fill: false },
               {
                 label: `${secLbl[secKey]||secKey} F1`,
-                data: [...p1SecPts, ...Array(sec.points.length).fill(null)],
+                data: [...p1SecPts, ...Array(p2VisLen).fill(null)],
                 borderColor: '#c8cdd6', borderWidth: 1.5, fill: false, spanGaps: false,
                 pointBackgroundColor: Array(p1SecLen).fill('rgba(156,163,175,0.2)'),
                 pointBorderColor:     Array(p1SecLen).fill('#9ca3af'),
@@ -1240,14 +1245,14 @@
               },
               {
                 label: secLbl[secKey] || secKey,
-                data: [...Array(p1SecLen).fill(null), ...sec.points],
+                data: [...Array(p1SecLen).fill(null), ...sec.points, ...Array(futureExtra).fill(null)],
                 borderColor: '#b45309', borderWidth: 2, fill: false, spanGaps: false,
-                backgroundColor:      [...Array(p1SecLen).fill('transparent'), ...p2SBg],
-                pointBackgroundColor: [...Array(p1SecLen).fill('transparent'), ...p2SBg],
-                pointBorderColor:     [...Array(p1SecLen).fill('transparent'), ...p2Sc],
-                pointRadius:          [...Array(p1SecLen).fill(0), ...p2Sr],
-                pointHoverRadius:     [...Array(p1SecLen).fill(0), ...p2Sr.map(r=>r+2)],
-                pointBorderWidth:     [...Array(p1SecLen).fill(0), ...sec.points.map(v=>v>sec.ucl?3:2)]
+                backgroundColor:      [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')],
+                pointBackgroundColor: [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')],
+                pointBorderColor:     [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')],
+                pointRadius:          [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)],
+                pointHoverRadius:     [...Array(p1SecLen).fill(0), ...p2Sr.map(r=>r+2), ...Array(futureExtra).fill(0)],
+                pointBorderWidth:     [...Array(p1SecLen).fill(0), ...sec.points.map(v=>v>sec.ucl?3:2), ...Array(futureExtra).fill(0)]
               }
             ]
           },

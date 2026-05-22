@@ -230,6 +230,7 @@ a:hover { text-decoration: underline; }
 .top-bar-title {
   font-size: 13px; font-weight: 700; color: var(--text);
   text-transform: uppercase; letter-spacing: .4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .top-bar-breadcrumb { font-size: 11px; color: var(--text-muted); }
@@ -710,6 +711,11 @@ input:focus, select:focus, textarea:focus {
   .page-content { padding: 12px; }
   .sidebar-menu-btn { display: flex; }
 
+  /* ── Top bar: title y contenedor no desbordan ── */
+  .top-bar > div:not(.top-bar-right) { flex: 1; min-width: 0; overflow: hidden; }
+  .top-bar > .top-bar-title { flex: 1; min-width: 0; }
+  .top-bar-right { flex-shrink: 0; }
+
   /* ── Auth ── */
   .auth-box { padding: 24px 16px; }
 
@@ -899,4 +905,10 @@ input:focus, select:focus, textarea:focus {
   .modal-body   { padding: 14px; }
   .modal-footer { flex-direction: column; }
   .modal-footer .btn { width: 100%; justify-content: center; }
+}
+
+/* ── Very small screens (≤ 380px) ────────────────────────────── */
+@media (max-width: 380px) {
+  .top-bar .sub-badge { display: none; }
+  .page-content { padding: 8px; }
 }

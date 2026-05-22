@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Entrada de Datos — SPC SaaS</title>
   <link rel="stylesheet" href="/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     /* ── Barra de controles ───────────────────────────────────── */
     .ctrl-bar {
@@ -113,6 +114,52 @@
     }
     .existing-notice a { font-weight: 600; }
 
+    /* ── Botón ayuda Excel ───────────────────────────────────── */
+    .btn-help-xl {
+      padding: 5px 10px; font-size: 14px; font-weight: 800;
+      border-radius: var(--radius); border: 1px solid var(--border);
+      background: var(--card-alt); cursor: pointer; color: var(--text-muted);
+      transition: background .12s, color .12s; line-height: 1;
+    }
+    .btn-help-xl:hover { background: var(--primary); color: #fff; border-color: var(--primary-dk); }
+
+    /* ── Modal ───────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,.55); align-items: center; justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 14px; width: min(700px, 96vw);
+      max-height: 88vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.22);
+      display: flex; flex-direction: column;
+    }
+    .modal-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 14px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: #fff; z-index: 1;
+    }
+    .modal-hdr-title { font-size: 17px; font-weight: 800; color: var(--text); }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 4px; }
+    .modal-body  { padding: 22px 24px; }
+    .modal-section { margin-bottom: 24px; }
+    .modal-section:last-child { margin-bottom: 0; }
+    .modal-section-title {
+      font-size: 13px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--primary); margin-bottom: 10px;
+      border-bottom: 2px solid #e0e7ef; padding-bottom: 6px;
+    }
+    .modal-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.6; }
+    .col-tag     { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; background:#dbeafe; color:#1e40af; margin-right:4px; }
+    .col-tag.opt { background:#dcfce7; color:#15803d; }
+    .xl-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+    .xl-table th { background:#f1f5f9; font-weight:700; text-transform:uppercase; letter-spacing:.3px; padding:6px 10px; text-align:left; border:1px solid #e2e8f0; color:var(--text-muted); }
+    .xl-table td { padding:5px 10px; border:1px solid #e2e8f0; font-family:monospace; color:var(--text); }
+    .xl-table tr:nth-child(even) td { background:#f8fafc; }
+    .tip-box  { background:#fffbeb; border:1px solid #fbbf24; border-radius:8px; padding:10px 14px; font-size:12px; color:#92400e; margin-top:10px; }
+    .warn-box { background:#fff1f2; border:1px solid #fca5a5; border-radius:8px; padding:10px 14px; font-size:12px; color:#b91c1c; margin-top:8px; }
+
     /* ── OOC badge en resumen ─────────────────────────────────── */
     .ooc-badge {
       display: inline-flex; align-items: center; gap: 5px;
@@ -169,12 +216,13 @@
           <button class="btn btn-secondary btn-sm" onclick="clearTable()" title="Limpiar tabla">
             ↺ Nuevo ingreso
           </button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0"
-                 title="Importar CSV con columnas value o X1,X2,...">
-            ⬆ Importar CSV
-            <input type="file" id="csv-file" accept=".csv,.txt" style="display:none"
-                   onchange="importCSV(this)">
-          </label>
+          <button class="btn btn-secondary btn-sm" onclick="triggerExcelUpload()"
+                  title="Importar subgrupos desde Excel (.xlsx, .xls, .csv)">
+            📊 Importar Excel
+          </button>
+          <button class="btn-help-xl" onclick="showExcelHelp()" title="¿Cómo preparar el archivo Excel?">?</button>
+          <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none"
+                 onchange="importExcel(this)">
 
           <div class="ctrl-sep"></div>
 
@@ -277,6 +325,109 @@
         </div>
 
       </div><!-- /content-area -->
+    </div>
+  </div>
+
+  <!-- ── Modal: guía de formato Excel ──────────────────────────── -->
+  <div class="modal-overlay" id="excel-help-modal" onclick="if(event.target===this)closeExcelHelp()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-hdr-title">📊 Cómo preparar tu archivo Excel</span>
+        <button class="modal-close" onclick="closeExcelHelp()">×</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="modal-desc">
+          El archivo puede ser <strong>.xlsx</strong>, <strong>.xls</strong> o <strong>.csv</strong>.
+          El sistema detecta automáticamente si la primera fila es un encabezado o datos numéricos.
+          Hay dos formatos válidos según cómo tengas organizados tus datos:
+        </div>
+
+        <!-- Formato A: subgrupos en filas -->
+        <div class="modal-section">
+          <div class="modal-section-title">Formato A — Subgrupos en filas (recomendado)</div>
+          <div class="modal-desc">
+            Cada fila del archivo es un subgrupo completo. El número de columnas define
+            el tamaño <em>n</em> automáticamente. Los encabezados son opcionales.
+          </div>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">x1</span>
+            <span class="col-tag">x2</span>
+            <span class="col-tag">x3</span>
+            <span class="col-tag">x4</span>
+            <span class="col-tag">x5</span>
+            <span style="font-size:11px;color:var(--text-muted)">(o sin encabezado)</span>
+          </div>
+          <table class="xl-table">
+            <thead><tr><th>x1</th><th>x2</th><th>x3</th><th>x4</th><th>x5</th></tr></thead>
+            <tbody>
+              <tr><td>10.23</td><td>10.47</td><td>10.31</td><td>10.55</td><td>10.42</td></tr>
+              <tr><td>10.18</td><td>10.62</td><td>10.29</td><td>10.38</td><td>10.51</td></tr>
+              <tr><td>10.35</td><td>10.40</td><td>10.22</td><td>10.60</td><td>10.48</td></tr>
+              <tr><td>10.41</td><td>10.33</td><td>10.57</td><td>10.26</td><td>10.49</td></tr>
+            </tbody>
+          </table>
+          <div class="tip-box">
+            💡 Si tienes <strong>6 columnas</strong>, el sistema ajustará n=6 automáticamente.
+            Máximo permitido: n=10.
+          </div>
+        </div>
+
+        <!-- Formato B: columna única -->
+        <div class="modal-section">
+          <div class="modal-section-title">Formato B — Observaciones individuales (columna única)</div>
+          <div class="modal-desc">
+            Una sola columna con todas las mediciones en orden. Al importar, el sistema
+            te preguntará cuántas observaciones forman cada subgrupo (n) y las agrupará
+            automáticamente de arriba hacia abajo.
+          </div>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">valor</span>
+            <span style="font-size:11px;color:var(--text-muted)">(o sin encabezado)</span>
+          </div>
+          <table class="xl-table">
+            <thead><tr><th>valor</th></tr></thead>
+            <tbody>
+              <tr><td>10.23</td></tr>
+              <tr><td>10.47</td></tr>
+              <tr><td>10.31</td></tr>
+              <tr><td>10.55</td></tr>
+              <tr><td>10.42</td></tr>
+              <tr><td style="color:var(--text-muted);font-style:italic">... (más observaciones)</td></tr>
+            </tbody>
+          </table>
+          <div class="tip-box">
+            💡 Con n=5 y 25 observaciones se generarán 5 subgrupos completos.
+            Las observaciones sobrantes al final se descartan.
+          </div>
+        </div>
+
+        <!-- Reglas generales -->
+        <div class="modal-section">
+          <div class="modal-section-title">Reglas generales</div>
+          <ul style="font-size:13px;color:var(--text-muted);line-height:2;margin:0;padding-left:20px">
+            <li>Usa <strong>punto (.)</strong> o <strong>coma (,)</strong> como separador decimal — ambos son aceptados.</li>
+            <li>Las celdas vacías o con texto no numérico se ignoran dentro de una fila.</li>
+            <li>Si una fila tiene menos valores que n, se marca como subgrupo incompleto y no se guarda.</li>
+            <li>Columnas extra más allá de n se ignoran.</li>
+            <li>No mezcles texto con números en las columnas de datos.</li>
+          </ul>
+          <div class="warn-box">
+            ⚠ Los datos del Excel se cargan en la tabla pero <strong>no se guardan automáticamente</strong>.
+            Revisa los subgrupos y luego haz clic en <strong>"💾 Guardar en proceso"</strong>.
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary" onclick="downloadTemplate()" style="font-size:13px">
+            ⬇ Descargar plantilla Excel
+          </button>
+          <button class="btn btn-primary" onclick="closeExcelHelp()" style="font-size:13px">
+            Entendido
+          </button>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -700,60 +851,108 @@ function clearTable(confirm_ = true) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   IMPORTAR CSV
+   MODAL AYUDA EXCEL
 ══════════════════════════════════════════════════════════════ */
-function importCSV(input) {
+function showExcelHelp()  { document.getElementById('excel-help-modal').classList.add('open'); }
+function closeExcelHelp() { document.getElementById('excel-help-modal').classList.remove('open'); }
+
+function downloadTemplate() {
+  const n = subgroupSize;
+  const headers = Array.from({ length: n }, (_, i) => `x${i + 1}`);
+  const examples = Array.from({ length: 10 }, () =>
+    Array.from({ length: n }, () => (10 + Math.random()).toFixed(3))
+  );
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+  XLSX.writeFile(wb, `plantilla_fase1_n${n}.xlsx`);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   IMPORTAR EXCEL
+══════════════════════════════════════════════════════════════ */
+function triggerExcelUpload() {
+  document.getElementById('excel-file').click();
+}
+
+async function importExcel(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const text  = e.target.result;
-    const lines = text.replace(/\r/g, '').trim().split('\n').filter(l => l.trim());
-    if (!lines.length) return;
+  input.value = '';
 
-    // Detect separator
-    const sep = lines[0].includes('\t') ? '\t' : lines[0].includes(';') ? ';' : ',';
-    const firstCols = lines[0].split(sep).map(v => v.trim());
+  try {
+    const buf  = await file.arrayBuffer();
+    const wb   = XLSX.read(buf, { type: 'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    // raw: true → keeps cell values as-is (numbers stay numbers)
+    const raw  = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
 
-    // Check if first row is a header (not numeric)
-    const isHeader = isNaN(parseDecimal(firstCols[0]));
-    const dataLines = isHeader ? lines.slice(1) : lines;
+    if (!raw.length) { alert('El archivo está vacío.'); return; }
 
-    if (!dataLines.length) { alert('No se encontraron datos en el archivo.'); return; }
+    // Detect if first row is header (all cells are non-numeric strings)
+    const firstRow   = raw[0].map(v => String(v).trim());
+    const isHeader   = firstRow.every(v => v === '' || isNaN(parseFloat(v.replace(',', '.'))));
+    const dataRows   = (isHeader ? raw.slice(1) : raw)
+      .filter(r => r.some(c => c !== '' && c != null));
 
-    // Parse: detect format
-    // Format A: single "value" column → each line is one observation (no subgroups)
-    // Format B: multiple columns → each line is a subgroup
-    const firstData = dataLines[0].split(sep);
-    const colCount  = firstData.length;
+    if (!dataRows.length) { alert('No se encontraron filas de datos en el archivo.'); return; }
 
-    let newN = colCount;
+    // Detect column count from first data row (skip empty trailing cells)
+    const firstData = dataRows[0].map(v => String(v).trim()).filter((v, i, a) => {
+      // keep up to last non-empty cell
+      return i <= a.map((x, xi) => x !== '' ? xi : -1).reduce((m, x) => Math.max(m, x), -1);
+    });
+    const colCount = Math.max(...dataRows.map(r =>
+      r.map(v => String(v).trim()).reduceRight((acc, v, i) => acc === -1 && v !== '' ? i : acc, -1) + 1
+    ));
+
     if (colCount === 1) {
-      // Single column: ask how many per subgroup
+      // Formato B: columna única — preguntar n
       const ans = prompt(
-        `El archivo tiene 1 columna. ¿Cuántas observaciones por subgrupo?\n(Actual: n=${subgroupSize})`,
+        `El archivo tiene 1 columna de datos.\n¿Cuántas observaciones por subgrupo? (n actual: ${subgroupSize})`,
         subgroupSize
       );
       const n = parseInt(ans);
-      if (!n || n < 2 || n > 10) { alert('n debe estar entre 2 y 10.'); input.value=''; return; }
-      newN = n;
-      // Group into subgroups
-      const allVals = dataLines.map(l => l.split(sep)[0].trim());
+      if (!n || n < 2 || n > 10) { alert('n debe estar entre 2 y 10.'); return; }
+
+      const allVals = dataRows
+        .map(r => String(r[0] ?? '').replace(',', '.').trim())
+        .filter(v => v !== '' && !isNaN(parseFloat(v)));
+
       const rows = [];
-      for (let i = 0; i + newN <= allVals.length; i += newN) {
-        rows.push(allVals.slice(i, i + newN));
+      for (let i = 0; i + n <= allVals.length; i += n) {
+        rows.push(allVals.slice(i, i + n));
       }
-      loadIntoTable(rows, newN);
+      if (!rows.length) { alert('No hay suficientes datos para formar un subgrupo.'); return; }
+      loadIntoTable(rows, n);
+      showImportSuccess(rows.length, n);
+
     } else {
-      newN = Math.min(Math.max(colCount, 2), 10);
-      const rows = dataLines.map(line =>
-        line.split(sep).slice(0, newN).map(v => v.trim())
+      // Formato A: múltiples columnas = subgrupos en filas
+      const n = Math.min(Math.max(colCount, 2), 10);
+      const rows = dataRows.map(r =>
+        Array.from({ length: n }, (_, i) => {
+          const raw = r[i] != null ? String(r[i]).replace(',', '.').trim() : '';
+          return raw;
+        })
       );
-      loadIntoTable(rows, newN);
+      loadIntoTable(rows, n);
+      showImportSuccess(rows.length, n);
     }
-    input.value = '';
-  };
-  reader.readAsText(file);
+  } catch (err) {
+    alert(`Error al leer el archivo: ${err.message}`);
+  }
+}
+
+function showImportSuccess(rowCount, n) {
+  const msgEl = document.getElementById('save-msg');
+  msgEl.style.display = 'block';
+  msgEl.innerHTML = `
+    <div class="alert alert-success" style="margin:0">
+      <span>✓ Se importaron <strong>${rowCount} subgrupos</strong> con n=${n}.
+      Revisa los datos y haz clic en <strong>💾 Guardar en proceso</strong> cuando estés listo.</span>
+    </div>`;
+  setTimeout(() => { msgEl.style.display = 'none'; }, 8000);
 }
 
 function loadIntoTable(rows, n) {

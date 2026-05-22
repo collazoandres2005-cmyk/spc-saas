@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
   try {
     const result = await db.query(
       `SELECT p.id, p.name, p.description, p.unit, p.usl, p.lsl, p.nominal,
-              p.created_at, u.name as created_by_name,
+              p.chart_type, p.n_size, p.created_at, u.name as created_by_name,
               COUNT(m.id)::int as measurement_count
        FROM processes p
        LEFT JOIN users u ON p.created_by = u.id
@@ -30,18 +30,22 @@ router.get('/', async (req, res) => {
 
 // POST /api/processes
 router.post('/', async (req, res) => {
-  const { name, description, unit, usl, lsl, nominal } = req.body;
+  const { name, description, unit, usl, lsl, nominal, chart_type, n_size } = req.body;
   if (!name) {
     return res.status(400).json({ error: 'El nombre del proceso es obligatorio.' });
   }
 
+  const validChartTypes = ['xbar_r', 'xbar_s', 'p', 'np', 'c', 'u'];
+  const ct = validChartTypes.includes(chart_type) ? chart_type : 'xbar_r';
+
   try {
     const result = await db.query(
-      `INSERT INTO processes (company_id, name, description, unit, usl, lsl, nominal, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO processes (company_id, name, description, unit, usl, lsl, nominal, chart_type, n_size, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [req.user.company_id, name, description || null, unit || null,
-       usl || null, lsl || null, nominal || null, req.user.user_id]
+       usl || null, lsl || null, nominal || null, ct,
+       n_size ? parseInt(n_size) : null, req.user.user_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -72,19 +76,25 @@ router.get('/:id', async (req, res) => {
 
 // PUT /api/processes/:id
 router.put('/:id', async (req, res) => {
-  const { name, description, unit, usl, lsl, nominal } = req.body;
+  const { name, description, unit, usl, lsl, nominal, chart_type, n_size } = req.body;
   if (!name) {
     return res.status(400).json({ error: 'El nombre del proceso es obligatorio.' });
   }
 
+  const validChartTypes = ['xbar_r', 'xbar_s', 'p', 'np', 'c', 'u'];
+  const ct = validChartTypes.includes(chart_type) ? chart_type : null;
+
   try {
     const result = await db.query(
       `UPDATE processes
-       SET name=$1, description=$2, unit=$3, usl=$4, lsl=$5, nominal=$6
-       WHERE id=$7 AND company_id=$8
+       SET name=$1, description=$2, unit=$3, usl=$4, lsl=$5, nominal=$6,
+           chart_type=COALESCE($7, chart_type), n_size=$8
+       WHERE id=$9 AND company_id=$10
        RETURNING *`,
       [name, description || null, unit || null, usl || null,
-       lsl || null, nominal || null, req.params.id, req.user.company_id]
+       lsl || null, nominal || null, ct,
+       n_size ? parseInt(n_size) : null,
+       req.params.id, req.user.company_id]
     );
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Proceso no encontrado.' });

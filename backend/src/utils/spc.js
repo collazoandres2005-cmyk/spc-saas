@@ -584,6 +584,173 @@ function runStatisticalTests(rows) {
   };
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// CARTAS DE ATRIBUTOS
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── Carta p — proporción de no conformes (n variable o fijo) ──────────────
+// subgroups: [{ defectives: number, n: number }, ...]
+function calculatePChart(subgroups) {
+  const totalDef = subgroups.reduce((s, sg) => s + sg.defectives, 0);
+  const totalN   = subgroups.reduce((s, sg) => s + sg.n,         0);
+  const pBar     = totalN > 0 ? totalDef / totalN : 0;
+
+  const pointData = subgroups.map(sg => {
+    const p   = sg.n > 0 ? sg.defectives / sg.n : 0;
+    const std = Math.sqrt(pBar * (1 - pBar) / sg.n);
+    const ucl = Math.min(1, pBar + 3 * std);
+    const lcl = Math.max(0, pBar - 3 * std);
+    return { value: round(p, 4), n: sg.n, ucl: round(ucl, 4), lcl: round(lcl, 4) };
+  });
+
+  const variableN = new Set(subgroups.map(sg => sg.n)).size > 1;
+
+  return {
+    p: {
+      points:      pointData.map(p => p.value),
+      pointLimits: pointData.map(p => ({ ucl: p.ucl, lcl: p.lcl, n: p.n })),
+      cl:          round(pBar, 4),
+      ucl:         round(mean(pointData.map(p => p.ucl)), 4),
+      lcl:         round(mean(pointData.map(p => p.lcl)), 4),
+      variableN
+    }
+  };
+}
+
+// ── Carta np — número de no conformes (n fijo) ────────────────────────────
+// subgroups: [{ defectives: number }, ...]   nFixed: tamaño de muestra constante
+function calculateNPChart(subgroups, nFixed) {
+  const counts = subgroups.map(sg => sg.defectives);
+  const npBar  = mean(counts);
+  const pBar   = npBar / nFixed;
+  const std    = Math.sqrt(nFixed * pBar * (1 - pBar));
+  const ucl    = Math.min(nFixed, npBar + 3 * std);
+  const lcl    = Math.max(0,      npBar - 3 * std);
+
+  return {
+    np: {
+      points:    counts.map(v => round(v, 0)),
+      cl:        round(npBar, 4),
+      ucl:       round(ucl,   4),
+      lcl:       round(lcl,   4),
+      n:         nFixed,
+      variableN: false
+    }
+  };
+}
+
+// ── Carta c — número de defectos (área de oportunidad constante) ──────────
+// subgroups: [{ count: number }, ...]
+function calculateCChart(subgroups) {
+  const counts = subgroups.map(sg => sg.count);
+  const cBar   = mean(counts);
+  const std    = Math.sqrt(cBar);
+  const ucl    = cBar + 3 * std;
+  const lcl    = Math.max(0, cBar - 3 * std);
+
+  return {
+    c: {
+      points:    counts.map(v => round(v, 0)),
+      cl:        round(cBar, 4),
+      ucl:       round(ucl,  4),
+      lcl:       round(lcl,  4),
+      variableN: false
+    }
+  };
+}
+
+// ── Carta u — defectos por unidad de inspección (n variable) ─────────────
+// subgroups: [{ count: number, n: number }, ...]
+function calculateUChart(subgroups) {
+  const totalDef = subgroups.reduce((s, sg) => s + sg.count, 0);
+  const totalN   = subgroups.reduce((s, sg) => s + sg.n,     0);
+  const uBar     = totalN > 0 ? totalDef / totalN : 0;
+
+  const pointData = subgroups.map(sg => {
+    const u   = sg.n > 0 ? sg.count / sg.n : 0;
+    const std = Math.sqrt(uBar / sg.n);
+    const ucl = uBar + 3 * std;
+    const lcl = Math.max(0, uBar - 3 * std);
+    return { value: round(u, 4), n: sg.n, ucl: round(ucl, 4), lcl: round(lcl, 4) };
+  });
+
+  const variableN = new Set(subgroups.map(sg => sg.n)).size > 1;
+
+  return {
+    u: {
+      points:      pointData.map(p => p.value),
+      pointLimits: pointData.map(p => ({ ucl: p.ucl, lcl: p.lcl, n: p.n })),
+      cl:          round(uBar, 4),
+      ucl:         round(mean(pointData.map(p => p.ucl)), 4),
+      lcl:         round(mean(pointData.map(p => p.lcl)), 4),
+      variableN
+    }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// REGLAS SPC SIMPLIFICADAS (3 reglas industriales configurables)
+// ══════════════════════════════════════════════════════════════════════════
+
+// options: { detectOutOfControl, detectTrend, detectShift }
+// Severity: 'critical' | 'warning'
+function applySPCRules(points, cl, ucl, lcl, options = {}) {
+  const {
+    detectOutOfControl = true,
+    detectTrend        = true,
+    detectShift        = true
+  } = options;
+
+  const violations = [];
+  const seen       = new Set();
+
+  const add = (index, rule, desc, severity) => {
+    const key = `${index}-${rule}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      violations.push({ index, rule, description: desc, severity });
+    }
+  };
+
+  for (let i = 0; i < points.length; i++) {
+    // Regla 1: punto fuera de límites de control (±3σ)
+    if (detectOutOfControl && (points[i] > ucl || points[i] < lcl)) {
+      add(i, 'ooc',
+        `Punto ${i + 1} fuera de los límites de control estadístico`,
+        'critical');
+    }
+
+    // Regla 2: tendencia — 6 puntos estrictamente crecientes o decrecientes
+    if (detectTrend && i >= 5) {
+      const w = points.slice(i - 5, i + 1);
+      let asc = true, dec = true;
+      for (let j = 1; j < w.length; j++) {
+        if (w[j] <= w[j - 1]) asc = false;
+        if (w[j] >= w[j - 1]) dec = false;
+      }
+      if (asc || dec) {
+        add(i, 'trend',
+          `Tendencia de 6 puntos consecutivos ${asc ? 'ascendente' : 'descendente'} (obs. ${i - 4}–${i + 1})`,
+          'warning');
+      }
+    }
+
+    // Regla 3: corrimiento — 8 puntos consecutivos al mismo lado de la LC
+    if (detectShift && i >= 7) {
+      const w = points.slice(i - 7, i + 1);
+      const above = w.every(p => p > cl);
+      const below = w.every(p => p < cl);
+      if (above || below) {
+        add(i, 'shift',
+          `8 puntos consecutivos ${above ? 'sobre' : 'bajo'} la línea central (obs. ${i - 6}–${i + 1})`,
+          'warning');
+      }
+    }
+  }
+
+  return violations;
+}
+
 module.exports = {
   mean,
   stdDev,
@@ -593,7 +760,12 @@ module.exports = {
   calculateXbarR,
   calculateXbarS,
   calculateIMR,
+  calculatePChart,
+  calculateNPChart,
+  calculateCChart,
+  calculateUChart,
   applyNelsonRules,
+  applySPCRules,
   generateHistogramData,
   normalCurvePoints,
   andersonDarlingTest,

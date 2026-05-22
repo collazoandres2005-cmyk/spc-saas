@@ -10,11 +10,11 @@ router.use(requireAuth, requireActiveSubscription);
 async function getProcessValues(process_id, company_id) {
   const [procResult, measResult] = await Promise.all([
     db.query(
-      'SELECT id, name, usl, lsl, nominal, unit FROM processes WHERE id=$1 AND company_id=$2',
+      'SELECT id, name, usl, lsl, nominal, unit, chart_type, n_size FROM processes WHERE id=$1 AND company_id=$2',
       [process_id, company_id]
     ),
     db.query(
-      `SELECT value, subgroup_id FROM measurements
+      `SELECT value, subgroup_id, sample_size FROM measurements
        WHERE process_id=$1 AND company_id=$2 AND phase = 1
        ORDER BY recorded_at ASC`,
       [process_id, company_id]
@@ -83,14 +83,17 @@ router.get('/capability', async (req, res) => {
   }
 });
 
-// GET /api/analysis/control-chart?process_id=&type=imr|xbar_r|xbar_s[&simulate_n=5]
+// GET /api/analysis/control-chart?process_id=&type=xbar_r|xbar_s|p|np|c|u[&simulate_n=5&rule_ooc=1&rule_trend=1&rule_shift=1]
 router.get('/control-chart', async (req, res) => {
-  const { process_id, type = 'imr', simulate_n } = req.query;
+  const {
+    process_id, type = 'xbar_r', simulate_n,
+    rule_ooc   = '1', rule_trend = '1', rule_shift = '1'
+  } = req.query;
   if (!process_id) return res.status(400).json({ error: 'Se requiere process_id.' });
 
-  const validTypes = ['imr', 'xbar_r', 'xbar_s'];
+  const validTypes = ['xbar_r', 'xbar_s', 'p', 'np', 'c', 'u'];
   if (!validTypes.includes(type)) {
-    return res.status(400).json({ error: 'Tipo de carta inválido. Use: imr, xbar_r, xbar_s.' });
+    return res.status(400).json({ error: `Tipo de carta inválido. Use: ${validTypes.join(', ')}.` });
   }
 
   try {
@@ -100,75 +103,150 @@ router.get('/control-chart', async (req, res) => {
 
     let chartData;
     let simulated = false;
-    const labels = [];
+    let variableN  = false;
+    const labels   = [];
+    const ruleOpts = {
+      detectOutOfControl: rule_ooc   !== '0',
+      detectTrend:        rule_trend !== '0',
+      detectShift:        rule_shift !== '0'
+    };
 
+    // ── X̄-R y X̄-S ─────────────────────────────────────────────────────────
     if (type === 'xbar_r' || type === 'xbar_s') {
       const n = simulate_n ? parseInt(simulate_n) : 0;
 
       if (n >= 2 && n <= 10) {
-        // ── Modo simulado: agrupar datos individuales en subgrupos de tamaño n ──
         const allValues = rows.map(r => parseFloat(r.value));
         const numGroups = Math.floor(allValues.length / n);
-
         if (numGroups < 2) {
           return res.status(400).json({
-            error: `Datos insuficientes: se necesitan al menos ${n * 2} mediciones para n=${n} (hay ${allValues.length}).`
+            error: `Insuficiente: se necesitan al menos ${n * 2} mediciones para n=${n} (hay ${allValues.length}).`
           });
         }
-
         const sgValues = [];
         for (let g = 0; g < numGroups; g++) {
           sgValues.push(allValues.slice(g * n, (g + 1) * n));
           labels.push(`SG ${g + 1}`);
         }
-
-        chartData = type === 'xbar_r'
-          ? spc.calculateXbarR(sgValues)
-          : spc.calculateXbarS(sgValues);
+        chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
         simulated = true;
 
       } else {
-        // ── Modo real: agrupar por subgroup_id ──
         const subgroupMap = new Map();
         rows.forEach(row => {
           const key = row.subgroup_id != null ? row.subgroup_id : 'default';
           if (!subgroupMap.has(key)) subgroupMap.set(key, []);
           subgroupMap.get(key).push(parseFloat(row.value));
         });
-
-        const subgroups = Array.from(subgroupMap.entries())
+        const subgroups = [...subgroupMap.entries()]
           .filter(([, sg]) => sg.length >= 2)
           .map(([k, sg]) => ({ key: k, values: sg }));
 
         if (subgroups.length < 2) {
           return res.status(400).json({
-            error: 'Se necesitan al menos 2 subgrupos con 2 o más mediciones cada uno.'
+            error: 'Se necesitan al menos 2 subgrupos con ≥ 2 mediciones.'
           });
         }
-
-        const sgValues = subgroups.map(sg => sg.values);
-        subgroups.forEach(sg => labels.push(`Subgrupo ${sg.key}`));
-
+        subgroups.forEach(sg => labels.push(`SG ${sg.key}`));
         chartData = type === 'xbar_r'
-          ? spc.calculateXbarR(sgValues)
-          : spc.calculateXbarS(sgValues);
+          ? spc.calculateXbarR(subgroups.map(sg => sg.values))
+          : spc.calculateXbarS(subgroups.map(sg => sg.values));
       }
 
-    } else {
-      // ── I-MR ──
-      const values = rows.map(r => parseFloat(r.value));
-      rows.forEach((_, i) => labels.push(`Obs. ${i + 1}`));
-      chartData = spc.calculateIMR(values);
+    // ── Carta p (proporción) ────────────────────────────────────────────────
+    } else if (type === 'p') {
+      const sgMap = new Map();
+      rows.forEach(row => {
+        const key = row.subgroup_id ?? 'default';
+        if (!sgMap.has(key)) sgMap.set(key, []);
+        sgMap.get(key).push(row);
+      });
+      const subgroups = [...sgMap.entries()].map(([k, rws]) => {
+        const n          = rws.reduce((s, r) => s + (r.sample_size ? parseFloat(r.sample_size) : 1), 0);
+        const defectives = rws.reduce((s, r) => s + parseFloat(r.value), 0);
+        labels.push(`SG ${k}`);
+        return { defectives, n };
+      });
+      if (subgroups.length < 2) {
+        return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta p.' });
+      }
+      chartData = spc.calculatePChart(subgroups);
+      variableN = chartData.p.variableN;
+
+    // ── Carta np (número de defectuosos, n fijo) ────────────────────────────
+    } else if (type === 'np') {
+      const nFixed = parseInt(process.n_size) || 0;
+      if (nFixed < 2) {
+        return res.status(400).json({
+          error: 'El proceso requiere un tamaño de muestra fijo (n_size) configurado para la carta np.'
+        });
+      }
+      const sgMap = new Map();
+      rows.forEach(row => {
+        const key = row.subgroup_id ?? 'default';
+        if (!sgMap.has(key)) sgMap.set(key, []);
+        sgMap.get(key).push(row);
+      });
+      const subgroups = [...sgMap.entries()].map(([k, rws]) => {
+        labels.push(`SG ${k}`);
+        return { defectives: rws.reduce((s, r) => s + parseFloat(r.value), 0) };
+      });
+      if (subgroups.length < 2) {
+        return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta np.' });
+      }
+      chartData = spc.calculateNPChart(subgroups, nFixed);
+
+    // ── Carta c (defectos por unidad, área constante) ───────────────────────
+    } else if (type === 'c') {
+      const sgMap = new Map();
+      rows.forEach(row => {
+        const key = row.subgroup_id ?? 'default';
+        if (!sgMap.has(key)) sgMap.set(key, []);
+        sgMap.get(key).push(row);
+      });
+      const subgroups = [...sgMap.entries()].map(([k, rws]) => {
+        labels.push(`SG ${k}`);
+        return { count: rws.reduce((s, r) => s + parseFloat(r.value), 0) };
+      });
+      if (subgroups.length < 2) {
+        return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta c.' });
+      }
+      chartData = spc.calculateCChart(subgroups);
+
+    // ── Carta u (defectos por unidad de inspección, n variable) ────────────
+    } else if (type === 'u') {
+      const sgMap = new Map();
+      rows.forEach(row => {
+        const key = row.subgroup_id ?? 'default';
+        if (!sgMap.has(key)) sgMap.set(key, []);
+        sgMap.get(key).push(row);
+      });
+      const subgroups = [...sgMap.entries()].map(([k, rws]) => {
+        const n     = rws.reduce((s, r) => s + (r.sample_size ? parseFloat(r.sample_size) : 1), 0);
+        const count = rws.reduce((s, r) => s + parseFloat(r.value), 0);
+        labels.push(`SG ${k}`);
+        return { count, n };
+      });
+      if (subgroups.length < 2) {
+        return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta u.' });
+      }
+      chartData = spc.calculateUChart(subgroups);
+      variableN = chartData.u.variableN;
     }
 
-    const mainKey = type === 'imr' ? 'i' : 'xbar';
-    const main = chartData[mainKey];
-    const violations = spc.applyNelsonRules(main.points, main.cl, main.ucl, main.lcl);
+    // ── Aplicar reglas SPC (3 reglas) ──────────────────────────────────────
+    const mainKey = { xbar_r: 'xbar', xbar_s: 'xbar', p: 'p', np: 'np', c: 'c', u: 'u' }[type];
+    const main    = chartData[mainKey];
+
+    // Para cartas con límites variables por punto, usar límites promedio para reglas
+    const ruleUcl = main.ucl;
+    const ruleLcl = main.lcl;
+    const violations   = spc.applySPCRules(main.points, main.cl, ruleUcl, ruleLcl, ruleOpts);
     const outOfControl = [...new Set(violations.map(v => v.index))];
 
     res.json({
       process, chartData, violations, outOfControl, type, labels,
-      simulated, simulate_n: simulated ? parseInt(simulate_n) : null
+      variableN, simulated, simulate_n: simulated ? parseInt(simulate_n) : null
     });
   } catch (err) {
     console.error(err);

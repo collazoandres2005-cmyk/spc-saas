@@ -204,9 +204,12 @@ const analysisApi = {
     if (simulate_n != null) p.set('simulate_n', simulate_n);
     return apiFetch(`/analysis/capability?${p}`);
   },
-  controlChart(process_id, type = 'imr', simulate_n = null) {
+  controlChart(process_id, type = 'xbar_r', simulate_n = null, rules = {}) {
     const p = new URLSearchParams({ process_id, type });
     if (simulate_n != null) p.set('simulate_n', simulate_n);
+    if (rules.rule_ooc   != null) p.set('rule_ooc',   rules.rule_ooc);
+    if (rules.rule_trend != null) p.set('rule_trend',  rules.rule_trend);
+    if (rules.rule_shift != null) p.set('rule_shift',  rules.rule_shift);
     return apiFetch(`/analysis/control-chart?${p}`);
   },
   histogram(process_id, bins = 10) {

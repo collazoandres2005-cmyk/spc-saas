@@ -114,12 +114,34 @@ const PORT = process.env.PORT || 4000;
 
 async function runMigrations(db) {
   // Idempotente — seguro en cada arranque
-  await db.query(
-    `ALTER TABLE measurements ADD COLUMN IF NOT EXISTS phase SMALLINT NOT NULL DEFAULT 1`
-  );
-  await db.query(
-    `CREATE INDEX IF NOT EXISTS idx_measurements_phase ON measurements(process_id, phase)`
-  );
+  await db.query(`ALTER TABLE measurements ADD COLUMN IF NOT EXISTS phase SMALLINT NOT NULL DEFAULT 1`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_measurements_phase ON measurements(process_id, phase)`);
+
+  // sample_size: tamaño de muestra por subgrupo (p, u charts) o unidades inspeccionadas
+  await db.query(`ALTER TABLE measurements ADD COLUMN IF NOT EXISTS sample_size NUMERIC`);
+
+  // chart_type: tipo de carta SPC asociada al proceso
+  await db.query(`ALTER TABLE processes ADD COLUMN IF NOT EXISTS chart_type VARCHAR(20) DEFAULT 'xbar_r'`);
+
+  // n_size: tamaño de subgrupo fijo (np chart, Industrial mode)
+  await db.query(`ALTER TABLE processes ADD COLUMN IF NOT EXISTS n_size SMALLINT`);
+
+  // spc_events: historial de señales detectadas
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS spc_events (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      process_id  UUID REFERENCES processes(id) ON DELETE CASCADE,
+      company_id  UUID REFERENCES companies(id),
+      chart_type  VARCHAR(20),
+      rule        VARCHAR(20),
+      severity    VARCHAR(20),
+      sg_index    INTEGER,
+      description TEXT,
+      acknowledged BOOLEAN DEFAULT FALSE,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_spc_events_process ON spc_events(process_id, created_at DESC)`);
 }
 
 (async () => {

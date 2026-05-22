@@ -8,71 +8,36 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
-    .monitor-grid {
-      display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 20px;
-      align-items: start;
+    /* ── Modo toggle ─────────────────────────────────────────── */
+    .mode-pills {
+      display: inline-flex; border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; background: var(--card-alt);
     }
-    @media (max-width: 960px) { .monitor-grid { grid-template-columns: 1fr; } }
-
-    .entry-panel { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 14px; }
-
-    .big-input {
-      display: block; width: 100%; box-sizing: border-box;
-      font-size: 28px; font-weight: 700; padding: 12px 14px;
-      border: 2px solid var(--border); border-radius: var(--radius);
-      text-align: center; color: var(--text); outline: none;
-      transition: border-color .15s, background .15s;
+    .mode-pill {
+      padding: 6px 18px; font-size: 12px; font-weight: 700;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--text-muted); transition: background .15s, color .15s;
+      letter-spacing: .3px;
     }
-    .big-input:focus { border-color: var(--primary); background: #eff6ff; }
-    .big-input.bad   { border-color: var(--danger); background: #fff1f2; }
+    .mode-pill.active { background: var(--primary); color: #fff; }
+    .mode-pill:first-child { border-right: 1px solid var(--border); }
 
-    .sg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; }
-    .sg-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-    .sg-cell-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
-    .sg-cell-inp {
-      width: 100%; box-sizing: border-box; text-align: center; padding: 7px 4px;
-      border: 1px solid var(--border); border-radius: var(--radius);
-      font-size: 14px; font-weight: 600; color: var(--text); outline: none;
+    /* ── Status indicator ────────────────────────────────────── */
+    .process-status {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 18px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: #f8fafc; margin-bottom: 16px;
     }
-    .sg-cell-inp:focus { border-color: var(--primary); background: #eff6ff; }
-    .sg-cell-inp.bad   { border-color: var(--danger); background: #fff1f2; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-dot.stable   { background: var(--success); box-shadow: 0 0 0 3px rgba(21,128,61,.18); }
+    .status-dot.warning  { background: #f59e0b;        box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+    .status-dot.ooc      { background: var(--danger);  box-shadow: 0 0 0 3px rgba(220,38,38,.18); animation: pulse-red 1.5s ease infinite; }
+    .status-dot.idle     { background: var(--text-muted); }
+    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,.18)} 50%{box-shadow:0 0 0 6px rgba(220,38,38,.07)} }
+    .status-label { font-size: 14px; font-weight: 700; }
+    .status-sub   { font-size: 12px; color: var(--text-muted); margin-left: auto; }
 
-    .btn-add-big { width: 100%; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 14px; }
-
-    .live-indicator {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 10px; font-weight: 700; letter-spacing: .5px; color: var(--success);
-    }
-    .live-dot {
-      width: 8px; height: 8px; border-radius: 50%; background: var(--success);
-      animation: live-pulse 1.6s ease-in-out infinite;
-    }
-    @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
-
-    .mon-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .mon-stat {
-      padding: 8px 12px; background: #f8fafc;
-      border: 1px solid var(--border); border-radius: var(--radius);
-    }
-    .mon-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
-    .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
-
-    .session-log { max-height: 260px; overflow-y: auto; }
-    .log-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 5px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px;
-    }
-    .log-row:last-child { border-bottom: 0; }
-    .log-row.ooc { background: #fff5f5; }
-    .log-idx  { font-size: 10px; color: var(--text-muted); min-width: 22px; }
-    .log-val  { font-weight: 700; font-family: monospace; color: var(--text); flex: 1; }
-    .log-sg   { font-size: 10px; color: var(--text-muted); }
-    .log-time { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
-    .log-ooc  { font-size: 10px; font-weight: 700; color: var(--danger);
-                padding: 1px 6px; background: var(--danger-bg); border-radius: 99px; white-space: nowrap; }
-
+    /* ── OOC banner ──────────────────────────────────────────── */
     .ooc-banner {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px; border-radius: var(--radius);
@@ -82,6 +47,51 @@
     }
     @keyframes slide-in { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
 
+    /* ── Layout ──────────────────────────────────────────────── */
+    .monitor-grid {
+      display: grid; grid-template-columns: 300px 1fr;
+      gap: 20px; align-items: start;
+    }
+    @media (max-width: 960px) { .monitor-grid { grid-template-columns: 1fr; } }
+    .entry-panel { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 14px; }
+    @media (max-width: 960px) { .entry-panel { position: static; } }
+
+    /* ── Ingreso ─────────────────────────────────────────────── */
+    .sg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 6px; }
+    .sg-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .sg-cell-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .sg-cell-inp {
+      width: 100%; box-sizing: border-box; text-align: center; padding: 7px 4px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-weight: 600; color: var(--text); outline: none;
+    }
+    .sg-cell-inp:focus { border-color: var(--primary); background: #eff6ff; }
+    .sg-cell-inp.bad   { border-color: var(--danger);  background: #fff1f2; }
+    .attr-inp-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .attr-inp-col { flex: 1; min-width: 80px; }
+    .attr-inp-col label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+    .big-input {
+      display: block; width: 100%; box-sizing: border-box;
+      font-size: 24px; font-weight: 700; padding: 10px 12px;
+      border: 2px solid var(--border); border-radius: var(--radius);
+      text-align: center; color: var(--text); outline: none; transition: border-color .15s;
+    }
+    .big-input:focus { border-color: var(--primary); background: #eff6ff; }
+    .big-input.bad   { border-color: var(--danger);  background: #fff1f2; }
+    .btn-add-big { width: 100%; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 14px; }
+
+    /* ── Stats ───────────────────────────────────────────────── */
+    .live-indicator { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: .5px; color: var(--success); }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: live-pulse 1.6s ease-in-out infinite; }
+    @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .mon-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mon-stat { padding: 8px 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); }
+    .mon-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
+    .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
+    @media (max-width: 480px) { .mon-stats { grid-template-columns: 1fr; } }
+
+    /* ── Límites ─────────────────────────────────────────────── */
     .limits-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
     .lim-chip { flex: 1; min-width: 80px; text-align: center; padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: #f8fafc; }
     .lim-chip .lv { font-size: 17px; font-weight: 800; }
@@ -89,8 +99,10 @@
     .lim-chip.ucl .lv { color: #dc2626; }
     .lim-chip.cl  .lv { color: #2563eb; }
     .lim-chip.lcl .lv { color: #dc2626; }
+    .lim-chip.lim-flash { animation: lim-flash .55s ease; }
+    @keyframes lim-flash { 0%,100%{opacity:1;transform:scale(1)} 45%{opacity:.3;transform:scale(.9)} }
 
-    /* ── Ajustador de n ──────────────────────────────── */
+    /* ── n-adjuster (solo modo académico) ───────────────────── */
     .n-adj-wrap { display: none; align-items: center; gap: 4px; margin-left: auto; }
     .n-adj-lbl  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing:.4px; color: var(--text-muted); margin-right: 2px; }
     .n-adj-btn  {
@@ -98,31 +110,32 @@
       border-radius: var(--radius); background: var(--card-alt);
       font-size: 15px; font-weight: 700; cursor: pointer; line-height: 1;
       display: flex; align-items: center; justify-content: center;
-      transition: background .12s, color .12s, border-color .12s;
+      transition: background .12s, color .12s;
     }
     .n-adj-btn:hover:not(:disabled) { background: var(--primary); color: #fff; border-color: var(--primary-dk); }
     .n-adj-btn:disabled { opacity: .4; cursor: not-allowed; }
-    .n-adj-num  { font-size: 13px; font-weight: 800; color: var(--primary); min-width: 36px; text-align: center; }
-    .lim-chip.lim-flash { animation: lim-flash .55s ease; }
-    @keyframes lim-flash { 0%,100%{opacity:1;transform:scale(1)} 45%{opacity:.3;transform:scale(.9)} }
+    .n-adj-num { font-size: 13px; font-weight: 800; color: var(--primary); min-width: 36px; text-align: center; }
 
+    /* ── Log ─────────────────────────────────────────────────── */
+    .session-log { max-height: 260px; overflow-y: auto; }
+    .log-row { display: flex; align-items: center; gap: 8px; padding: 5px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+    .log-row:last-child { border-bottom: 0; }
+    .log-row.ooc { background: #fff5f5; }
+    .log-idx  { font-size: 10px; color: var(--text-muted); min-width: 22px; }
+    .log-val  { font-weight: 700; font-family: monospace; color: var(--text); flex: 1; }
+    .log-sg   { font-size: 10px; color: var(--text-muted); }
+    .log-time { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+    .log-ooc  { font-size: 10px; font-weight: 700; color: var(--danger); padding: 1px 6px; background: var(--danger-bg); border-radius: 99px; white-space: nowrap; }
+
+    /* ── Chart ───────────────────────────────────────────────── */
     .chart-main-h { height: 260px; }
     .chart-sec-h  { height: 155px; }
-    @media (max-width: 960px) {
-      .entry-panel { position: static; }
-    }
     @media (max-width: 768px) {
       .chart-main-h { height: 200px; }
       .chart-sec-h  { height: 130px; }
-      .mon-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
-      .limits-row { gap: 6px; }
       .lim-chip .lv { font-size: 14px; }
-      .sg-cell-inp { font-size: 16px; }
       .btn-add-big { font-size: 13px; padding: 11px; }
-      .big-input { font-size: 22px; padding: 10px 12px; }
-    }
-    @media (max-width: 480px) {
-      .mon-stats { grid-template-columns: 1fr; }
+      .big-input { font-size: 18px; padding: 8px 10px; }
     }
   </style>
 </head>
@@ -142,7 +155,7 @@
 
     <div class="page-content">
 
-      <!-- ── Selector ─────────────────────────────────────────── -->
+      <!-- ── Selector + modo ───────────────────────────────────── -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-body" style="padding:14px 20px">
           <div class="flex-center" style="gap:14px;flex-wrap:wrap">
@@ -154,23 +167,59 @@
             </div>
             <div class="flex-center" style="gap:8px">
               <label style="margin:0;font-weight:600;white-space:nowrap">Carta:</label>
-              <select id="chart-type" onchange="onChartTypeChange()">
-                <option value="xbar_r" selected>X̄-R (Subgrupos)</option>
-                <option value="xbar_s">X̄-S (Subgrupos)</option>
+              <select id="chart-type">
+                <optgroup label="Variables">
+                  <option value="xbar_r" selected>X̄-R (Subgrupos)</option>
+                  <option value="xbar_s">X̄-S (Subgrupos)</option>
+                </optgroup>
+                <optgroup label="Atributos">
+                  <option value="p">p — Proporción defectuosos</option>
+                  <option value="np">np — Número defectuosos (n fijo)</option>
+                  <option value="c">c — Número de defectos</option>
+                  <option value="u">u — Defectos/unidad (n variable)</option>
+                </optgroup>
               </select>
             </div>
+            <div class="flex-center" style="gap:8px">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Modo:</span>
+              <div class="mode-pills">
+                <button class="mode-pill active" id="pill-industrial" onclick="setMode('industrial')">Industrial</button>
+                <button class="mode-pill"        id="pill-academic"   onclick="setMode('academic')">Académico</button>
+              </div>
+            </div>
             <button class="btn btn-primary" onclick="startMonitoring()">Iniciar monitoreo</button>
+          </div>
+          <div id="mode-description" style="font-size:12px;color:var(--text-muted);margin-top:8px">
+            Modo Industrial: n fijo, límites congelados desde Fase 1, interfaz enfocada en alertas.
           </div>
         </div>
       </div>
 
       <div id="msg"></div>
 
-      <!-- ── Monitor ───────────────────────────────────────────── -->
+      <!-- ── Área de monitoreo ─────────────────────────────────── -->
       <div id="monitor-area" style="display:none">
+
+        <!-- Status bar -->
+        <div class="process-status" id="process-status">
+          <div class="status-dot idle" id="status-dot"></div>
+          <div>
+            <div class="status-label" id="status-label">Cargando límites...</div>
+            <div style="font-size:12px;color:var(--text-muted)" id="status-sub">Obteniendo historial de Fase 1</div>
+          </div>
+          <div class="status-sub" id="status-pts"></div>
+        </div>
+
+        <div id="ooc-banner" style="display:none" class="ooc-banner">
+          ⚠ Señal fuera de control detectada. Investiga posibles causas asignables.
+          <button onclick="document.getElementById('ooc-banner').style.display='none'"
+                  style="margin-left:auto;background:transparent;border:1px solid rgba(220,38,38,.4);
+                         color:var(--danger);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:12px">✕</button>
+        </div>
+
         <div class="monitor-grid">
 
-          <!-- LEFT: panel de ingreso ───────────────────────────── -->
+          <!-- LEFT ─────────────────────────────────────────────── -->
           <div class="entry-panel">
 
             <div class="card">
@@ -181,7 +230,7 @@
               <div class="card-body">
                 <div id="entry-msg" style="margin-bottom:8px"></div>
 
-                <!-- X̄-R / X̄-S -->
+                <!-- Subgrupo X̄ (variables) -->
                 <div id="sg-form" style="display:none">
                   <div class="form-group" style="margin-bottom:0">
                     <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">
@@ -191,12 +240,17 @@
                   </div>
                 </div>
 
-                <button class="btn btn-primary btn-add-big" id="btn-add" onclick="addEntry()">
-                  + Agregar
-                </button>
+                <!-- Atributos (p, np, c, u) -->
+                <div id="attr-form" style="display:none">
+                  <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">
+                    Subgrupo <span id="attr-sg-id-lbl" style="color:var(--primary);text-transform:none">#1</span>
+                  </label>
+                  <div class="attr-inp-row" style="margin-top:6px" id="attr-inputs"></div>
+                </div>
+
+                <button class="btn btn-primary btn-add-big" id="btn-add" onclick="addEntry()">+ Agregar</button>
                 <button class="btn btn-secondary btn-add-big" id="btn-undo"
-                        onclick="undoLast()" disabled
-                        style="margin-top:8px;opacity:.5">
+                        onclick="undoLast()" disabled style="margin-top:8px;opacity:.5">
                   ↩ Deshacer último
                 </button>
               </div>
@@ -206,58 +260,36 @@
             <div class="card">
               <div class="card-body" style="padding:12px 14px">
                 <div class="mon-stats">
-                  <div class="mon-stat">
-                    <div class="mon-stat-lbl">Puntos en carta</div>
-                    <div class="mon-stat-val" id="stat-total">—</div>
-                  </div>
-                  <div class="mon-stat">
-                    <div class="mon-stat-lbl">Esta sesión</div>
-                    <div class="mon-stat-val" id="stat-session">0</div>
-                  </div>
-                  <div class="mon-stat">
-                    <div class="mon-stat-lbl">Último ingreso</div>
-                    <div class="mon-stat-val" id="stat-last" style="font-size:14px;word-break:break-all">—</div>
-                  </div>
-                  <div class="mon-stat">
-                    <div class="mon-stat-lbl">Estado carta</div>
-                    <div class="mon-stat-val" id="stat-status" style="font-size:12px;font-weight:700">—</div>
-                  </div>
+                  <div class="mon-stat"><div class="mon-stat-lbl">Subgrupos</div><div class="mon-stat-val" id="stat-total">—</div></div>
+                  <div class="mon-stat"><div class="mon-stat-lbl">Esta sesión</div><div class="mon-stat-val" id="stat-session">0</div></div>
+                  <div class="mon-stat"><div class="mon-stat-lbl">Último ingreso</div><div class="mon-stat-val" id="stat-last" style="font-size:14px">—</div></div>
+                  <div class="mon-stat"><div class="mon-stat-lbl">Carta</div><div class="mon-stat-val" id="stat-status" style="font-size:12px;font-weight:700">—</div></div>
                 </div>
               </div>
             </div>
 
-            <!-- Registro de sesión -->
+            <!-- Registro -->
             <div class="card">
               <div class="card-header" style="padding:10px 14px">
                 <div class="card-title" style="font-size:13px">Registro de sesión</div>
                 <button class="btn btn-secondary btn-sm" onclick="clearLog()">Borrar</button>
               </div>
               <div class="session-log" id="session-log">
-                <div style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;font-style:italic">
-                  Sin entradas aún
-                </div>
+                <div style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;font-style:italic">Sin entradas aún</div>
               </div>
             </div>
 
           </div>
 
-          <!-- RIGHT: gráfico ──────────────────────────────────── -->
+          <!-- RIGHT ────────────────────────────────────────────── -->
           <div id="chart-side">
-
-            <div id="ooc-banner" style="display:none" class="ooc-banner">
-              ⚠ Punto fuera de control estadístico detectado. Investiga posibles causas asignables.
-              <button onclick="document.getElementById('ooc-banner').style.display='none'"
-                      style="margin-left:auto;background:transparent;border:1px solid rgba(220,38,38,.4);
-                             color:var(--danger);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:12px">
-                ✕
-              </button>
-            </div>
 
             <div class="card" style="margin-bottom:16px">
               <div class="card-header">
-                <div class="card-title" id="limits-title">Carta X̄-R — Límites de control</div>
+                <div class="card-title" id="limits-title">Límites de control (Fase 1)</div>
+                <!-- n-adjuster (solo modo académico) -->
                 <div class="n-adj-wrap" id="n-adj-wrap">
-                  <span class="n-adj-lbl">Ajustar n</span>
+                  <span class="n-adj-lbl">n</span>
                   <button class="n-adj-btn" id="btn-n-dec" onclick="adjustN(-1)" disabled>−</button>
                   <span class="n-adj-num" id="n-adj-val">5</span>
                   <button class="n-adj-btn" id="btn-n-inc" onclick="adjustN(1)"  disabled>+</button>
@@ -269,7 +301,7 @@
                   <div class="lim-chip cl" ><div class="lv" id="lim-cl" >—</div><div class="ll">LC</div></div>
                   <div class="lim-chip lcl"><div class="lv" id="lim-lcl">—</div><div class="ll">LCI</div></div>
                 </div>
-                <div class="limits-row" id="limits-sec" style="display:none">
+                <div class="limits-row" id="limits-sec-row" style="display:none">
                   <div class="lim-chip ucl"><div class="lv" id="lim2-ucl">—</div><div class="ll">LCS (2do)</div></div>
                   <div class="lim-chip cl" ><div class="lv" id="lim2-cl" >—</div><div class="ll">LC (2do)</div></div>
                   <div class="lim-chip lcl"><div class="lv" id="lim2-lcl">—</div><div class="ll">LCI (2do)</div></div>
@@ -278,28 +310,27 @@
             </div>
 
             <div class="chart-wrap">
-              <div class="chart-title" id="main-chart-title">Gráfico de Individuales (I)</div>
+              <div class="chart-title" id="main-chart-title">Gráfico principal</div>
               <div class="chart-main-h"><canvas id="main-chart"></canvas></div>
             </div>
 
-            <div class="chart-wrap">
-              <div class="chart-title" id="sec-chart-title">Rango Móvil (MR)</div>
+            <div id="sec-chart-wrap" class="chart-wrap" style="display:none">
+              <div class="chart-title" id="sec-chart-title">Gráfico secundario</div>
               <div class="chart-sec-h"><canvas id="sec-chart"></canvas></div>
             </div>
 
             <div class="card" style="margin-top:16px">
               <div class="card-header">
-                <div class="card-title">Señales de causas especiales</div>
+                <div class="card-title">Señales detectadas</div>
                 <span class="badge badge-danger" id="violations-count" style="display:none">0</span>
               </div>
               <div class="card-body" id="violations-body">
                 <div class="empty-state" style="padding:20px">
                   <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
-                  <div class="empty-sub">No se detectaron señales de causas especiales.</div>
+                  <div class="empty-sub">No se han detectado señales de causas especiales.</div>
                 </div>
               </div>
             </div>
-
 
           </div>
         </div>
@@ -316,78 +347,64 @@
   initSidebar('monitoring');
   initTopBar('Monitoreo en Tiempo Real');
 
-  let processId      = null;
-  let chartType      = 'xbar_r';
-  let sgSize         = 5;
-  let nextSgId       = 1;
-  let sessionCount   = 0;
-  let sessionLog     = [];
-  let undoStack      = [];   // [{ ids: [...], sgId: N|null }]
-  let mainChartInst  = null;
-  let secChartInst   = null;
-  let sessionSubgroups = [];  // array of subgroup value arrays
-  let phase1Limits     = null; // { type, main:{ucl,cl,lcl}, sec:{ucl,cl,lcl} }
-  let phase1Data       = null; // chartData completo de Fase 1 (con .points)
+  // ── Constantes ────────────────────────────────────────────────
+  const XBAR_TYPES = ['xbar_r', 'xbar_s'];
+  const ATTR_TYPES = ['p', 'np', 'c', 'u'];
+
+  // ── Estado global ──────────────────────────────────────────────
+  let mode             = localStorage.getItem('spc_mon_mode') || 'industrial';
+  let processId        = null;
+  let chartType        = 'xbar_r';
+  let sgSize           = 5;
+  let nextSgId         = 1;
+  let sessionCount     = 0;
+  let sessionLog       = [];
+  let undoStack        = [];
+  let sessionSubgroups = [];   // xbar: [[v1..vn], ...]   attr: [{defectives,n?}, ...]
+  let phase1Limits     = null; // { type, main:{ucl,cl,lcl}, sec }
+  let phase1Data       = null; // full chartData from Phase 1 analysis
+  let mainChartInst    = null;
+  let secChartInst     = null;
   let adjustingN       = false;
 
-  // ── Inicialización ──────────────────────────────────────────
+  // ── Modo Académico / Industrial ────────────────────────────────
+  function setMode(m) {
+    mode = m;
+    localStorage.setItem('spc_mon_mode', m);
+    document.getElementById('pill-industrial').classList.toggle('active', m === 'industrial');
+    document.getElementById('pill-academic').classList.toggle('active',   m === 'academic');
+    document.getElementById('mode-description').textContent = m === 'industrial'
+      ? 'Modo Industrial: n fijo, límites congelados desde Fase 1, interfaz enfocada en alertas.'
+      : 'Modo Académico: tamaño de muestra ajustable en tiempo real, vista de referencia Fase 1, análisis dinámico.';
+    applyMode();
+  }
+
+  function applyMode() {
+    const isAcademic  = mode === 'academic';
+    const isXbar      = XBAR_TYPES.includes(chartType);
+    const adjWrap     = document.getElementById('n-adj-wrap');
+    // n-adjuster: solo modo académico + carta X̄ + monitoreo activo + límites Fase 1 listos
+    if (adjWrap) adjWrap.style.display = (isAcademic && isXbar && phase1Limits) ? 'flex' : 'none';
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
   async function init() {
+    setMode(mode);   // restore toggle appearance
     const processes = await processesApi.list().catch(() => []);
     const sel = document.getElementById('process-select');
     processes.forEach(p =>
       sel.appendChild(new Option(`${p.name}${p.unit ? ` (${p.unit})` : ''}`, p.id))
     );
     const urlPid = new URLSearchParams(location.search).get('process_id');
-    if (urlPid) sel.value = urlPid;
-  }
-
-  function onChartTypeChange() { /* ambas cartas usan subgrupos */ }
-
-  // ── Ajustador de n (recalcula límites Fase 1) ───────────────
-  async function adjustN(delta) {
-    if (adjustingN || !processId || !phase1Limits) return;
-    const newN = Math.min(10, Math.max(2, sgSize + delta));
-    if (newN === sgSize) return;
-
-    adjustingN = true;
-    sgSize     = newN;
-    document.getElementById('n-adj-val').textContent    = `n=${newN}`;
-    document.getElementById('btn-n-dec').disabled       = true;
-    document.getElementById('btn-n-inc').disabled       = true;
-    document.getElementById('entry-title').textContent  = `Subgrupo n = ${sgSize}`;
-
-    // Animación de pulso en los chips
-    document.querySelectorAll('.lim-chip').forEach(el => {
-      el.classList.remove('lim-flash');
-      void el.offsetWidth;
-      el.classList.add('lim-flash');
-    });
-
-    if (document.getElementById('sg-form').style.display !== 'none') buildSgInputs();
-
-    try {
-      const p1      = await analysisApi.controlChart(processId, chartType, newN);
-      const mainKey = 'xbar';
-      const secKey  = chartType === 'xbar_r' ? 'r' : 's';
-      phase1Limits  = { type: chartType, main: p1.chartData[mainKey], sec: p1.chartData[secKey] || null };
-      phase1Data    = p1.chartData;
-      applyLimitChips();
-      // Recrear gráficos con nuevos límites y nueva Fase 1 simulada
-      if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
-      if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
-      refreshChart();
-    } catch (err) {
-      showAlert(document.getElementById('msg'), `Error recalculando límites: ${err.message}`, 'error');
-      sgSize -= delta;
-      document.getElementById('n-adj-val').textContent = `n=${sgSize}`;
-    } finally {
-      adjustingN = false;
-      document.getElementById('btn-n-dec').disabled = sgSize <= 2;
-      document.getElementById('btn-n-inc').disabled = sgSize >= 10;
+    if (urlPid) {
+      sel.value = urlPid;
+      // Auto-detect chart type from process config
+      const proc = processes.find(p => p.id === urlPid);
+      if (proc?.chart_type) document.getElementById('chart-type').value = proc.chart_type;
     }
   }
 
-  // ── Iniciar monitoreo ───────────────────────────────────────
+  // ── Iniciar monitoreo ─────────────────────────────────────────
   async function startMonitoring() {
     const pid = document.getElementById('process-select').value;
     const msg = document.getElementById('msg');
@@ -397,66 +414,67 @@
     chartType = document.getElementById('chart-type').value;
     processId = pid;
 
-    document.getElementById('sg-form').style.display = '';
-    buildSgInputs();
-    document.getElementById('btn-add').textContent     = '+ Agregar Subgrupo';
-    document.getElementById('entry-title').textContent = `Subgrupo n = ${sgSize}`;
+    // Resetear estado
+    sessionCount = 0; sessionLog = []; undoStack = []; sessionSubgroups = [];
+    phase1Limits = null; phase1Data = null; nextSgId = 1;
+
+    // UI reset
+    document.getElementById('sg-id-lbl').textContent    = '#1';
+    document.getElementById('attr-sg-id-lbl').textContent = '#1';
+    setUndoEnabled(false);
+    renderLog();
+    updateStats();
+    document.getElementById('ooc-banner').style.display = 'none';
+
+    buildInputForm();
+    document.getElementById('monitor-area').style.display = '';
+    setStatusBar('idle', 'Cargando límites de Fase 1...', 'Consultando historial');
 
     try {
       const p = await processesApi.get(pid);
       document.getElementById('process-crumb').textContent = `· ${p.name}`;
+      // Sincronizar n_size del proceso (modo industrial)
+      if (p.n_size && mode === 'industrial') {
+        sgSize = parseInt(p.n_size);
+        buildInputForm();
+      }
     } catch {}
 
     if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
     if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
 
-    sessionCount     = 0;
-    sessionLog       = [];
-    undoStack        = [];
-    sessionSubgroups = [];
-    phase1Limits     = null;
-    phase1Data       = null;
-    nextSgId         = 1;
-    document.getElementById('sg-id-lbl').textContent     = '#1';
-    setUndoEnabled(false);
-    renderLog();
-    document.getElementById('stat-session').textContent  = '0';
-    document.getElementById('stat-total').textContent    = '—';
-    document.getElementById('stat-last').textContent     = '—';
-    document.getElementById('stat-status').textContent   = 'Cargando límites...';
-    document.getElementById('ooc-banner').style.display  = 'none';
-    document.getElementById('n-adj-wrap').style.display  = 'none';
-
-    document.getElementById('monitor-area').style.display = '';
-    showWaitingState();
-
-    // ── Fase 1: límites + datos históricos ─────────────────────
+    // ── Fase 1: obtener límites ──────────────────────────────────
     try {
-      const p1      = await analysisApi.controlChart(pid, chartType, null);
-      const mainKey = 'xbar';
-      const secKey  = chartType === 'xbar_r' ? 'r' : 's';
-      phase1Limits  = { type: chartType, main: p1.chartData[mainKey], sec: p1.chartData[secKey] || null };
-      phase1Data    = p1.chartData;
+      const p1 = await analysisApi.controlChart(pid, chartType, null);
+      const mainKey = { xbar_r:'xbar', xbar_s:'xbar', p:'p', np:'np', c:'c', u:'u' }[chartType];
+      const secKey  = chartType === 'xbar_r' ? 'r' : chartType === 'xbar_s' ? 's' : null;
+      phase1Limits  = {
+        type: chartType,
+        main: p1.chartData[mainKey],
+        sec:  secKey ? p1.chartData[secKey] : null
+      };
+      phase1Data = p1.chartData;
       applyLimitChips();
-      // Activar n-adjuster
-      document.getElementById('n-adj-wrap').style.display  = 'flex';
-      document.getElementById('n-adj-val').textContent     = `n=${sgSize}`;
-      document.getElementById('btn-n-dec').disabled        = sgSize <= 2;
-      document.getElementById('btn-n-inc').disabled        = sgSize >= 10;
-      document.getElementById('stat-status').textContent   = 'Límites Fase 1 listos';
-      document.getElementById('stat-status').style.color   = 'var(--primary)';
-    } catch {
+      applyMode();
+      if (XBAR_TYPES.includes(chartType)) {
+        document.getElementById('n-adj-val').textContent = `n=${sgSize}`;
+        document.getElementById('btn-n-dec').disabled = sgSize <= 2;
+        document.getElementById('btn-n-inc').disabled = sgSize >= 10;
+      }
+      setStatusBar('stable', 'Límites de Fase 1 listos', `${p1.chartData[mainKey].points?.length ?? 0} subgrupos históricos`);
+    } catch (err) {
       showAlert(msg,
-        'No se encontraron datos en Cartas de Control para este proceso. ' +
-        'Ingresa datos históricos en Fase 1 primero.', 'error');
-      document.getElementById('stat-status').textContent = 'Sin límites';
-      document.getElementById('stat-status').style.color = 'var(--danger)';
+        'Sin datos de Fase 1 para este proceso. ' +
+        'Ingresa datos históricos en Cartas de Control primero.', 'error');
+      setStatusBar('idle', 'Sin límites de control', 'Ingresa datos en Cartas de Control');
+      document.getElementById('limits-sec-row').style.display = 'none';
+      return;
     }
 
-    // ── Fase 2: cargar monitoreo previo guardado ───────────────
+    // ── Fase 2: cargar datos previos ─────────────────────────────
     try {
       const p2resp = await measurementsApi.list(pid, 1000, 0, 2);
-      const p2rows = (p2resp.data || []).slice().reverse(); // DESC → ASC
+      const p2rows = (p2resp.data || []).slice().reverse();
       if (p2rows.length > 0) {
         const sgMap = new Map();
         p2rows.forEach(m => {
@@ -465,42 +483,69 @@
           sgMap.get(key).push(m);
         });
         const sortedKeys = [...sgMap.keys()].filter(k => k > 0).sort((a, b) => a - b);
+
         if (sortedKeys.length) {
-          // Inferir n del subgrupo más común
-          const inferredN = Math.max(...sortedKeys.map(k => sgMap.get(k).length));
-          if (inferredN >= 2 && inferredN <= 10) {
-            sgSize = inferredN;
-            document.getElementById('n-adj-val').textContent   = `n=${sgSize}`;
-            document.getElementById('btn-n-dec').disabled      = sgSize <= 2;
-            document.getElementById('btn-n-inc').disabled      = sgSize >= 10;
-            document.getElementById('entry-title').textContent = `Subgrupo n = ${sgSize}`;
-            buildSgInputs();
+          if (XBAR_TYPES.includes(chartType)) {
+            const inferredN = Math.max(...sortedKeys.map(k => sgMap.get(k).length));
+            if (inferredN >= 2 && inferredN <= 10 && mode !== 'industrial') {
+              sgSize = inferredN;
+              buildInputForm();
+            }
+            sessionSubgroups = sortedKeys.map(k => sgMap.get(k).map(m => +m.value));
+          } else {
+            // Attribute charts
+            sessionSubgroups = sortedKeys.map(k => {
+              const rws = sgMap.get(k);
+              const val = rws.reduce((s, m) => s + parseFloat(m.value), 0);
+              const n   = rws.reduce((s, m) => s + (m.sample_size ? parseFloat(m.sample_size) : 1), 0);
+              return { defectives: val, count: val, n };
+            });
           }
-          sessionSubgroups = sortedKeys.map(k => sgMap.get(k).map(m => +m.value));
-          undoStack        = sortedKeys.map(k => ({ ids: sgMap.get(k).map(m => m.id), sgId: k }));
-          nextSgId         = sortedKeys[sortedKeys.length - 1] + 1;
-          sessionCount     = sessionSubgroups.length;
-          // Reconstruir log (más reciente primero)
+          undoStack    = sortedKeys.map(k => ({ ids: sgMap.get(k).map(m => m.id), sgId: k }));
+          nextSgId     = sortedKeys[sortedKeys.length - 1] + 1;
+          sessionCount = sessionSubgroups.length;
+          document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
+          document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
+
           sessionLog = sessionSubgroups.map((sg, i) => {
-            const xbar = sg.reduce((a, b) => a + b, 0) / sg.length;
-            return { displayVal: `X̄=${xbar.toFixed(3)}`, sgId: sortedKeys[i], isOoc: false, time: '(guardado)', n: i + 1 };
+            const label = XBAR_TYPES.includes(chartType)
+              ? `X̄=${(sg.reduce((a,b)=>a+b,0)/sg.length).toFixed(3)}`
+              : ATTR_TYPES.includes(chartType) ? `${sg.defectives ?? sg.count}` : '—';
+            return { displayVal: label, sgId: sortedKeys[i], isOoc: false, time: '(guardado)', n: i + 1 };
           }).reverse();
           setUndoEnabled(true);
-          document.getElementById('sg-id-lbl').textContent    = `#${nextSgId}`;
-          document.getElementById('stat-session').textContent = sessionCount;
           renderLog();
+          updateStats();
+          setStatusBar('stable', 'Datos de Fase 2 cargados', `${sessionCount} subgrupos de monitoreo`);
         }
       }
-    } catch (e) {
-      console.warn('Error cargando Fase 2 previa:', e);
-    }
+    } catch (e) { console.warn('Error cargando Fase 2:', e); }
 
     if (phase1Limits) refreshChart();
-    const inp = document.querySelector('.sg-cell-inp');
-    if (inp) inp.focus();
+    const firstInp = document.querySelector('.sg-cell-inp, .attr-inp');
+    if (firstInp) firstInp.focus();
   }
 
-  // ── Inputs de subgrupo ──────────────────────────────────────
+  // ── Formulario de ingreso dinámico ────────────────────────────
+  function buildInputForm() {
+    const isXbar = XBAR_TYPES.includes(chartType);
+    const isAttr = ATTR_TYPES.includes(chartType);
+    document.getElementById('sg-form').style.display   = isXbar ? '' : 'none';
+    document.getElementById('attr-form').style.display = isAttr ? '' : 'none';
+    document.getElementById('btn-add').textContent = isXbar ? '+ Agregar Subgrupo' : '+ Agregar';
+    document.getElementById('entry-title').textContent = isXbar
+      ? `Subgrupo n = ${sgSize}`
+      : attrFormLabel();
+
+    if (isXbar) buildSgInputs();
+    if (isAttr) buildAttrInputs();
+  }
+
+  function attrFormLabel() {
+    const labels = { p:'Ingreso p (defectuosos)', np:'Ingreso np (defectuosos)', c:'Ingreso c (defectos)', u:'Ingreso u (defectos/unidad)' };
+    return labels[chartType] || 'Ingreso';
+  }
+
   function buildSgInputs() {
     const container = document.getElementById('sg-inputs');
     container.innerHTML = '';
@@ -508,87 +553,179 @@
       const cell = document.createElement('div');
       cell.className = 'sg-cell';
       cell.innerHTML = `
-        <span class="sg-cell-lbl">X<sub>${i + 1}</sub></span>
+        <span class="sg-cell-lbl">X<sub>${i+1}</sub></span>
         <input class="sg-cell-inp" type="text" inputmode="decimal"
                id="sg-v-${i}" autocomplete="off" placeholder="0"
-               data-idx="${i}" onkeydown="sgKeyNav(event,${i})">`;
+               onkeydown="sgKeyNav(event,${i})">`;
       container.appendChild(cell);
     }
+  }
+
+  function buildAttrInputs() {
+    const container = document.getElementById('attr-inputs');
+    let html = '';
+    if (chartType === 'p' || chartType === 'np') {
+      html += `<div class="attr-inp-col"><label>Defectuosos</label><input class="big-input attr-inp" id="attr-def" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)"></div>`;
+      if (chartType === 'p')
+        html += `<div class="attr-inp-col"><label>Tamaño n</label><input class="big-input attr-inp" id="attr-n" type="text" inputmode="numeric" placeholder="${sgSize}" onkeydown="attrKey(event)"></div>`;
+    } else if (chartType === 'c') {
+      html += `<div class="attr-inp-col"><label>Defectos</label><input class="big-input attr-inp" id="attr-count" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)"></div>`;
+    } else if (chartType === 'u') {
+      html += `<div class="attr-inp-col"><label>Defectos</label><input class="big-input attr-inp" id="attr-count" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)"></div>`;
+      html += `<div class="attr-inp-col"><label>Unidades (n)</label><input class="big-input attr-inp" id="attr-n" type="text" inputmode="numeric" placeholder="1" onkeydown="attrKey(event)"></div>`;
+    }
+    container.innerHTML = html;
   }
 
   function sgKeyNav(e, idx) {
     if (e.key === 'Tab' || e.key === 'Enter') {
       e.preventDefault();
-      if (idx + 1 < sgSize) {
-        document.getElementById(`sg-v-${idx + 1}`).focus();
-      } else {
-        addEntry();
-      }
-    } else if (e.key === 'ArrowRight' && idx + 1 < sgSize) {
-      e.preventDefault();
-      document.getElementById(`sg-v-${idx + 1}`).focus();
-    } else if (e.key === 'ArrowLeft' && idx > 0) {
-      e.preventDefault();
-      document.getElementById(`sg-v-${idx - 1}`).focus();
-    }
+      if (idx + 1 < sgSize) document.getElementById(`sg-v-${idx+1}`).focus();
+      else addEntry();
+    } else if (e.key === 'ArrowRight' && idx + 1 < sgSize) { e.preventDefault(); document.getElementById(`sg-v-${idx+1}`).focus(); }
+    else if (e.key === 'ArrowLeft'  && idx > 0)            { e.preventDefault(); document.getElementById(`sg-v-${idx-1}`).focus(); }
   }
 
-  // ── Agregar dato / subgrupo ─────────────────────────────────
+  function attrKey(e) { if (e.key === 'Enter') addEntry(); }
+
+  // ── Agregar subgrupo ──────────────────────────────────────────
   async function addEntry() {
     const entryMsg = document.getElementById('entry-msg');
     const btn      = document.getElementById('btn-add');
     entryMsg.innerHTML = '';
 
-    {
-      const vals    = [];
-      let hasError  = false;
+    let payload = null;  // { items: [{value, subgroup_id, phase, sample_size?}], displayVal, logVal }
+
+    if (XBAR_TYPES.includes(chartType)) {
+      const vals = []; let hasError = false;
       for (let i = 0; i < sgSize; i++) {
         const inp = document.getElementById(`sg-v-${i}`);
-        const raw = inp.value.trim();
-        const v   = parseDecimal(raw);
-        if (!raw || isNaN(v)) { inp.classList.add('bad'); hasError = true; }
+        const v   = parseDecimal(inp.value.trim());
+        if (!inp.value.trim() || isNaN(v)) { inp.classList.add('bad'); hasError = true; }
         else { inp.classList.remove('bad'); vals.push(v); }
       }
-      if (hasError) {
-        showAlert(entryMsg, 'Completa todos los valores del subgrupo.', 'error');
-        return;
+      if (hasError) return showAlert(entryMsg, 'Completa todos los valores del subgrupo.', 'error');
+      const xbar = vals.reduce((a,b)=>a+b,0) / vals.length;
+      payload = {
+        items:      vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId, phase: 2 })),
+        displayVal: `X̄=${xbar.toFixed(3)}`,
+        sgData:     vals
+      };
+
+    } else {
+      // Attribute
+      const getN = () => {
+        const el = document.getElementById('attr-n');
+        return el ? parseFloat(el.value) || sgSize : sgSize;
+      };
+      if (chartType === 'p') {
+        const def = parseFloat(document.getElementById('attr-def')?.value);
+        const n   = getN();
+        if (isNaN(def) || def < 0) return showAlert(entryMsg, 'Ingresa un número válido de defectuosos.', 'error');
+        payload = {
+          items:      [{ process_id: processId, value: def, subgroup_id: nextSgId, phase: 2, sample_size: n }],
+          displayVal: `p=${(def/n).toFixed(4)} (${def}/${n})`,
+          sgData:     { defectives: def, n }
+        };
+      } else if (chartType === 'np') {
+        const def = parseFloat(document.getElementById('attr-def')?.value);
+        if (isNaN(def) || def < 0) return showAlert(entryMsg, 'Ingresa un número válido de defectuosos.', 'error');
+        const n = phase1Limits?.main?.n || sgSize;
+        payload = {
+          items:      [{ process_id: processId, value: def, subgroup_id: nextSgId, phase: 2, sample_size: n }],
+          displayVal: `np=${def}`,
+          sgData:     { defectives: def, n }
+        };
+      } else if (chartType === 'c') {
+        const cnt = parseFloat(document.getElementById('attr-count')?.value);
+        if (isNaN(cnt) || cnt < 0) return showAlert(entryMsg, 'Ingresa un conteo válido de defectos.', 'error');
+        payload = {
+          items:      [{ process_id: processId, value: cnt, subgroup_id: nextSgId, phase: 2 }],
+          displayVal: `c=${cnt}`,
+          sgData:     { count: cnt }
+        };
+      } else if (chartType === 'u') {
+        const cnt = parseFloat(document.getElementById('attr-count')?.value);
+        const n   = getN();
+        if (isNaN(cnt) || cnt < 0) return showAlert(entryMsg, 'Ingresa un conteo válido de defectos.', 'error');
+        payload = {
+          items:      [{ process_id: processId, value: cnt, subgroup_id: nextSgId, phase: 2, sample_size: n }],
+          displayVal: `u=${(cnt/n).toFixed(4)} (${cnt}/${n})`,
+          sgData:     { count: cnt, n }
+        };
       }
+    }
 
-      btn.disabled = true; btn.textContent = 'Guardando...';
-      try {
-        const items  = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId, phase: 2 }));
-        const result = await measurementsApi.createBatch(items);
-        const ids    = (result.data || []).map(r => r.id);
-        undoStack.push({ ids, sgId: nextSgId });
-        setUndoEnabled(true);
-        sessionCount++;
-        sessionSubgroups.push([...vals]);
-        const xbar = vals.reduce((a, b) => a + b, 0) / vals.length;
-        addToLog(xbar, nextSgId, vals);
-        nextSgId++;
-        document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
-        for (let i = 0; i < sgSize; i++) document.getElementById(`sg-v-${i}`).value = '';
-        document.getElementById('sg-v-0').focus();
-        refreshChart();
-      } catch (err) {
-        showAlert(entryMsg, err.message, 'error');
-      } finally {
-        btn.disabled = false; btn.textContent = '+ Agregar Subgrupo';
-      }
+    if (!payload) return;
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const result = await measurementsApi.createBatch(payload.items);
+      const ids    = (result.data || []).map(r => r.id);
+      undoStack.push({ ids, sgId: nextSgId });
+      setUndoEnabled(true);
+      sessionCount++;
+      sessionSubgroups.push(payload.sgData);
+      addToLog(payload.displayVal, nextSgId);
+      nextSgId++;
+      document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
+      document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
+
+      // Clear inputs
+      document.querySelectorAll('.sg-cell-inp').forEach(el => el.value = '');
+      document.querySelectorAll('.attr-inp').forEach(el => el.value = '');
+      const first = document.querySelector('.sg-cell-inp, .attr-inp');
+      if (first) first.focus();
+
+      updateStats();
+      refreshChart();
+    } catch (err) {
+      showAlert(entryMsg, err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = XBAR_TYPES.includes(chartType) ? '+ Agregar Subgrupo' : '+ Agregar';
+    }
   }
+
+  // ── Undo ──────────────────────────────────────────────────────
+  async function undoLast() {
+    if (!undoStack.length) return;
+    const entry = undoStack[undoStack.length - 1];
+    const btn   = document.getElementById('btn-undo');
+    btn.disabled = true; btn.textContent = 'Deshaciendo...';
+    try {
+      await Promise.all(entry.ids.map(id => measurementsApi.delete(id)));
+      undoStack.pop(); sessionSubgroups.pop();
+      nextSgId = entry.sgId;
+      document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
+      document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
+      sessionLog.shift();
+      sessionCount = Math.max(0, sessionCount - 1);
+      updateStats();
+      renderLog();
+      setUndoEnabled(undoStack.length > 0);
+      document.getElementById('ooc-banner').style.display = 'none';
+      refreshChart();
+    } catch (err) {
+      showAlert(document.getElementById('entry-msg'), `Error al deshacer: ${err.message}`, 'error');
+    } finally {
+      btn.textContent = '↩ Deshacer último';
+      if (undoStack.length > 0) btn.disabled = false;
+    }
   }
 
-  // ── Registro de sesión ──────────────────────────────────────
-  function addToLog(mainVal, sgId, rawVals = null) {
-    const now  = new Date();
-    const time = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const displayVal = sgId != null
-      ? `X̄=${mainVal.toFixed(3)}`
-      : mainVal.toString();
-    sessionLog.unshift({ displayVal, sgId, rawVals, isOoc: false, time, n: sessionCount });
+  function clearLog() {
+    sessionLog = []; sessionCount = 0; undoStack = [];
+    setUndoEnabled(false);
+    document.getElementById('stat-last').textContent = '—';
+    renderLog();
+    updateStats();
+  }
 
-    document.getElementById('stat-session').textContent = sessionCount;
-    document.getElementById('stat-last').textContent    = displayVal;
+  // ── Log ───────────────────────────────────────────────────────
+  function addToLog(displayVal, sgId) {
+    const time = new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    sessionLog.unshift({ displayVal, sgId, isOoc: false, time, n: sessionCount });
+    document.getElementById('stat-last').textContent = displayVal;
     renderLog();
   }
 
@@ -608,114 +745,156 @@
       </div>`).join('');
   }
 
-  function setUndoEnabled(enabled) {
+  function setUndoEnabled(en) {
     const btn = document.getElementById('btn-undo');
-    btn.disabled = !enabled;
-    btn.style.opacity = enabled ? '1' : '.5';
+    btn.disabled = !en; btn.style.opacity = en ? '1' : '.5';
   }
 
-  async function undoLast() {
-    if (!undoStack.length) return;
-    const entry  = undoStack[undoStack.length - 1];
-    const btn    = document.getElementById('btn-undo');
-    const entryMsg = document.getElementById('entry-msg');
-    btn.disabled = true; btn.textContent = 'Deshaciendo...';
-    try {
-      await Promise.all(entry.ids.map(id => measurementsApi.delete(id)));
-      undoStack.pop();
-      sessionSubgroups.pop();
-      nextSgId = entry.sgId;
-      document.getElementById('sg-id-lbl').textContent = `#${nextSgId}`;
-      sessionLog.shift();
-      sessionCount = Math.max(0, sessionCount - 1);
-      document.getElementById('stat-session').textContent = sessionCount;
-      document.getElementById('stat-last').textContent    = sessionLog[0]?.displayVal || '—';
-      renderLog();
-      setUndoEnabled(undoStack.length > 0);
-      document.getElementById('ooc-banner').style.display = 'none';
-      refreshChart();
-    } catch (err) {
-      showAlert(entryMsg, `Error al deshacer: ${err.message}`, 'error');
-      btn.disabled = false;
-    } finally {
-      btn.textContent = '↩ Deshacer último';
-      if (undoStack.length > 0) btn.disabled = false;
-    }
+  function updateStats() {
+    document.getElementById('stat-total').textContent   = sessionSubgroups.length || '—';
+    document.getElementById('stat-session').textContent = sessionCount;
   }
 
-  function clearLog() {
-    sessionLog   = [];
-    sessionCount = 0;
-    undoStack    = [];
-    setUndoEnabled(false);
-    document.getElementById('stat-session').textContent = '0';
-    document.getElementById('stat-last').textContent    = '—';
-    renderLog();
+  // ── Status bar ────────────────────────────────────────────────
+  function setStatusBar(state, label, sub) {
+    const dot = document.getElementById('status-dot');
+    dot.className = `status-dot ${state}`;
+    document.getElementById('status-label').textContent = label;
+    document.getElementById('status-sub').textContent   = sub || '';
   }
 
-  // ── Mostrar chips de límites de Fase 1 ─────────────────────
+  // ── Chips de límites ──────────────────────────────────────────
   function applyLimitChips() {
     if (!phase1Limits) return;
-    const { type, main, sec } = phase1Limits;
-    const typeInfo = { xbar_r: 'Carta X̄-R', xbar_s: 'Carta X̄-S' };
-    document.getElementById('limits-title').textContent =
-      `${typeInfo[type] || 'Carta'} — Límites de control (Fase 1)`;
+    const { main, sec, type } = phase1Limits;
+    const typeInfo = { xbar_r:'Carta X̄-R', xbar_s:'Carta X̄-S', p:'Carta p', np:'Carta np', c:'Carta c', u:'Carta u' };
+    document.getElementById('limits-title').textContent = `${typeInfo[type] || 'Carta'} — Fase 1`;
     document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
     document.getElementById('lim-cl').textContent  = formatNum(main.cl,  4);
     document.getElementById('lim-lcl').textContent = formatNum(main.lcl, 4);
+
+    const secRow = document.getElementById('limits-sec-row');
     if (sec) {
-      document.getElementById('limits-sec').style.display = '';
+      secRow.style.display = '';
       document.getElementById('lim2-ucl').textContent = formatNum(sec.ucl, 4);
       document.getElementById('lim2-cl').textContent  = formatNum(sec.cl,  4);
       document.getElementById('lim2-lcl').textContent = formatNum(sec.lcl, 4);
     } else {
-      document.getElementById('limits-sec').style.display = 'none';
+      secRow.style.display = 'none';
+    }
+    document.getElementById('main-chart-title').textContent = {
+      xbar_r:'Gráfico de Medias (X̄)', xbar_s:'Gráfico de Medias (X̄)',
+      p:'Proporción (p)', np:'Núm. defectuosos (np)', c:'Defectos (c)', u:'Defectos/unidad (u)'
+    }[type] || 'Gráfico principal';
+    document.getElementById('sec-chart-wrap').style.display = sec ? '' : 'none';
+    document.getElementById('sec-chart-title').textContent = {
+      xbar_r:'Rangos (R)', xbar_s:'Desv. Estándar (S)'
+    }[type] || '';
+  }
+
+  // ── n-adjuster (solo modo académico) ─────────────────────────
+  async function adjustN(delta) {
+    if (adjustingN || !processId || !phase1Limits || !XBAR_TYPES.includes(chartType)) return;
+    const newN = Math.min(10, Math.max(2, sgSize + delta));
+    if (newN === sgSize) return;
+    adjustingN = true;
+    sgSize     = newN;
+    document.getElementById('n-adj-val').textContent = `n=${newN}`;
+    document.getElementById('btn-n-dec').disabled = true;
+    document.getElementById('btn-n-inc').disabled = true;
+    document.getElementById('entry-title').textContent = `Subgrupo n = ${sgSize}`;
+    buildSgInputs();
+
+    document.querySelectorAll('.lim-chip').forEach(el => {
+      el.classList.remove('lim-flash'); void el.offsetWidth; el.classList.add('lim-flash');
+    });
+
+    try {
+      const p1 = await analysisApi.controlChart(processId, chartType, newN);
+      const mainKey = chartType === 'xbar_s' ? 'xbar' : 'xbar';
+      const secKey  = chartType === 'xbar_r' ? 'r' : 's';
+      phase1Limits  = { type: chartType, main: p1.chartData.xbar, sec: p1.chartData[secKey] || null };
+      phase1Data    = p1.chartData;
+      applyLimitChips();
+      if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+      if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
+      refreshChart();
+    } catch (err) {
+      showAlert(document.getElementById('msg'), `Error recalculando límites: ${err.message}`, 'error');
+      sgSize -= delta;
+      document.getElementById('n-adj-val').textContent = `n=${sgSize}`;
+    } finally {
+      adjustingN = false;
+      document.getElementById('btn-n-dec').disabled = sgSize <= 2;
+      document.getElementById('btn-n-inc').disabled = sgSize >= 10;
     }
   }
 
-  // ── Construir resultado de carta desde sesión + límites Fase 1
+  // ── Construir resultado para gráfico ──────────────────────────
   function buildChartFromSession() {
     if (!phase1Limits) return null;
     const { type, main, sec } = phase1Limits;
-    const sgs    = sessionSubgroups;
-    const n      = sgSize;
-    const xbars  = sgs.map(sg => sg.reduce((a, b) => a + b, 0) / n);
-    const labels = sgs.map((_, i) => `M-${i + 1}`);
-    const ooc    = xbars.map((x, i) => (x > main.ucl || x < main.lcl) ? i : -1).filter(i => i >= 0);
+    const sgs = sessionSubgroups;
 
-    if (type === 'xbar_r') {
-      const ranges = sgs.map(sg => Math.max(...sg) - Math.min(...sg));
-      return {
-        type: 'xbar_r', violations: [], outOfControl: ooc, labels,
-        chartData: {
-          xbar: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: [...xbars] },
-          r:    sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: [...ranges] } : null
-        }
-      };
-    }
-    const stds = sgs.map(sg => {
-      const m = sg.reduce((a, b) => a + b, 0) / n;
-      return Math.sqrt(sg.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1));
-    });
-    return {
-      type: 'xbar_s', violations: [], outOfControl: ooc, labels,
-      chartData: {
-        xbar: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: [...xbars] },
-        s:    sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: [...stds] } : null
+    if (XBAR_TYPES.includes(type)) {
+      const n      = sgSize;
+      const xbars  = sgs.map(sg => sg.reduce((a,b)=>a+b,0) / n);
+      const labels = sgs.map((_, i) => `M-${i+1}`);
+      const ooc    = xbars.map((x, i) => (x > main.ucl || x < main.lcl) ? i : -1).filter(i => i >= 0);
+      if (type === 'xbar_r') {
+        const ranges = sgs.map(sg => Math.max(...sg) - Math.min(...sg));
+        return { type, violations: [], outOfControl: ooc, labels, chartData: {
+          xbar: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: xbars },
+          r:    sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: ranges } : null
+        }};
       }
-    };
+      const stds = sgs.map(sg => {
+        const m = sg.reduce((a,b)=>a+b,0) / n;
+        return Math.sqrt(sg.reduce((a,b) => a + (b-m)**2, 0) / Math.max(n-1,1));
+      });
+      return { type, violations: [], outOfControl: ooc, labels, chartData: {
+        xbar: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: xbars },
+        s:    sec ? { ucl: sec.ucl, cl: sec.cl, lcl: sec.lcl, points: stds } : null
+      }};
+    }
+
+    // Attribute
+    const labels = sgs.map((_, i) => `M-${i+1}`);
+    if (type === 'p') {
+      const pts = sgs.map(sg => sg.defectives / sg.n);
+      const ooc = pts.map((v, i) => v > main.ucl || v < main.lcl ? i : -1).filter(i => i >= 0);
+      return { type, violations: [], outOfControl: ooc, labels,
+        chartData: { p: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: pts } } };
+    }
+    if (type === 'np') {
+      const pts = sgs.map(sg => sg.defectives);
+      const ooc = pts.map((v, i) => v > main.ucl || v < main.lcl ? i : -1).filter(i => i >= 0);
+      return { type, violations: [], outOfControl: ooc, labels,
+        chartData: { np: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: pts } } };
+    }
+    if (type === 'c') {
+      const pts = sgs.map(sg => sg.count);
+      const ooc = pts.map((v, i) => v > main.ucl || v < main.lcl ? i : -1).filter(i => i >= 0);
+      return { type, violations: [], outOfControl: ooc, labels,
+        chartData: { c: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: pts } } };
+    }
+    if (type === 'u') {
+      const pts = sgs.map(sg => sg.count / sg.n);
+      const ooc = pts.map((v, i) => v > main.ucl || v < main.lcl ? i : -1).filter(i => i >= 0);
+      return { type, violations: [], outOfControl: ooc, labels,
+        chartData: { u: { ucl: main.ucl, cl: main.cl, lcl: main.lcl, points: pts } } };
+    }
+    return null;
   }
 
-  // ── Refrescar gráfico ───────────────────────────────────────
+  // ── Refresh gráfico ───────────────────────────────────────────
   function refreshChart() {
     const result = buildChartFromSession();
     if (!result) {
-      if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
-      if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
       document.getElementById('violations-body').innerHTML = `
         <div class="empty-state" style="padding:20px">
-          <div class="empty-title" style="color:var(--primary)">Límites de Fase 1 listos</div>
-          <div class="empty-sub">Ingresa el primer dato para comenzar el monitoreo.</div>
+          <div class="empty-title" style="color:var(--primary)">Fase 1 lista</div>
+          <div class="empty-sub">Ingresa el primer subgrupo para comenzar el monitoreo.</div>
         </div>`;
       document.getElementById('violations-count').style.display = 'none';
       document.getElementById('stat-total').textContent = '0';
@@ -724,47 +903,26 @@
     renderChartPanel(result);
   }
 
-  function showWaitingState() {
-    if (!phase1Limits) {
-      ['lim-ucl','lim-cl','lim-lcl','lim2-ucl','lim2-cl','lim2-lcl']
-        .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
-      document.getElementById('limits-sec').style.display = 'none';
-    }
-    if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
-    if (secChartInst)  { secChartInst.destroy();  secChartInst  = null; }
-    document.getElementById('violations-body').innerHTML = `
-      <div class="empty-state" style="padding:20px">
-        <div class="empty-title">Cargando límites de Fase 1...</div>
-        <div class="empty-sub">Obteniendo límites de control del historial.</div>
-      </div>`;
-    document.getElementById('violations-count').style.display = 'none';
-  }
+  // ── Render gráfico combinado F1+F2 ────────────────────────────
+  const NDSM = 5, NDSS = 5;
 
   function renderChartPanel(result) {
-    const { chartData, violations, outOfControl, type, labels } = result;
-    const mainKey = 'xbar';
-    const secKey  = type === 'xbar_r' ? 'r' : 's';
-    const main    = chartData[mainKey];
-    const sec     = chartData[secKey];
+    const { chartData, outOfControl, type, labels } = result;
+    const mainKeyMap = { xbar_r:'xbar', xbar_s:'xbar', p:'p', np:'np', c:'c', u:'u' };
+    const mainKey    = mainKeyMap[type];
+    const secKey     = type === 'xbar_r' ? 'r' : type === 'xbar_s' ? 's' : null;
+    const main       = chartData[mainKey];
+    const sec        = secKey ? chartData[secKey] : null;
 
-    // ── Datos de referencia Fase 1 ──────────────────────────────
-    const p1Main = phase1Data?.[mainKey];
-    const p1Sec  = phase1Data?.[secKey];
+    const isAcademic = mode === 'academic';
+
+    // Fase 1 reference data (only in academic mode)
+    const p1Main = isAcademic ? (phase1Data?.[mainKey]) : null;
+    const p1Sec  = isAcademic ? (phase1Data?.[secKey])  : null;
     const p1Len  = p1Main?.points?.length || 0;
 
-    const typeInfo = {
-      xbar_r: { main: 'Gráfico de Medias (X̄)', sec: 'Rangos (R)',         card: 'Carta X̄-R' },
-      xbar_s: { main: 'Gráfico de Medias (X̄)', sec: 'Desv. Estándar (S)', card: 'Carta X̄-S' }
-    };
-    const info = typeInfo[type] || typeInfo.xbar_r;
-    document.getElementById('main-chart-title').textContent = info.main;
-    document.getElementById('sec-chart-title').textContent  = info.sec;
-    document.getElementById('limits-title').textContent     = `${info.card} — Límites de control`;
-    applyLimitChips();
-
-    // ── Labels y arrays combinados ──────────────────────────────
-    const p1Labels  = Array.from({ length: p1Len }, (_, i) => `F1-${i + 1}`);
-    const p2Labels  = labels.length ? labels : main.points.map((_, i) => `M-${i + 1}`);
+    const p2Labels  = labels.length ? labels : main.points.map((_, i) => `M-${i+1}`);
+    const p1Labels  = Array.from({ length: p1Len }, (_, i) => `F1-${i+1}`);
     const allLabels = [...p1Labels, ...p2Labels];
     const totalLen  = p1Len + main.points.length;
 
@@ -773,26 +931,23 @@
     const p2Radii    = main.points.map((_, i) => outOfControl.includes(i) ? 8 : 4);
     const p2BorderW  = main.points.map((_, i) => outOfControl.includes(i) ? 3 : 2);
 
-    // ── Gráfico principal (5 datasets: UCL/CL/LCL/F1/F2) ───────
-    const NDSM = 5;
+    // ── Main chart ───────────────────────────────────────────────
     if (mainChartInst && mainChartInst.data.datasets.length === NDSM) {
       const ds = mainChartInst.data;
-      ds.labels              = allLabels;
-      ds.datasets[0].data   = Array(totalLen).fill(main.ucl);
-      ds.datasets[1].data   = Array(totalLen).fill(main.cl);
-      ds.datasets[2].data   = Array(totalLen).fill(main.lcl);
-      // F1 mantiene sus puntos + nulls para posiciones F2
-      ds.datasets[3].data   = [...(p1Main?.points || []), ...Array(main.points.length).fill(null)];
-      // F2: nulls para posiciones F1 + nuevos puntos
-      ds.datasets[4].data               = [...Array(p1Len).fill(null), ...main.points];
+      ds.labels            = allLabels;
+      ds.datasets[0].data  = Array(totalLen).fill(main.ucl);
+      ds.datasets[1].data  = Array(totalLen).fill(main.cl);
+      ds.datasets[2].data  = Array(totalLen).fill(main.lcl);
+      ds.datasets[3].data  = p1Len ? [...(p1Main?.points || []), ...Array(main.points.length).fill(null)] : Array(totalLen).fill(null);
+      ds.datasets[4].data              = [...Array(p1Len).fill(null), ...main.points];
       ds.datasets[4].pointBackgroundColor = [...Array(p1Len).fill('transparent'), ...p2BgColors];
       ds.datasets[4].pointBorderColor     = [...Array(p1Len).fill('transparent'), ...p2Colors];
-      ds.datasets[4].pointRadius          = [...Array(p1Len).fill(0), ...p2Radii];
-      ds.datasets[4].pointBorderWidth     = [...Array(p1Len).fill(0), ...p2BorderW];
-      mainChartInst.update({ duration: 450 });
+      ds.datasets[4].pointRadius           = [...Array(p1Len).fill(0), ...p2Radii];
+      ds.datasets[4].pointBorderWidth      = [...Array(p1Len).fill(0), ...p2BorderW];
+      mainChartInst.update({ duration: 400 });
     } else {
       const ctxM = document.getElementById('main-chart');
-      const existM = Chart.getChart(ctxM); if (existM) existM.destroy();
+      const ex = Chart.getChart(ctxM); if (ex) ex.destroy();
       const dividerAnn = (p1Len > 0 && main.points.length > 0) ? {
         phaseDivider: {
           type: 'line', scaleID: 'x', value: p1Len - 0.5,
@@ -811,29 +966,29 @@
             { label: 'LC',  data: Array(totalLen).fill(main.cl),  borderColor: '#1761b0', borderWidth: 1.5, borderDash: [8,4], pointRadius: 0, fill: false },
             { label: 'LCI', data: Array(totalLen).fill(main.lcl), borderColor: '#b91c1c', borderWidth: 2.5, pointRadius: 0, fill: false },
             {
-              label: 'Fase 1 (referencia)',
-              data: [...(p1Main?.points || []), ...Array(main.points.length).fill(null)],
+              label: 'Fase 1 (ref.)',
+              data: p1Len ? [...(p1Main?.points || []), ...Array(main.points.length).fill(null)] : Array(totalLen).fill(null),
               borderColor: '#c8cdd6', borderWidth: 1.5, fill: false, spanGaps: false,
               pointBackgroundColor: Array(p1Len).fill('rgba(156,163,175,0.2)'),
-              pointBorderColor:     Array(p1Len).fill('#9ca3af'),
-              pointRadius:          Array(p1Len).fill(3),
-              pointBorderWidth:     Array(p1Len).fill(1.5)
+              pointBorderColor: Array(p1Len).fill('#9ca3af'),
+              pointRadius: Array(p1Len).fill(p1Len ? 3 : 0),
+              pointBorderWidth: Array(p1Len).fill(1.5)
             },
             {
               label: 'Monitoreo',
               data: [...Array(p1Len).fill(null), ...main.points],
               borderColor: '#0e1621', borderWidth: 2, fill: false, spanGaps: false,
-              backgroundColor:        [...Array(p1Len).fill('transparent'), ...p2BgColors],
-              pointBackgroundColor:   [...Array(p1Len).fill('transparent'), ...p2BgColors],
-              pointBorderColor:       [...Array(p1Len).fill('transparent'), ...p2Colors],
-              pointRadius:            [...Array(p1Len).fill(0), ...p2Radii],
-              pointHoverRadius:       [...Array(p1Len).fill(0), ...p2Radii.map(r => r + 2)],
-              pointBorderWidth:       [...Array(p1Len).fill(0), ...p2BorderW]
+              backgroundColor:      [...Array(p1Len).fill('transparent'), ...p2BgColors],
+              pointBackgroundColor: [...Array(p1Len).fill('transparent'), ...p2BgColors],
+              pointBorderColor:     [...Array(p1Len).fill('transparent'), ...p2Colors],
+              pointRadius:          [...Array(p1Len).fill(0), ...p2Radii],
+              pointHoverRadius:     [...Array(p1Len).fill(0), ...p2Radii.map(r=>r+2)],
+              pointBorderWidth:     [...Array(p1Len).fill(0), ...p2BorderW]
             }
           ]
         },
         options: {
-          ...CHART_DEFAULTS, animation: { duration: 450 },
+          ...CHART_DEFAULTS, animation: { duration: 400 },
           plugins: {
             ...CHART_DEFAULTS.plugins,
             legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#344054' } },
@@ -853,66 +1008,64 @@
       });
     }
 
-    // ── Gráfico secundario (5 datasets: UCL/CL/LCI/F1/F2) ──────
+    // ── Secondary chart ──────────────────────────────────────────
     if (sec) {
-      const p1SecPts = p1Sec?.points || [];
-      const p1SecLen = p1SecPts.length;
-      const allSecLabels = [...Array.from({length: p1SecLen}, (_, i) => `F1-${i+1}`), ...p2Labels];
-      const secTotalLen  = p1SecLen + sec.points.length;
-      const sigma3 = (sec.ucl - sec.cl) / 3;
-      const p2SecColors   = sec.points.map(v => v > sec.ucl ? '#b91c1c' : v > sec.cl + 2*sigma3 ? '#c2410c' : '#b45309');
-      const p2SecBgColors = sec.points.map(v => v > sec.ucl ? '#fee2e2' : 'rgba(180,83,9,0.10)');
-      const p2SecRadii    = sec.points.map(v => v > sec.ucl ? 7 : 4);
-      const NDSS = 5; // siempre 5 (incluimos LCI aunque sea 0)
+      const p1SecPts    = p1Sec?.points || [];
+      const p1SecLen    = p1SecPts.length;
+      const allSecLbls  = [...Array.from({length:p1SecLen},(_,i)=>`F1-${i+1}`), ...p2Labels];
+      const secTotal    = p1SecLen + sec.points.length;
+      const sigma3      = (sec.ucl - sec.cl) / 3 || 1;
+      const p2Sc        = sec.points.map(v => v > sec.ucl ? '#b91c1c' : v > sec.cl + 2*sigma3 ? '#c2410c' : '#b45309');
+      const p2SBg       = sec.points.map(v => v > sec.ucl ? '#fee2e2' : 'rgba(180,83,9,0.10)');
+      const p2Sr        = sec.points.map(v => v > sec.ucl ? 7 : 4);
 
       if (secChartInst && secChartInst.data.datasets.length === NDSS) {
         const ds = secChartInst.data;
-        ds.labels            = allSecLabels;
-        ds.datasets[0].data  = Array(secTotalLen).fill(sec.ucl);
-        ds.datasets[1].data  = Array(secTotalLen).fill(sec.cl);
-        ds.datasets[2].data  = Array(secTotalLen).fill(sec.lcl);
+        ds.labels            = allSecLbls;
+        ds.datasets[0].data  = Array(secTotal).fill(sec.ucl);
+        ds.datasets[1].data  = Array(secTotal).fill(sec.cl);
+        ds.datasets[2].data  = Array(secTotal).fill(sec.lcl);
         ds.datasets[3].data  = [...p1SecPts, ...Array(sec.points.length).fill(null)];
-        ds.datasets[4].data               = [...Array(p1SecLen).fill(null), ...sec.points];
-        ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SecBgColors];
-        ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2SecColors];
-        ds.datasets[4].pointRadius          = [...Array(p1SecLen).fill(0), ...p2SecRadii];
-        secChartInst.update({ duration: 450 });
+        ds.datasets[4].data              = [...Array(p1SecLen).fill(null), ...sec.points];
+        ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg];
+        ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc];
+        ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr];
+        secChartInst.update({ duration: 400 });
       } else {
         const ctxS = document.getElementById('sec-chart');
-        const existS = Chart.getChart(ctxS); if (existS) existS.destroy();
-        const secLabelMap = { r: 'Rango', s: 'Desv. Estándar' };
+        const ex = Chart.getChart(ctxS); if (ex) ex.destroy();
+        const secLbl = { r: 'Rango (R)', s: 'Desv. Est. (S)' };
         secChartInst = new Chart(ctxS, {
           type: 'line',
           data: {
-            labels: allSecLabels,
+            labels: allSecLbls,
             datasets: [
-              { label: 'LCS', data: Array(secTotalLen).fill(sec.ucl), borderColor: '#b91c1c', borderWidth: 2.5, pointRadius: 0, fill: false },
-              { label: 'LC',  data: Array(secTotalLen).fill(sec.cl),  borderColor: '#1761b0', borderWidth: 1.5, borderDash: [8,4], pointRadius: 0, fill: false },
-              { label: 'LCI', data: Array(secTotalLen).fill(sec.lcl), borderColor: '#b91c1c', borderWidth: 2, pointRadius: 0, fill: false },
+              { label: 'LCS', data: Array(secTotal).fill(sec.ucl), borderColor: '#b91c1c', borderWidth: 2.5, pointRadius: 0, fill: false },
+              { label: 'LC',  data: Array(secTotal).fill(sec.cl),  borderColor: '#1761b0', borderWidth: 1.5, borderDash: [8,4], pointRadius: 0, fill: false },
+              { label: 'LCI', data: Array(secTotal).fill(sec.lcl), borderColor: '#b91c1c', borderWidth: 2, pointRadius: 0, fill: false },
               {
-                label: `${secLabelMap[secKey] || secKey} F1`,
+                label: `${secLbl[secKey]||secKey} F1`,
                 data: [...p1SecPts, ...Array(sec.points.length).fill(null)],
                 borderColor: '#c8cdd6', borderWidth: 1.5, fill: false, spanGaps: false,
                 pointBackgroundColor: Array(p1SecLen).fill('rgba(156,163,175,0.2)'),
                 pointBorderColor:     Array(p1SecLen).fill('#9ca3af'),
-                pointRadius:          Array(p1SecLen).fill(3),
-                pointBorderWidth:     Array(p1SecLen).fill(1.5)
+                pointRadius:          Array(p1SecLen).fill(p1SecLen ? 3 : 0)
               },
               {
-                label: secLabelMap[secKey] || secKey,
+                label: secLbl[secKey] || secKey,
                 data: [...Array(p1SecLen).fill(null), ...sec.points],
                 borderColor: '#b45309', borderWidth: 2, fill: false, spanGaps: false,
-                backgroundColor:        [...Array(p1SecLen).fill('transparent'), ...p2SecBgColors],
-                pointBackgroundColor:   [...Array(p1SecLen).fill('transparent'), ...p2SecBgColors],
-                pointBorderColor:       [...Array(p1SecLen).fill('transparent'), ...p2SecColors],
-                pointRadius:            [...Array(p1SecLen).fill(0), ...p2SecRadii],
-                pointHoverRadius:       [...Array(p1SecLen).fill(0), ...p2SecRadii.map(r => r + 2)],
-                pointBorderWidth:       [...Array(p1SecLen).fill(0), ...sec.points.map(v => v > sec.ucl ? 3 : 2)]
+                backgroundColor:      [...Array(p1SecLen).fill('transparent'), ...p2SBg],
+                pointBackgroundColor: [...Array(p1SecLen).fill('transparent'), ...p2SBg],
+                pointBorderColor:     [...Array(p1SecLen).fill('transparent'), ...p2Sc],
+                pointRadius:          [...Array(p1SecLen).fill(0), ...p2Sr],
+                pointHoverRadius:     [...Array(p1SecLen).fill(0), ...p2Sr.map(r=>r+2)],
+                pointBorderWidth:     [...Array(p1SecLen).fill(0), ...sec.points.map(v=>v>sec.ucl?3:2)]
               }
             ]
           },
           options: {
-            ...CHART_DEFAULTS, animation: { duration: 450 },
+            ...CHART_DEFAULTS, animation: { duration: 400 },
             plugins: {
               ...CHART_DEFAULTS.plugins,
               legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#344054' } },
@@ -922,56 +1075,54 @@
           }
         });
       }
+      document.getElementById('sec-chart-wrap').style.display = '';
     } else {
       if (secChartInst) { secChartInst.destroy(); secChartInst = null; }
+      document.getElementById('sec-chart-wrap').style.display = 'none';
     }
 
-    // ── OOC banner ──────────────────────────────────────────────
-    if (main.points.length > 0 && outOfControl.includes(main.points.length - 1) && sessionLog.length > 0) {
-      sessionLog[0].isOoc = true;
+    // ── OOC + Status + Violations ───────────────────────────────
+    if (main.points.length > 0 && outOfControl.includes(main.points.length - 1)) {
+      if (sessionLog.length > 0) sessionLog[0].isOoc = true;
       renderLog();
       document.getElementById('ooc-banner').style.display = '';
     }
 
-    // ── Estadísticas ────────────────────────────────────────────
-    document.getElementById('stat-total').textContent = sessionSubgroups.length;
+    updateStats();
     const statusEl = document.getElementById('stat-status');
     if (!main.points.length) {
-      statusEl.textContent = 'Esperando datos F2...';
-      statusEl.style.color  = 'var(--text-muted)';
+      statusEl.textContent = 'Esperando datos...'; statusEl.style.color = 'var(--text-muted)';
+      setStatusBar('idle', 'Límites listos', 'Ingresa el primer subgrupo');
     } else if (outOfControl.length > 0) {
-      statusEl.textContent = `${outOfControl.length} señal${outOfControl.length > 1 ? 'es' : ''}`;
-      statusEl.style.color  = 'var(--danger)';
+      statusEl.textContent = `${outOfControl.length} señal${outOfControl.length>1?'es':''}`;
+      statusEl.style.color = 'var(--danger)';
+      setStatusBar('ooc', 'Proceso fuera de control', `${outOfControl.length} señal(es) detectada(s)`);
     } else {
-      statusEl.textContent = 'Bajo control';
-      statusEl.style.color  = 'var(--success)';
+      statusEl.textContent = 'Bajo control'; statusEl.style.color = 'var(--success)';
+      setStatusBar('stable', 'Proceso estable', `${main.points.length} subgrupos — Sin señales`);
     }
+    document.getElementById('status-pts').textContent = `${p1Len ? `F1: ${p1Len} •` : ''} F2: ${main.points.length}`;
 
-    // ── Violaciones ─────────────────────────────────────────────
     const body  = document.getElementById('violations-body');
     const badge = document.getElementById('violations-count');
     if (!main.points.length) {
       badge.style.display = 'none';
       body.innerHTML = `<div class="empty-state" style="padding:20px">
-        <div class="empty-title" style="color:var(--primary)">Fase 1 cargada como referencia</div>
-        <div class="empty-sub">Ingresa el primer subgrupo de monitoreo para comenzar.</div>
+        <div class="empty-title" style="color:var(--primary)">${isAcademic ? 'Fase 1 visible como referencia' : 'Límites Fase 1 activos'}</div>
+        <div class="empty-sub">Ingresa el primer subgrupo para comenzar el monitoreo.</div>
       </div>`;
-    } else if (!violations.length) {
+    } else if (!outOfControl.length) {
       badge.style.display = 'none';
       body.innerHTML = `<div class="empty-state" style="padding:20px">
         <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
         <div class="empty-sub">No se detectaron señales de causas especiales.</div>
       </div>`;
     } else {
-      badge.style.display = 'inline-flex';
-      badge.textContent   = violations.length;
-      body.innerHTML = `<ul class="violations-list">${violations.map(v => `
+      badge.style.display = 'inline-flex'; badge.textContent = outOfControl.length;
+      body.innerHTML = `<ul class="violations-list">${outOfControl.map(idx => `
         <li>
-          <span class="rule-chip">${v.rule}</span>
-          <div>
-            <strong>Observación #${v.index + 1}</strong><br>
-            <span style="font-size:12px;color:var(--text-sec)">${escHtml(v.description)}</span>
-          </div>
+          <span class="rule-chip" style="background:#fee2e2;color:#b91c1c">OOC</span>
+          <div>Subgrupo de monitoreo #${idx + 1} fuera de límites</div>
         </li>`).join('')}</ul>`;
     }
   }

@@ -534,6 +534,119 @@ function buildSpecAnnotations(usl, lsl, nominal, xbar) {
   return anns;
 }
 
+/* ── Carta de atributos (p, np, c, u) con límites adaptativos ──────────
+   Soporta pointLimits (límites por punto para n variable).
+   specLines: [{ value, label, color }]                                    */
+function renderAttributeChart(canvasId, chartKey, chartSeries, outOfControl = [], labels = [], specLines = []) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+  const existing = Chart.getChart(ctx);
+  if (existing) existing.destroy();
+
+  const { points, cl, ucl, lcl, pointLimits, variableN } = chartSeries;
+  const n = points.length;
+  const axisLabels = labels.length ? labels : points.map((_, i) => `${i + 1}`);
+
+  const ptColors  = points.map((_, i) => outOfControl.includes(i) ? COLORS.outCtrl : COLORS.point);
+  const ptBg      = points.map((_, i) => outOfControl.includes(i) ? '#fecaca' : '#eff6ff');
+  const ptRadii   = points.map((_, i) => outOfControl.includes(i) ? 8 : 4);
+  const ptBorderW = points.map((_, i) => outOfControl.includes(i) ? 3 : 2);
+
+  const chartLabelMap = {
+    p:  'Proporción (p)', np: 'Núm. defectuosos (np)',
+    c:  'Defectos (c)',   u:  'Defectos/unidad (u)'
+  };
+
+  const datasets = [];
+
+  if (variableN && pointLimits) {
+    // Límites variables: dibujar como líneas punto a punto
+    datasets.push({
+      label: 'LCS', type: 'line',
+      data: pointLimits.map(pl => pl.ucl),
+      borderColor: COLORS.ucl, borderWidth: 2.5, pointRadius: 0, fill: false,
+      borderDash: []
+    });
+    datasets.push({
+      label: 'LC', type: 'line',
+      data: Array(n).fill(cl),
+      borderColor: COLORS.cl, borderWidth: 1.5, pointRadius: 0, fill: false,
+      borderDash: [8, 4]
+    });
+    datasets.push({
+      label: 'LCI', type: 'line',
+      data: pointLimits.map(pl => pl.lcl),
+      borderColor: COLORS.lcl, borderWidth: 2.5, pointRadius: 0, fill: false,
+      borderDash: []
+    });
+  } else {
+    datasets.push(limitLine(points, ucl, COLORS.ucl, 'LCS', [], 2.5));
+    datasets.push(limitLine(points, cl,  COLORS.cl,  'LC',  [8, 4], 1.5));
+    if (lcl > 0) datasets.push(limitLine(points, lcl, COLORS.lcl, 'LCI', [], 2.5));
+  }
+
+  // Serie de datos principal
+  datasets.push({
+    label: chartLabelMap[chartKey] || chartKey,
+    data:  points,
+    borderColor: COLORS.navy,
+    borderWidth: 2,
+    backgroundColor:      ptBg,
+    pointBackgroundColor: ptBg,
+    pointBorderColor:     ptColors,
+    pointRadius:          ptRadii,
+    pointHoverRadius:     ptRadii.map(r => r + 2),
+    pointBorderWidth:     ptBorderW,
+    fill: false
+  });
+
+  // Líneas de especificación (opcionales)
+  const annotations = variableN ? {} : buildControlZones(cl, ucl);
+  specLines.forEach((sl, i) => {
+    annotations[`spec_${i}`] = {
+      type: 'line', scaleID: 'y', value: sl.value,
+      borderColor: sl.color || COLORS.green, borderWidth: 2, borderDash: [6, 4],
+      label: {
+        content: sl.label, display: true, position: 'end',
+        backgroundColor: sl.color || COLORS.green, color: '#fff',
+        font: { size: 10, weight: 'bold' }, padding: { x: 5, y: 2 }, borderRadius: 3
+      }
+    };
+  });
+
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels: axisLabels, datasets },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        legend: {
+          display: true, position: 'top',
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#344054' }
+        },
+        tooltip: {
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks: {
+            label: ctx => ctx.raw != null ? `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(4)}` : null,
+            afterBody: items => {
+              const idx = items[0]?.dataIndex;
+              const extra = [];
+              if (idx != null && outOfControl.includes(idx)) extra.push('⚠ Fuera de control estadístico');
+              if (variableN && pointLimits?.[idx]) {
+                extra.push(`LCS: ${pointLimits[idx].ucl.toFixed(4)}  LCI: ${pointLimits[idx].lcl.toFixed(4)}`);
+                extra.push(`n = ${pointLimits[idx].n}`);
+              }
+              return extra;
+            }
+          }
+        },
+        annotation: { annotations }
+      }
+    }
+  });
+}
+
 /* ── Mini sparkline para el dashboard ───────────────────── */
 function renderMiniSparkline(canvasId, values) {
   const ctx = document.getElementById(canvasId);

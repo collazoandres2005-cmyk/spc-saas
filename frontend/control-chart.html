@@ -8,42 +8,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
-    /* ── Paneles de entrada de datos ────────────────────────── */
-    .data-hdr {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px; cursor: pointer; user-select: none;
-      background: #eff6ff; border-radius: var(--radius);
-    }
-    .data-hdr.open {
-      border-radius: var(--radius) var(--radius) 0 0;
-      border-bottom: 1px solid #bfdbfe;
-    }
-    .data-hdr-left { display: flex; align-items: center; gap: 10px; }
-    .data-title { font-size: 14px; font-weight: 700; color: #1e40af; }
-    .data-count-pill {
-      padding: 2px 10px; border-radius: 99px;
-      font-size: 11px; font-weight: 600;
-      background: #dbeafe; color: #1d4ed8;
-    }
-    .data-arrow { color: #60a5fa; font-size: 12px; transition: transform .2s; }
-    .data-body { padding: 18px 20px; }
-    .input-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 800px) { .input-panel { grid-template-columns: 1fr; } }
-    .panel-sub { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
-    .lbl-req  { color: var(--danger); font-size: 11px; font-weight: 700; }
-
-    /* ── Carta ─────────────────────────────────────────────── */
     .chart-panel    { height: 280px; }
     .chart-panel-sm { height: 180px; }
     .sim-panel {
       margin-top: 12px; padding: 10px 14px;
-      background: #eff6ff; border: 1px solid #bfdbfe;
-      border-radius: var(--radius);
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius);
     }
     .sim-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700;
       background: #fef3c7; color: #92400e; white-space: nowrap;
+    }
+    .var-n-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700;
+      background: #f0fdf4; color: #15803d;
     }
     .limits-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
@@ -66,7 +45,20 @@
     .lc  { color: #2563eb; }
     .lci { color: #dc2626; }
 
-    /* ── Tabla de datos crudos ─────────────────────────────── */
+    /* severity badges */
+    .sev-critical { background:#fee2e2; color:#b91c1c; }
+    .sev-warning  { background:#fef3c7; color:#92400e; }
+    .rule-chip { padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700; white-space:nowrap; margin-right:6px; }
+
+    /* rules panel */
+    .rules-panel {
+      margin-top: 10px; padding: 10px 14px;
+      background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .rules-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .rule-check { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+    /* raw data table */
     .raw-toggle {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 20px; cursor: pointer; user-select: none;
@@ -79,8 +71,7 @@
     .raw-toggle.open .raw-arrow { transform: rotate(180deg); }
     .raw-table-wrap {
       border: 1px solid var(--border); border-top: none;
-      border-radius: 0 0 var(--radius) var(--radius);
-      overflow-x: auto;
+      border-radius: 0 0 var(--radius) var(--radius); overflow-x: auto;
     }
     .raw-table-wrap table td { font-size: 12px; }
     .raw-vals { color: var(--text-sec); max-width: 320px; word-break: break-word; }
@@ -103,37 +94,44 @@
 
     <div class="page-content">
 
-      <!-- ── Selector ───────────────────────────────────────── -->
+      <!-- ── Selector ─────────────────────────────────────────── -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-body" style="padding:14px 20px">
           <div class="flex-center" style="gap:14px;flex-wrap:wrap">
             <div class="flex-center" style="gap:8px">
               <label style="margin:0;white-space:nowrap">Proceso:</label>
-              <select id="process-select" onchange="onSelectionChange()" style="min-width:220px">
+              <select id="process-select" onchange="onProcessChange()" style="min-width:220px">
                 <option value="">— Selecciona —</option>
               </select>
             </div>
             <div class="flex-center" style="gap:8px">
               <label style="margin:0;white-space:nowrap">Tipo de carta:</label>
-              <select id="chart-type" onchange="onSelectionChange()">
-                <option value="xbar_r" selected>X̄-R (Media y Rango)</option>
-                <option value="xbar_s">X̄-S (Media y Desv. Estándar)</option>
+              <select id="chart-type" onchange="onChartTypeChange()">
+                <optgroup label="Variables (continuas)">
+                  <option value="xbar_r">X̄-R (Media y Rango)</option>
+                  <option value="xbar_s">X̄-S (Media y Desv. Estándar)</option>
+                </optgroup>
+                <optgroup label="Atributos (discretas)">
+                  <option value="p">p — Proporción de no conformes</option>
+                  <option value="np">np — Número de no conformes (n fijo)</option>
+                  <option value="c">c — Número de defectos (área constante)</option>
+                  <option value="u">u — Defectos por unidad (n variable)</option>
+                </optgroup>
               </select>
             </div>
             <button class="btn btn-primary" onclick="loadChart()">Calcular</button>
           </div>
 
-          <!-- Simulación de subgrupos -->
-          <div id="simulate-panel" class="sim-panel">
+          <!-- Panel simulación (solo X̄ charts) -->
+          <div id="simulate-panel" class="sim-panel" style="display:none">
             <div class="flex-center" style="gap:16px;flex-wrap:wrap">
-              <label class="flex-center"
-                     style="gap:7px;cursor:pointer;margin:0;font-weight:600;font-size:13px;color:#1d4ed8">
+              <label class="flex-center" style="gap:7px;cursor:pointer;margin:0;font-weight:600;font-size:13px;color:#1d4ed8">
                 <input type="checkbox" id="simulate-toggle" onchange="onSimulateToggle()">
                 Simular subgrupos automáticamente
               </label>
               <div id="simulate-controls" class="flex-center hidden" style="gap:10px">
                 <label style="margin:0;font-size:13px;color:var(--text-sec)">Tamaño n:</label>
-                <select id="simulate-n" onchange="onSimulateNChange()" style="width:72px">
+                <select id="simulate-n" onchange="loadChart()" style="width:72px">
                   <option value="2">2</option><option value="3">3</option>
                   <option value="4">4</option><option value="5" selected>5</option>
                   <option value="6">6</option><option value="7">7</option>
@@ -147,57 +145,80 @@
               Agrupa mediciones en orden secuencial: obs. 1–n → SG 1, obs. n+1–2n → SG 2, etc.
             </div>
           </div>
+
+          <!-- Panel de reglas activas -->
+          <div class="rules-panel">
+            <div class="rules-row">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.4px">Reglas activas:</span>
+              <label class="rule-check">
+                <input type="checkbox" id="rule-ooc" checked onchange="loadChart()">
+                Puntos fuera de control
+              </label>
+              <label class="rule-check">
+                <input type="checkbox" id="rule-trend" checked onchange="loadChart()">
+                Tendencia (6 pts.)
+              </label>
+              <label class="rule-check">
+                <input type="checkbox" id="rule-shift" checked onchange="loadChart()">
+                Corrimiento (8 pts.)
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
       <div id="msg"></div>
 
-      <!-- ── Resultados de la carta ───────────────────────────── -->
+      <!-- ── Resultados ─────────────────────────────────────────── -->
       <div id="chart-area" class="hidden">
 
         <div class="card" style="margin-bottom:20px">
           <div class="card-header">
             <div class="card-title" id="chart-type-label">Carta X̄-R — Límites de control</div>
-            <span id="simulated-badge" class="sim-badge" style="display:none">Subgrupos simulados</span>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span id="simulated-badge" class="sim-badge" style="display:none">Subgrupos simulados</span>
+              <span id="var-n-badge"     class="var-n-badge" style="display:none">Límites adaptativos (n variable)</span>
+            </div>
           </div>
           <div class="card-body">
             <div class="limits-grid" id="limits-main">
               <div class="limit-box"><div class="val lcs" id="lim-ucl">—</div><div class="lbl">LCS (Límite Superior)</div></div>
-              <div class="limit-box"><div class="val lc"  id="lim-cl">—</div><div class="lbl">LC (Línea Central)</div></div>
+              <div class="limit-box"><div class="val lc"  id="lim-cl" >—</div><div class="lbl">LC (Línea Central)</div></div>
               <div class="limit-box"><div class="val lci" id="lim-lcl">—</div><div class="lbl">LCI (Límite Inferior)</div></div>
             </div>
             <div class="limits-grid" id="limits-sec" style="display:none">
-              <div class="limit-box"><div class="val lcs" id="lim2-ucl">—</div><div class="lbl">LCS (2do gráfico)</div></div>
-              <div class="limit-box"><div class="val lc"  id="lim2-cl">—</div><div class="lbl">LC (2do gráfico)</div></div>
-              <div class="limit-box"><div class="val lci" id="lim2-lcl">—</div><div class="lbl">LCI (2do gráfico)</div></div>
+              <div class="limit-box"><div class="val lcs" id="lim2-ucl">—</div><div class="lbl">LCS (Carta secundaria)</div></div>
+              <div class="limit-box"><div class="val lc"  id="lim2-cl" >—</div><div class="lbl">LC (Carta secundaria)</div></div>
+              <div class="limit-box"><div class="val lci" id="lim2-lcl">—</div><div class="lbl">LCI (Carta secundaria)</div></div>
             </div>
           </div>
         </div>
 
         <div class="chart-wrap">
-          <div class="chart-title" id="main-chart-title">Gráfico de Medias (X̄)</div>
+          <div class="chart-title" id="main-chart-title">Gráfico principal</div>
           <div class="chart-panel"><canvas id="main-chart"></canvas></div>
         </div>
 
-        <div class="chart-wrap">
-          <div class="chart-title" id="sec-chart-title">Gráfico de Rangos (R)</div>
+        <div id="sec-chart-wrap" class="chart-wrap">
+          <div class="chart-title" id="sec-chart-title">Gráfico secundario</div>
           <div class="chart-panel-sm"><canvas id="sec-chart"></canvas></div>
         </div>
 
-        <div class="card">
+        <!-- Señales SPC -->
+        <div class="card" style="margin-top:20px">
           <div class="card-header">
-            <div class="card-title">Señales de causas especiales</div>
+            <div class="card-title">Señales de causas especiales detectadas</div>
             <span class="badge badge-danger" id="violations-count" style="display:none">0</span>
           </div>
           <div class="card-body" id="violations-body">
             <div class="empty-state" style="padding:30px">
-              <div class="empty-title">Sin señales detectadas</div>
-              <div class="empty-sub">El proceso se encuentra bajo control estadístico.</div>
+              <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
+              <div class="empty-sub">No se detectaron señales con las reglas activas.</div>
             </div>
           </div>
         </div>
 
-        <!-- ── Tabla de datos crudos ───────────────────────────── -->
+        <!-- Tabla de datos Fase 1 -->
         <div id="raw-data-panel" style="display:none">
           <div class="raw-toggle" id="raw-toggle" onclick="toggleRawData()">
             <span>
@@ -208,15 +229,8 @@
           </div>
           <div class="raw-table-wrap hidden" id="raw-table-wrap">
             <table>
-              <thead>
-                <tr>
-                  <th style="width:80px">Subgrupo</th>
-                  <th>Mediciones</th>
-                  <th style="width:90px">X̄</th>
-                  <th style="width:90px" id="raw-th-disp">R</th>
-                </tr>
-              </thead>
-              <tbody id="raw-tbody"></tbody>
+              <thead id="raw-thead"></thead>
+              <tbody  id="raw-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -230,11 +244,14 @@
 <script src="/js/api.js"></script>
 <script src="/js/charts.js"></script>
 <script>
-  if (!requireLogin()) { /* redirected */ }
+  if (!requireLogin()) {}
   initSidebar('control-chart');
   initTopBar('Cartas de Control');
 
-  // ── Inicialización ─────────────────────────────────────────
+  const ATTR_TYPES = ['p', 'np', 'c', 'u'];
+  const XBAR_TYPES = ['xbar_r', 'xbar_s'];
+
+  // ── Init ──────────────────────────────────────────────────────
   async function init() {
     try {
       const processes = await processesApi.list();
@@ -242,27 +259,31 @@
       processes.forEach(p =>
         sel.appendChild(new Option(`${p.name}${p.unit ? ` (${p.unit})` : ''}`, p.id))
       );
-      const urlPid  = new URLSearchParams(location.search).get('process_id');
-      const urlType = new URLSearchParams(location.search).get('type');
+      const params  = new URLSearchParams(location.search);
+      const urlPid  = params.get('process_id');
+      const urlType = params.get('type');
       if (urlPid) {
         sel.value = urlPid;
-        if (urlType) {
-          document.getElementById('chart-type').value = urlType;
-          if (urlType === 'xbar_r' || urlType === 'xbar_s')
-            document.getElementById('simulate-panel').classList.remove('hidden');
-        }
-        onSelectionChange();
+        if (urlType) document.getElementById('chart-type').value = urlType;
+        onChartTypeChange();
+        loadChart();
       }
     } catch (err) {
       showAlert(document.getElementById('msg'), err.message, 'error');
     }
   }
 
-  // ── Cambio de selector ─────────────────────────────────────
-  function onSelectionChange() {
-    const pid  = document.getElementById('process-select').value;
-    const type = document.getElementById('chart-type').value;
+  function onProcessChange() {
+    const pid = document.getElementById('process-select').value;
+    if (pid) loadChart();
+  }
 
+  function onChartTypeChange() {
+    const type    = document.getElementById('chart-type').value;
+    const isXbar  = XBAR_TYPES.includes(type);
+    document.getElementById('simulate-panel').style.display = isXbar ? '' : 'none';
+    if (!isXbar) document.getElementById('simulate-toggle').checked = false;
+    const pid = document.getElementById('process-select').value;
     if (pid) loadChart();
   }
 
@@ -272,8 +293,6 @@
     loadChart();
   }
 
-  function onSimulateNChange() { loadChart(); }
-
   // ── Calcular carta ─────────────────────────────────────────
   async function loadChart() {
     const pid  = document.getElementById('process-select').value;
@@ -282,48 +301,66 @@
     if (!pid) return;
     msg.innerHTML = '';
 
-    const simEnabled = document.getElementById('simulate-toggle')?.checked;
-    const simN = simEnabled ? parseInt(document.getElementById('simulate-n').value) : null;
+    const simEnabled = document.getElementById('simulate-toggle').checked;
+    const simN       = simEnabled ? parseInt(document.getElementById('simulate-n').value) : null;
+    const ruleOoc    = document.getElementById('rule-ooc').checked   ? '1' : '0';
+    const ruleTrend  = document.getElementById('rule-trend').checked ? '1' : '0';
+    const ruleShift  = document.getElementById('rule-shift').checked ? '1' : '0';
 
     try {
-      const result = await analysisApi.controlChart(pid, type, simN);
+      const result = await analysisApi.controlChart(pid, type, simN, { rule_ooc: ruleOoc, rule_trend: ruleTrend, rule_shift: ruleShift });
       renderChart(result);
       loadRawData(pid, type);
       document.getElementById('process-crumb').textContent = `· ${result.process.name}`;
       document.getElementById('chart-area').classList.remove('hidden');
     } catch (err) {
       let errMsg = err.message;
-      if (!simEnabled && err.message.toLowerCase().includes('subgrupo'))
-        errMsg += ' — Activa "Simular subgrupos" para agrupar los datos.';
+      if (!simEnabled && XBAR_TYPES.includes(type) && err.message.toLowerCase().includes('subgrupo'))
+        errMsg += ' — Activa "Simular subgrupos" para agrupar los datos automáticamente.';
       showAlert(msg, errMsg, 'error');
       document.getElementById('chart-area').classList.add('hidden');
     }
   }
 
+  // ── Renderizado ────────────────────────────────────────────
   function renderChart(result) {
-    const { chartData, violations, outOfControl, type, labels, simulated, simulate_n: simN } = result;
-    const mainKey = 'xbar';
-    const secKey  = type === 'xbar_r' ? 'r' : 's';
-    const main    = chartData[mainKey];
-    const sec     = chartData[secKey];
+    const { chartData, violations, outOfControl, type, labels, simulated, simulate_n: simN, variableN } = result;
 
+    // Simulated badge
     const badge = document.getElementById('simulated-badge');
     badge.style.display = simulated ? 'inline-flex' : 'none';
     if (simulated && simN) {
       badge.textContent = `Subgrupos simulados — n = ${simN}`;
-      document.getElementById('simulate-info').textContent =
-        `${main.points.length} subgrupos × ${simN} obs.`;
+      const mainLen = (chartData.xbar || chartData.xbar_r)?.points?.length;
+      if (mainLen) document.getElementById('simulate-info').textContent = `${mainLen} subgrupos × ${simN} obs.`;
     }
 
-    const typeLabels = {
-      xbar_r: ['Gráfico de Medias (X̄)', 'Gráfico de Rangos (R)',            'Carta X̄-R'],
-      xbar_s: ['Gráfico de Medias (X̄)', 'Gráfico de Desv. Estándar (S)',    'Carta X̄-S']
-    };
-    const [mainTitle, secTitle, cardTitle] = typeLabels[type] || typeLabels.xbar_r;
-    document.getElementById('main-chart-title').textContent = mainTitle;
-    document.getElementById('sec-chart-title').textContent  = secTitle;
-    document.getElementById('chart-type-label').textContent = `${cardTitle} — Límites de control`;
+    // Variable n badge
+    const vnBadge = document.getElementById('var-n-badge');
+    vnBadge.style.display = variableN ? 'inline-flex' : 'none';
 
+    const typeLabels = {
+      xbar_r: { card: 'Carta X̄-R',   main: 'Gráfico de Medias (X̄)', sec: 'Rangos (R)' },
+      xbar_s: { card: 'Carta X̄-S',   main: 'Gráfico de Medias (X̄)', sec: 'Desv. Estándar (S)' },
+      p:      { card: 'Carta p',       main: 'Proporción de no conformes (p)', sec: null },
+      np:     { card: 'Carta np',      main: 'Número de no conformes (np)', sec: null },
+      c:      { card: 'Carta c',       main: 'Número de defectos (c)', sec: null },
+      u:      { card: 'Carta u',       main: 'Defectos por unidad (u)', sec: null }
+    };
+    const tl = typeLabels[type] || typeLabels.xbar_r;
+    document.getElementById('chart-type-label').textContent = `${tl.card} — Límites de control`;
+    document.getElementById('main-chart-title').textContent = tl.main;
+    document.getElementById('sec-chart-title').textContent  = tl.sec || '';
+    document.getElementById('sec-chart-wrap').style.display = tl.sec ? '' : 'none';
+
+    // Determine main key
+    const mainKeyMap = { xbar_r: 'xbar', xbar_s: 'xbar', p: 'p', np: 'np', c: 'c', u: 'u' };
+    const mainKey    = mainKeyMap[type];
+    const main       = chartData[mainKey];
+    const secKey     = type === 'xbar_r' ? 'r' : type === 'xbar_s' ? 's' : null;
+    const sec        = secKey ? chartData[secKey] : null;
+
+    // Limit chips
     document.getElementById('lim-ucl').textContent = formatNum(main.ucl, 4);
     document.getElementById('lim-cl').textContent  = formatNum(main.cl,  4);
     document.getElementById('lim-lcl').textContent = formatNum(main.lcl, 4);
@@ -337,8 +374,14 @@
       document.getElementById('limits-sec').style.display = 'none';
     }
 
-    renderControlChart('main-chart', chartData, outOfControl, labels);
-    renderSecondaryChart('sec-chart', chartData, labels);
+    // Charts
+    if (ATTR_TYPES.includes(type)) {
+      renderAttributeChart('main-chart', mainKey, main, outOfControl, labels);
+    } else {
+      renderControlChart('main-chart', chartData, outOfControl, labels);
+      if (sec) renderSecondaryChart('sec-chart', chartData, labels);
+    }
+
     renderViolations(violations);
   }
 
@@ -350,79 +393,94 @@
       body.innerHTML = `
         <div class="empty-state" style="padding:30px">
           <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
-          <div class="empty-sub">No se detectaron señales de causas especiales.</div>
+          <div class="empty-sub">No se detectaron señales con las reglas activas.</div>
         </div>`;
       return;
     }
     badge.style.display = 'inline-flex';
     badge.textContent   = violations.length;
+    const sevMap = { critical: 'sev-critical', warning: 'sev-warning' };
+    const sevLbl = { critical: 'Crítico', warning: 'Advertencia' };
     body.innerHTML = `<ul class="violations-list">${violations.map(v => `
       <li>
-        <span class="rule-chip">${v.rule}</span>
+        <span class="rule-chip ${sevMap[v.severity] || ''}">${sevLbl[v.severity] || v.rule}</span>
         <div>
-          <strong>Observación #${v.index + 1}</strong><br>
-          <span style="font-size:12px;color:var(--text-sec)">${escHtml(v.description)}</span>
+          <strong>Obs. #${v.index + 1}</strong> — ${escHtml(v.description)}
         </div>
       </li>`).join('')}</ul>`;
   }
 
-  // ── Tabla de datos crudos ──────────────────────────────────
+  // ── Tabla de datos ─────────────────────────────────────────
   let rawOpen = false;
-
   function toggleRawData() {
     rawOpen = !rawOpen;
     document.getElementById('raw-toggle').classList.toggle('open', rawOpen);
     document.getElementById('raw-table-wrap').classList.toggle('hidden', !rawOpen);
-    document.getElementById('raw-arrow').style.transform = rawOpen ? 'rotate(180deg)' : '';
   }
 
   async function loadRawData(pid, type) {
     const panel = document.getElementById('raw-data-panel');
     panel.style.display = 'none';
-
     try {
       const { data } = await measurementsApi.list(pid, 9999, 0, 1);
-      if (!data || !data.length) return;
-
-      // API returns DESC; reverse to get chronological order
+      if (!data?.length) return;
       const sorted = data.slice().reverse();
-
-      // Group by subgroup_id (preserve insertion order)
       const groupMap = new Map();
       sorted.forEach(m => {
         const key = m.subgroup_id ?? '—';
         if (!groupMap.has(key)) groupMap.set(key, []);
-        groupMap.get(key).push(m.value);
+        groupMap.get(key).push(m);
       });
 
-      const isS = type === 'xbar_s';
-      document.getElementById('raw-th-disp').textContent = isS ? 'S' : 'R';
+      const isAttr = ATTR_TYPES.includes(type);
+      const isS    = type === 'xbar_s';
 
-      let sgNum = 1;
-      let rows = '';
-      groupMap.forEach((vals, sgId) => {
-        const n    = vals.length;
-        const mean = vals.reduce((a, b) => a + b, 0) / n;
-        const disp = isS
-          ? Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(n - 1, 1))
-          : Math.max(...vals) - Math.min(...vals);
-        rows += `<tr>
-          <td style="text-align:center;font-weight:700">${sgNum++}</td>
-          <td class="raw-vals">${vals.map(v => formatNum(v, 3)).join(', ')}</td>
-          <td style="text-align:center"><strong>${formatNum(mean, 4)}</strong></td>
-          <td style="text-align:center">${formatNum(disp, 4)}</td>
-        </tr>`;
-      });
+      let thead = '', rows = '', sgNum = 1;
+      if (isAttr) {
+        const colMap = {
+          p:  '<th>Defectuosos</th><th>n</th><th>Proporción p</th>',
+          np: '<th>Defectuosos</th><th>n</th>',
+          c:  '<th>Defectos</th>',
+          u:  '<th>Defectos</th><th>n</th><th>u (def/unidad)</th>'
+        };
+        thead = `<tr><th>Subgrupo</th>${colMap[type] || '<th>Valor</th>'}</tr>`;
+        groupMap.forEach((meas, sgId) => {
+          const val  = meas.reduce((s, m) => s + parseFloat(m.value), 0);
+          const n    = meas.reduce((s, m) => s + (m.sample_size ? parseFloat(m.sample_size) : 1), 0);
+          if (type === 'p') {
+            rows += `<tr><td>${sgNum++}</td><td>${val}</td><td>${n}</td><td>${(val/n).toFixed(4)}</td></tr>`;
+          } else if (type === 'np') {
+            rows += `<tr><td>${sgNum++}</td><td>${val}</td><td>${n}</td></tr>`;
+          } else if (type === 'c') {
+            rows += `<tr><td>${sgNum++}</td><td>${val}</td></tr>`;
+          } else if (type === 'u') {
+            rows += `<tr><td>${sgNum++}</td><td>${val}</td><td>${n}</td><td>${(val/n).toFixed(4)}</td></tr>`;
+          }
+        });
+      } else {
+        thead = `<tr><th>Subgrupo</th><th>Mediciones</th><th>X̄</th><th>${isS ? 'S' : 'R'}</th></tr>`;
+        groupMap.forEach((meas, sgId) => {
+          const vals = meas.map(m => parseFloat(m.value));
+          const m    = vals.reduce((a, b) => a + b, 0) / vals.length;
+          const disp = isS
+            ? Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(vals.length - 1, 1))
+            : Math.max(...vals) - Math.min(...vals);
+          rows += `<tr>
+            <td style="text-align:center;font-weight:700">${sgNum++}</td>
+            <td style="font-size:12px;color:var(--text-sec)">${vals.map(v => formatNum(v, 3)).join(', ')}</td>
+            <td style="text-align:center"><strong>${formatNum(m, 4)}</strong></td>
+            <td style="text-align:center">${formatNum(disp, 4)}</td>
+          </tr>`;
+        });
+      }
 
-      document.getElementById('raw-tbody').innerHTML = rows;
+      document.getElementById('raw-thead').innerHTML = thead;
+      document.getElementById('raw-tbody').innerHTML  = rows;
       document.getElementById('raw-count').textContent = sorted.length;
       panel.style.display = 'block';
-
-      // Reset collapsed state on each new load
       rawOpen = false;
       document.getElementById('raw-toggle').classList.remove('open');
       document.getElementById('raw-table-wrap').classList.add('hidden');
-      document.getElementById('raw-arrow').style.transform = '';
     } catch (err) {
       console.warn('loadRawData:', err.message);
     }

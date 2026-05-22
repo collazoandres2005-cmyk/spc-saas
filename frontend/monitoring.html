@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     /* ── Modo toggle ─────────────────────────────────────────── */
     .mode-pills {
@@ -126,6 +127,44 @@
     .log-sg   { font-size: 10px; color: var(--text-muted); }
     .log-time { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
     .log-ooc  { font-size: 10px; font-weight: 700; color: var(--danger); padding: 1px 6px; background: var(--danger-bg); border-radius: 99px; white-space: nowrap; }
+
+    /* ── Excel import ───────────────────────────────────────── */
+    .excel-btn-row { display: flex; gap: 6px; margin-top: 8px; }
+    .btn-excel { flex: 1; padding: 11px; font-size: 13px; font-weight: 700; }
+    .btn-help  { padding: 11px 14px; font-size: 14px; font-weight: 800; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card-alt); cursor: pointer; color: var(--text-muted); transition: background .12s, color .12s; }
+    .btn-help:hover { background: var(--primary); color: #fff; border-color: var(--primary-dk); }
+    .excel-progress { font-size: 12px; color: var(--primary); font-weight: 600; text-align: center; margin-top: 6px; padding: 4px; }
+
+    /* ── Modal overlay ───────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,.55); align-items: center; justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 14px; width: min(720px, 96vw);
+      max-height: 88vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.22);
+      display: flex; flex-direction: column;
+    }
+    .modal-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 1;
+    }
+    .modal-hdr-title { font-size: 17px; font-weight: 800; color: var(--text); }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 4px; }
+    .modal-body { padding: 22px 24px; }
+    .modal-section { margin-bottom: 26px; }
+    .modal-section:last-child { margin-bottom: 0; }
+    .modal-section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--primary); margin-bottom: 10px; border-bottom: 2px solid #e0e7ef; padding-bottom: 6px; }
+    .modal-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.6; }
+    .excel-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+    .excel-table th { background: #f1f5f9; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 6px 10px; text-align: left; border: 1px solid #e2e8f0; color: var(--text-muted); }
+    .excel-table td { padding: 5px 10px; border: 1px solid #e2e8f0; font-family: monospace; color: var(--text); background: #fff; }
+    .excel-table tr:nth-child(even) td { background: #f8fafc; }
+    .col-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1e40af; margin-right: 4px; }
+    .col-tag.opt { background: #dcfce7; color: #15803d; }
+    .tip-box { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-top: 10px; }
 
     /* ── Chart ───────────────────────────────────────────────── */
     .chart-main-h { height: 260px; }
@@ -253,6 +292,16 @@
                         onclick="undoLast()" disabled style="margin-top:8px;opacity:.5">
                   ↩ Deshacer último
                 </button>
+                <div class="excel-btn-row">
+                  <button class="btn btn-secondary btn-excel" id="btn-excel-import"
+                          onclick="triggerExcelUpload()" title="Importar múltiples subgrupos desde Excel">
+                    📊 Importar Excel
+                  </button>
+                  <button class="btn-help" onclick="showExcelHelp()" title="¿Cómo preparar el archivo Excel?">?</button>
+                </div>
+                <div id="excel-progress" class="excel-progress" style="display:none"></div>
+                <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv"
+                       style="display:none" onchange="handleExcelFile(this)">
               </div>
             </div>
 
@@ -336,6 +385,144 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Modal: guía de formato Excel ──────────────────────────── -->
+  <div class="modal-overlay" id="excel-help-modal" onclick="if(event.target===this)closeExcelHelp()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-hdr-title">📊 Cómo preparar tu archivo Excel</span>
+        <button class="modal-close" onclick="closeExcelHelp()">×</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="modal-desc">
+          El archivo debe ser <strong>.xlsx</strong>, <strong>.xls</strong> o <strong>.csv</strong>.
+          La <strong>primera fila</strong> debe contener los encabezados de columna
+          (puedes copiar exactamente los nombres que se muestran abajo).
+          Cada fila siguiente representa <strong>un subgrupo</strong>.
+          Las celdas vacías o con texto no numérico se ignoran.
+        </div>
+
+        <!-- X̄-R / X̄-S -->
+        <div class="modal-section">
+          <div class="modal-section-title">Cartas de Variables — X̄-R y X̄-S</div>
+          <div class="modal-desc">
+            Escribe los valores de cada observación del subgrupo en columnas separadas.
+            El número de columnas debe coincidir con el tamaño de subgrupo <em>n</em>.
+          </div>
+          <p style="font-size:12px;margin:0 0 6px;font-weight:600">Encabezados requeridos:</p>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">x1</span>
+            <span class="col-tag">x2</span>
+            <span class="col-tag">x3</span>
+            <span class="col-tag">x4</span>
+            <span class="col-tag">x5</span>
+            <span style="font-size:11px;color:var(--text-muted)">(tantas columnas como sea tu n)</span>
+          </div>
+          <table class="excel-table">
+            <thead><tr><th>x1</th><th>x2</th><th>x3</th><th>x4</th><th>x5</th></tr></thead>
+            <tbody>
+              <tr><td>10.23</td><td>10.47</td><td>10.31</td><td>10.55</td><td>10.42</td></tr>
+              <tr><td>10.18</td><td>10.62</td><td>10.29</td><td>10.38</td><td>10.51</td></tr>
+              <tr><td>10.35</td><td>10.40</td><td>10.22</td><td>10.60</td><td>10.48</td></tr>
+            </tbody>
+          </table>
+          <div class="tip-box">💡 Usa punto (.) o coma (,) como separador decimal — ambos son aceptados.</div>
+        </div>
+
+        <!-- p -->
+        <div class="modal-section">
+          <div class="modal-section-title">Carta p — Proporción de defectuosos</div>
+          <div class="modal-desc">
+            Cada fila es un subgrupo. Indica cuántas unidades fueron inspeccionadas
+            y cuántas resultaron defectuosas. El tamaño <em>n</em> puede variar fila a fila.
+          </div>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">defectuosos</span>
+            <span class="col-tag">n</span>
+          </div>
+          <table class="excel-table">
+            <thead><tr><th>defectuosos</th><th>n</th></tr></thead>
+            <tbody>
+              <tr><td>3</td><td>100</td></tr>
+              <tr><td>5</td><td>120</td></tr>
+              <tr><td>2</td><td>100</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- np -->
+        <div class="modal-section">
+          <div class="modal-section-title">Carta np — Número de defectuosos (n fijo)</div>
+          <div class="modal-desc">
+            El tamaño de muestra es fijo (definido en la configuración del proceso).
+            Solo necesitas indicar cuántas unidades resultaron defectuosas por subgrupo.
+          </div>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">defectuosos</span>
+          </div>
+          <table class="excel-table">
+            <thead><tr><th>defectuosos</th></tr></thead>
+            <tbody>
+              <tr><td>4</td></tr>
+              <tr><td>7</td></tr>
+              <tr><td>2</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- c -->
+        <div class="modal-section">
+          <div class="modal-section-title">Carta c — Número de defectos por unidad</div>
+          <div class="modal-desc">
+            Registra el conteo total de defectos encontrados en cada unidad o lote inspeccionado.
+          </div>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">defectos</span>
+          </div>
+          <table class="excel-table">
+            <thead><tr><th>defectos</th></tr></thead>
+            <tbody>
+              <tr><td>8</td></tr>
+              <tr><td>12</td></tr>
+              <tr><td>5</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- u -->
+        <div class="modal-section">
+          <div class="modal-section-title">Carta u — Defectos por unidad (n variable)</div>
+          <div class="modal-desc">
+            El número de unidades inspeccionadas puede variar.
+            Indica los defectos totales y el número de unidades del subgrupo.
+          </div>
+          <div style="margin-bottom:8px">
+            <span class="col-tag">defectos</span>
+            <span class="col-tag">n</span>
+          </div>
+          <table class="excel-table">
+            <thead><tr><th>defectos</th><th>n</th></tr></thead>
+            <tbody>
+              <tr><td>14</td><td>10</td></tr>
+              <tr><td>22</td><td>15</td></tr>
+              <tr><td>9</td><td>10</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary" onclick="downloadTemplate()" style="font-size:13px">
+            ⬇ Descargar plantilla para la carta actual
+          </button>
+          <button class="btn btn-primary" onclick="closeExcelHelp()" style="font-size:13px">
+            Entendido
+          </button>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -1125,6 +1312,194 @@
           <div>Subgrupo de monitoreo #${idx + 1} fuera de límites</div>
         </li>`).join('')}</ul>`;
     }
+  }
+
+  // ── Excel helpers ─────────────────────────────────────────────
+  function showExcelHelp()  { document.getElementById('excel-help-modal').classList.add('open'); }
+  function closeExcelHelp() { document.getElementById('excel-help-modal').classList.remove('open'); }
+
+  function triggerExcelUpload() {
+    if (!processId || !phase1Limits) {
+      showAlert(document.getElementById('entry-msg'), 'Inicia el monitoreo primero antes de importar datos.', 'error');
+      return;
+    }
+    document.getElementById('excel-file-input').click();
+  }
+
+  async function handleExcelFile(input) {
+    if (!input.files.length) return;
+    const file = input.files[0];
+    input.value = '';
+    try {
+      const buf  = await file.arrayBuffer();
+      const wb   = XLSX.read(buf, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const parsed = parseExcelRows(rows);
+      if (!parsed.length) {
+        showAlert(document.getElementById('entry-msg'),
+          'No se encontraron filas válidas. Revisa el formato usando el botón ?', 'error');
+        return;
+      }
+      if (!confirm(`Se encontraron ${parsed.length} subgrupos en el archivo.\n¿Importar todos?`)) return;
+      await bulkImportFromExcel(parsed);
+    } catch (err) {
+      showAlert(document.getElementById('entry-msg'), `Error leyendo el archivo: ${err.message}`, 'error');
+    }
+  }
+
+  function findCol(headers, names) {
+    for (const name of names) {
+      const idx = headers.indexOf(name);
+      if (idx !== -1) return idx;
+    }
+    return null;
+  }
+
+  function toNum(v) {
+    return parseFloat(String(v).replace(',', '.'));
+  }
+
+  function parseExcelRows(rows) {
+    if (!rows.length) return [];
+    const headers  = rows[0].map(h => String(h).toLowerCase().trim().replace(/\s+/g, '_'));
+    const dataRows = rows.slice(1).filter(r => r.some(c => c !== '' && c != null));
+    const parsed   = [];
+
+    if (XBAR_TYPES.includes(chartType)) {
+      for (const row of dataRows) {
+        const vals = row.map(toNum).filter(v => !isNaN(v));
+        if (vals.length >= 2) parsed.push(vals);
+      }
+    } else if (chartType === 'p') {
+      const defCol = findCol(headers, ['defectuosos', 'defectives', 'def', 'd']) ?? 0;
+      const nCol   = findCol(headers, ['n', 'tamaño', 'size', 'muestra', 'inspectados']) ?? 1;
+      for (const row of dataRows) {
+        const def = toNum(row[defCol]); const n = toNum(row[nCol]);
+        if (!isNaN(def) && !isNaN(n) && n > 0 && def >= 0) parsed.push({ defectives: def, n });
+      }
+    } else if (chartType === 'np') {
+      const defCol = findCol(headers, ['defectuosos', 'defectives', 'def', 'd', 'np']) ?? 0;
+      for (const row of dataRows) {
+        const def = toNum(row[defCol]);
+        if (!isNaN(def) && def >= 0) parsed.push({ defectives: def });
+      }
+    } else if (chartType === 'c') {
+      const cCol = findCol(headers, ['defectos', 'defects', 'count', 'c', 'conteo']) ?? 0;
+      for (const row of dataRows) {
+        const cnt = toNum(row[cCol]);
+        if (!isNaN(cnt) && cnt >= 0) parsed.push({ count: cnt });
+      }
+    } else if (chartType === 'u') {
+      const cCol = findCol(headers, ['defectos', 'defects', 'count', 'c', 'conteo']) ?? 0;
+      const nCol = findCol(headers, ['n', 'tamaño', 'size', 'unidades', 'units']) ?? 1;
+      for (const row of dataRows) {
+        const cnt = toNum(row[cCol]); const n = toNum(row[nCol]);
+        if (!isNaN(cnt) && !isNaN(n) && n > 0 && cnt >= 0) parsed.push({ count: cnt, n });
+      }
+    }
+    return parsed;
+  }
+
+  async function importSubgroup(sgData) {
+    let items, displayVal, pushData;
+    if (XBAR_TYPES.includes(chartType)) {
+      const vals = sgData;
+      const xbar = vals.reduce((a, b) => a + b, 0) / vals.length;
+      items      = vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId, phase: 2 }));
+      displayVal = `X̄=${xbar.toFixed(3)}`;
+      pushData   = vals;
+    } else if (chartType === 'p') {
+      const { defectives, n } = sgData;
+      items      = [{ process_id: processId, value: defectives, subgroup_id: nextSgId, phase: 2, sample_size: n }];
+      displayVal = `p=${(defectives / n).toFixed(4)} (${defectives}/${n})`;
+      pushData   = { defectives, n };
+    } else if (chartType === 'np') {
+      const { defectives } = sgData;
+      const n = phase1Limits?.main?.n || sgSize;
+      items      = [{ process_id: processId, value: defectives, subgroup_id: nextSgId, phase: 2, sample_size: n }];
+      displayVal = `np=${defectives}`;
+      pushData   = { defectives, n };
+    } else if (chartType === 'c') {
+      const { count } = sgData;
+      items      = [{ process_id: processId, value: count, subgroup_id: nextSgId, phase: 2 }];
+      displayVal = `c=${count}`;
+      pushData   = { count };
+    } else if (chartType === 'u') {
+      const { count, n } = sgData;
+      items      = [{ process_id: processId, value: count, subgroup_id: nextSgId, phase: 2, sample_size: n }];
+      displayVal = `u=${(count / n).toFixed(4)} (${count}/${n})`;
+      pushData   = { count, n };
+    }
+    const result = await measurementsApi.createBatch(items);
+    const ids    = (result.data || []).map(r => r.id);
+    undoStack.push({ ids, sgId: nextSgId });
+    sessionSubgroups.push(pushData);
+    addToLog(displayVal, nextSgId);
+    nextSgId++;
+    sessionCount++;
+  }
+
+  async function bulkImportFromExcel(parsedSubgroups) {
+    const btn      = document.getElementById('btn-excel-import');
+    const progEl   = document.getElementById('excel-progress');
+    const entryMsg = document.getElementById('entry-msg');
+    btn.disabled   = true;
+    progEl.style.display = '';
+    let imported = 0; const errors = [];
+
+    for (let i = 0; i < parsedSubgroups.length; i++) {
+      progEl.textContent = `Importando ${i + 1} de ${parsedSubgroups.length}...`;
+      try {
+        await importSubgroup(parsedSubgroups[i]);
+        imported++;
+      } catch (err) {
+        errors.push(`Fila ${i + 2}: ${err.message}`);
+        if (errors.length >= 5) break;
+      }
+    }
+
+    progEl.style.display = 'none';
+    btn.disabled = false;
+    setUndoEnabled(undoStack.length > 0);
+
+    document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
+    document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
+    updateStats();
+    renderLog();
+    refreshChart();
+
+    if (errors.length) {
+      showAlert(entryMsg, `Importados ${imported} subgrupos. Errores: ${errors.join(' | ')}`, 'error');
+    } else {
+      showAlert(entryMsg, `✓ ${imported} subgrupos importados correctamente.`, 'success');
+    }
+  }
+
+  function downloadTemplate() {
+    const wb = XLSX.utils.book_new();
+    let headers, example;
+    if (XBAR_TYPES.includes(chartType)) {
+      const n = sgSize;
+      headers = Array.from({ length: n }, (_, i) => `x${i + 1}`);
+      example = [
+        Array.from({ length: n }, () => (10 + Math.random()).toFixed(2)),
+        Array.from({ length: n }, () => (10 + Math.random()).toFixed(2)),
+        Array.from({ length: n }, () => (10 + Math.random()).toFixed(2)),
+      ];
+    } else if (chartType === 'p') {
+      headers = ['defectuosos', 'n']; example = [[3,100],[5,120],[2,100]];
+    } else if (chartType === 'np') {
+      headers = ['defectuosos'];      example = [[4],[7],[2]];
+    } else if (chartType === 'c') {
+      headers = ['defectos'];         example = [[8],[12],[5]];
+    } else {
+      headers = ['defectos', 'n'];    example = [[14,10],[22,15],[9,10]];
+    }
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...example]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+    const typeNames = { xbar_r:'XbarR', xbar_s:'XbarS', p:'p', np:'np', c:'c', u:'u' };
+    XLSX.writeFile(wb, `plantilla_spc_${typeNames[chartType] || chartType}.xlsx`);
   }
 
   init();

@@ -159,20 +159,6 @@
                 <option value="xbar_s">X̄-S (Subgrupos)</option>
               </select>
             </div>
-            <div class="flex-center" id="n-wrap" style="gap:8px">
-              <label style="margin:0;font-weight:600">n:</label>
-              <select id="n-select" style="width:62px" onchange="onNChange()">
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5" selected>5</option>
-                <option value="6">6</option>
-                <option value="7">7</option>
-                <option value="8">8</option>
-                <option value="9">9</option>
-                <option value="10">10</option>
-              </select>
-            </div>
             <button class="btn btn-primary" onclick="startMonitoring()">Iniciar monitoreo</button>
           </div>
         </div>
@@ -357,12 +343,6 @@
 
   function onChartTypeChange() { /* ambas cartas usan subgrupos */ }
 
-  function onNChange() {
-    sgSize = parseInt(document.getElementById('n-select').value);
-    document.getElementById('n-adj-val').textContent = `n=${sgSize}`;
-    if (document.getElementById('sg-form').style.display !== 'none') buildSgInputs();
-  }
-
   // ── Ajustador de n (recalcula límites Fase 1) ───────────────
   async function adjustN(delta) {
     if (adjustingN || !processId || !phase1Limits) return;
@@ -372,7 +352,6 @@
     adjustingN = true;
     sgSize     = newN;
     document.getElementById('n-adj-val').textContent    = `n=${newN}`;
-    document.getElementById('n-select').value           = newN;
     document.getElementById('btn-n-dec').disabled       = true;
     document.getElementById('btn-n-inc').disabled       = true;
     document.getElementById('entry-title').textContent  = `Subgrupo n = ${sgSize}`;
@@ -401,7 +380,6 @@
       showAlert(document.getElementById('msg'), `Error recalculando límites: ${err.message}`, 'error');
       sgSize -= delta;
       document.getElementById('n-adj-val').textContent = `n=${sgSize}`;
-      document.getElementById('n-select').value        = sgSize;
     } finally {
       adjustingN = false;
       document.getElementById('btn-n-dec').disabled = sgSize <= 2;
@@ -417,7 +395,6 @@
     if (!pid) return showAlert(msg, 'Selecciona un proceso antes de iniciar.', 'error');
 
     chartType = document.getElementById('chart-type').value;
-    sgSize    = parseInt(document.getElementById('n-select').value) || 5;
     processId = pid;
 
     document.getElementById('sg-form').style.display = '';
@@ -493,7 +470,6 @@
           const inferredN = Math.max(...sortedKeys.map(k => sgMap.get(k).length));
           if (inferredN >= 2 && inferredN <= 10) {
             sgSize = inferredN;
-            document.getElementById('n-select').value          = sgSize;
             document.getElementById('n-adj-val').textContent   = `n=${sgSize}`;
             document.getElementById('btn-n-dec').disabled      = sgSize <= 2;
             document.getElementById('btn-n-inc').disabled      = sgSize >= 10;

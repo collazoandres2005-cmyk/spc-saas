@@ -128,6 +128,20 @@
     .log-time { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
     .log-ooc  { font-size: 10px; font-weight: 700; color: var(--danger); padding: 1px 6px; background: var(--danger-bg); border-radius: 99px; white-space: nowrap; }
 
+    /* ── Sessions ───────────────────────────────────────────── */
+    .session-card {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: #f8fafc; margin-bottom: 8px; transition: border-color .15s;
+    }
+    .session-card:hover { border-color: var(--primary); }
+    .session-card-info { flex: 1; min-width: 0; }
+    .session-card-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .session-card-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+    .save-session-form { display: none; padding: 14px; background: #eff6ff; border-radius: var(--radius); border: 1px solid #bfdbfe; margin-bottom: 16px; }
+    .save-session-form.open { display: block; }
+
     /* ── Excel import ───────────────────────────────────────── */
     .excel-btn-row { display: flex; gap: 6px; margin-top: 8px; }
     .btn-excel { flex: 1; padding: 11px; font-size: 13px; font-weight: 700; }
@@ -227,6 +241,7 @@
               </div>
             </div>
             <button class="btn btn-primary" onclick="startMonitoring()">Iniciar monitoreo</button>
+            <button class="btn btn-secondary" onclick="showSessionsModal()" title="Ver y cargar sesiones guardadas">📂 Sesiones</button>
           </div>
           <div id="mode-description" style="font-size:12px;color:var(--text-muted);margin-top:8px">
             Modo Industrial: n fijo, límites congelados desde Fase 1, interfaz enfocada en alertas.
@@ -264,7 +279,10 @@
             <div class="card">
               <div class="card-header">
                 <div class="card-title" id="entry-title">Ingreso de datos</div>
-                <div class="live-indicator"><span class="live-dot"></span>EN VIVO</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button class="btn btn-secondary btn-sm" onclick="saveSession()" title="Guardar sesión actual para continuar después">💾 Guardar</button>
+                  <div class="live-indicator"><span class="live-dot"></span>EN VIVO</div>
+                </div>
               </div>
               <div class="card-body">
                 <div id="entry-msg" style="margin-bottom:8px"></div>
@@ -385,6 +403,42 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Modal: sesiones guardadas ────────────────────────────── -->
+  <div class="modal-overlay" id="sessions-modal" onclick="if(event.target===this)closeSessionsModal()">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-hdr">
+        <span class="modal-hdr-title">📂 Sesiones de monitoreo</span>
+        <button class="modal-close" onclick="closeSessionsModal()">×</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Formulario guardar sesión -->
+        <div class="save-session-form" id="save-session-form">
+          <div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:10px">💾 Guardar sesión actual</div>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px">
+              <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);display:block;margin-bottom:4px">Nombre de sesión</label>
+              <input id="session-name-input" type="text" placeholder="Ej: Turno mañana, Lote #42..."
+                     style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="confirmSaveSession()">Guardar</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('save-session-form').classList.remove('open')">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Lista de sesiones -->
+        <div id="sessions-list-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:13px;color:var(--text-muted)">Sesiones guardadas en este navegador</span>
+            <button class="btn btn-secondary btn-sm" onclick="openSaveForm()" id="btn-open-save" style="display:none">+ Guardar sesión actual</button>
+          </div>
+          <div id="sessions-list"></div>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -1317,6 +1371,132 @@
           <div>Subgrupo de monitoreo #${idx + 1} fuera de límites</div>
         </li>`).join('')}</ul>`;
     }
+  }
+
+  // ── Session persistence ───────────────────────────────────────
+  const SESSIONS_KEY = 'spc_mon_sessions';
+
+  function getSessions() {
+    try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function setSessions(arr) {
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(arr));
+  }
+
+  function showSessionsModal() {
+    renderSessionsList();
+    // Show "Guardar actual" button only when monitoring is active
+    document.getElementById('btn-open-save').style.display = processId ? '' : 'none';
+    document.getElementById('save-session-form').classList.remove('open');
+    document.getElementById('sessions-modal').classList.add('open');
+  }
+  function closeSessionsModal() {
+    document.getElementById('sessions-modal').classList.remove('open');
+  }
+
+  function openSaveForm() {
+    const procName = document.getElementById('process-select')
+      .options[document.getElementById('process-select').selectedIndex]?.text || '';
+    const now = new Date().toLocaleString('es-MX',
+      { dateStyle:'short', timeStyle:'short' });
+    document.getElementById('session-name-input').value = `${procName} — ${now}`;
+    document.getElementById('save-session-form').classList.add('open');
+    setTimeout(() => document.getElementById('session-name-input').select(), 50);
+  }
+
+  // Guardar desde el botón "💾 Guardar" del panel (shortcut)
+  function saveSession() {
+    if (!processId || !phase1Limits) {
+      showAlert(document.getElementById('entry-msg'), 'Inicia el monitoreo antes de guardar.', 'error');
+      return;
+    }
+    showSessionsModal();
+    openSaveForm();
+  }
+
+  function confirmSaveSession() {
+    const name = document.getElementById('session-name-input').value.trim();
+    if (!name) { document.getElementById('session-name-input').focus(); return; }
+
+    const procName = document.getElementById('process-select')
+      .options[document.getElementById('process-select').selectedIndex]?.text || '';
+    const chartTypeSel = document.getElementById('chart-type');
+    const chartLabel   = chartTypeSel.options[chartTypeSel.selectedIndex]?.text || chartType;
+
+    const session = {
+      id:            Date.now().toString(),
+      name,
+      processId,
+      processName:   procName,
+      chartType,
+      chartLabel,
+      mode,
+      sgSize,
+      savedAt:       new Date().toISOString(),
+      subgroupCount: sessionSubgroups.length
+    };
+
+    const sessions = getSessions();
+    sessions.unshift(session);   // newest first
+    setSessions(sessions.slice(0, 50));  // max 50 sesiones
+
+    document.getElementById('save-session-form').classList.remove('open');
+    renderSessionsList();
+    showAlert(document.getElementById('entry-msg'), `✓ Sesión "${name}" guardada.`, 'success');
+  }
+
+  function renderSessionsList() {
+    const sessions = getSessions();
+    const el = document.getElementById('sessions-list');
+    if (!sessions.length) {
+      el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;font-style:italic">
+        No hay sesiones guardadas aún.<br>
+        Inicia un monitoreo y guárdalo con el botón <strong>💾 Guardar</strong>.
+      </div>`;
+      return;
+    }
+    el.innerHTML = sessions.map(s => {
+      const dt  = new Date(s.savedAt).toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' });
+      const sgLbl = `${s.subgroupCount} subgrupo${s.subgroupCount !== 1 ? 's' : ''}`;
+      return `
+        <div class="session-card">
+          <div class="session-card-info">
+            <div class="session-card-name" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
+            <div class="session-card-meta">
+              ${escHtml(s.processName)} &nbsp;·&nbsp; ${escHtml(s.chartLabel || s.chartType)}
+              &nbsp;·&nbsp; ${sgLbl} &nbsp;·&nbsp; ${dt}
+            </div>
+          </div>
+          <div class="session-card-actions">
+            <button class="btn btn-primary btn-sm" onclick="loadSession('${s.id}')">▶ Continuar</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSession('${s.id}')" title="Eliminar sesión">🗑</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function loadSession(id) {
+    const sessions = getSessions();
+    const s = sessions.find(x => x.id === id);
+    if (!s) return;
+
+    // Set selects
+    document.getElementById('process-select').value = s.processId;
+    document.getElementById('chart-type').value     = s.chartType;
+    if (s.sgSize) sgSize = s.sgSize;
+    setMode(s.mode || 'industrial');
+    closeSessionsModal();
+
+    // Start monitoring — loads Phase 1 limits + existing Phase 2 from DB
+    await startMonitoring();
+  }
+
+  function deleteSession(id) {
+    if (!confirm('¿Eliminar esta sesión guardada?')) return;
+    const sessions = getSessions().filter(s => s.id !== id);
+    setSessions(sessions);
+    renderSessionsList();
   }
 
   // ── Excel helpers ─────────────────────────────────────────────

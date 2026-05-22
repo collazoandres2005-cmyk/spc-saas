@@ -65,6 +65,26 @@
     .lcs { color: #dc2626; }
     .lc  { color: #2563eb; }
     .lci { color: #dc2626; }
+
+    /* ── Tabla de datos crudos ─────────────────────────────── */
+    .raw-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; cursor: pointer; user-select: none;
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: var(--radius); margin-top: 20px;
+      font-size: 14px; font-weight: 700; color: var(--text);
+    }
+    .raw-toggle.open { border-radius: var(--radius) var(--radius) 0 0; }
+    .raw-arrow { color: var(--text-muted); font-size: 12px; transition: transform .2s; }
+    .raw-toggle.open .raw-arrow { transform: rotate(180deg); }
+    .raw-table-wrap {
+      border: 1px solid var(--border); border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow-x: auto;
+    }
+    .raw-table-wrap table td { font-size: 12px; }
+    .raw-vals { color: var(--text-sec); max-width: 320px; word-break: break-word; }
+    @media (max-width: 768px) { .raw-vals { max-width: 160px; } }
   </style>
 </head>
 <body class="app-layout">
@@ -177,6 +197,30 @@
           </div>
         </div>
 
+        <!-- ── Tabla de datos crudos ───────────────────────────── -->
+        <div id="raw-data-panel" style="display:none">
+          <div class="raw-toggle" id="raw-toggle" onclick="toggleRawData()">
+            <span>
+              Mediciones — Fase 1
+              <span class="badge badge-blue" id="raw-count" style="margin-left:6px">0</span>
+            </span>
+            <span class="raw-arrow" id="raw-arrow">▼</span>
+          </div>
+          <div class="raw-table-wrap hidden" id="raw-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:80px">Subgrupo</th>
+                  <th>Mediciones</th>
+                  <th style="width:90px">X̄</th>
+                  <th style="width:90px" id="raw-th-disp">R</th>
+                </tr>
+              </thead>
+              <tbody id="raw-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -244,6 +288,7 @@
     try {
       const result = await analysisApi.controlChart(pid, type, simN);
       renderChart(result);
+      loadRawData(pid, type);
       document.getElementById('process-crumb').textContent = `· ${result.process.name}`;
       document.getElementById('chart-area').classList.remove('hidden');
     } catch (err) {
@@ -319,6 +364,68 @@
           <span style="font-size:12px;color:var(--text-sec)">${escHtml(v.description)}</span>
         </div>
       </li>`).join('')}</ul>`;
+  }
+
+  // ── Tabla de datos crudos ──────────────────────────────────
+  let rawOpen = false;
+
+  function toggleRawData() {
+    rawOpen = !rawOpen;
+    document.getElementById('raw-toggle').classList.toggle('open', rawOpen);
+    document.getElementById('raw-table-wrap').classList.toggle('hidden', !rawOpen);
+    document.getElementById('raw-arrow').style.transform = rawOpen ? 'rotate(180deg)' : '';
+  }
+
+  async function loadRawData(pid, type) {
+    const panel = document.getElementById('raw-data-panel');
+    panel.style.display = 'none';
+
+    try {
+      const { data } = await measurementsApi.list(pid, 9999, 0, 1);
+      if (!data || !data.length) return;
+
+      // API returns DESC; reverse to get chronological order
+      const sorted = data.slice().reverse();
+
+      // Group by subgroup_id (preserve insertion order)
+      const groupMap = new Map();
+      sorted.forEach(m => {
+        const key = m.subgroup_id ?? '—';
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key).push(m.value);
+      });
+
+      const isS = type === 'xbar_s';
+      document.getElementById('raw-th-disp').textContent = isS ? 'S' : 'R';
+
+      let sgNum = 1;
+      let rows = '';
+      groupMap.forEach((vals, sgId) => {
+        const n    = vals.length;
+        const mean = vals.reduce((a, b) => a + b, 0) / n;
+        const disp = isS
+          ? Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(n - 1, 1))
+          : Math.max(...vals) - Math.min(...vals);
+        rows += `<tr>
+          <td style="text-align:center;font-weight:700">${sgNum++}</td>
+          <td class="raw-vals">${vals.map(v => formatNum(v, 3)).join(', ')}</td>
+          <td style="text-align:center"><strong>${formatNum(mean, 4)}</strong></td>
+          <td style="text-align:center">${formatNum(disp, 4)}</td>
+        </tr>`;
+      });
+
+      document.getElementById('raw-tbody').innerHTML = rows;
+      document.getElementById('raw-count').textContent = sorted.length;
+      panel.style.display = 'block';
+
+      // Reset collapsed state on each new load
+      rawOpen = false;
+      document.getElementById('raw-toggle').classList.remove('open');
+      document.getElementById('raw-table-wrap').classList.add('hidden');
+      document.getElementById('raw-arrow').style.transform = '';
+    } catch (err) {
+      console.warn('loadRawData:', err.message);
+    }
   }
 
   init();

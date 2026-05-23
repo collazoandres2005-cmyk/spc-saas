@@ -175,12 +175,29 @@ router.get('/control-chart', async (req, res) => {
 
     // ── Carta np (número de defectuosos, n fijo) ────────────────────────────
     } else if (type === 'np') {
-      const nFixed = parseInt(process.n_size) || 0;
+      let nFixed = parseInt(process.n_size) || 0;
+
+      // Si n_size no está en el proceso, derivarlo del sample_size de las mediciones
+      if (nFixed < 2) {
+        const sizes = rows
+          .filter(r => r.sample_size != null)
+          .map(r => parseFloat(r.sample_size));
+        const unique = [...new Set(sizes)];
+        if (unique.length === 1 && unique[0] >= 2) {
+          nFixed = unique[0];
+        } else if (unique.length > 1) {
+          return res.status(400).json({
+            error: `La carta np requiere n fijo, pero las mediciones tienen tamaños distintos (${unique.join(', ')}). Verifica los datos guardados.`
+          });
+        }
+      }
+
       if (nFixed < 2) {
         return res.status(400).json({
-          error: 'El proceso requiere un tamaño de muestra fijo (n_size) configurado para la carta np.'
+          error: 'No se pudo determinar el tamaño de muestra n. Configura n_size en el proceso o guarda datos con n fijo desde la entrada de datos.'
         });
       }
+
       const sgMap = new Map();
       rows.forEach(row => {
         const key = row.subgroup_id ?? 'default';

@@ -907,9 +907,17 @@
       }
     }
 
-    // ── Status según fuente ──────────────────────────────────────
+    // ── Status e indicador de datos históricos cargados ──────────
     if (p2Source === 'db' && sessionCount > 0) {
       setStatusBar('stable', 'Datos de Fase 2 cargados', `${sessionCount} subgrupos de monitoreo`);
+      const msgEl = document.getElementById('msg');
+      const banner = document.createElement('div');
+      banner.className = 'alert alert-info';
+      banner.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap';
+      banner.innerHTML =
+        `<span>📊 Se cargaron <strong>${sessionCount} subgrupos</strong> de monitoreo guardados previamente para este proceso.</span>` +
+        `<a href="/measurements.html?process_id=${processId}&phase=2" class="btn btn-secondary btn-sm">Ver / Eliminar datos</a>`;
+      msgEl.appendChild(banner);
     } else if (p2Source === 'cache') {
       setStatusBar('stable', `${sessionCount} subgrupos de monitoreo`, 'Datos recuperados');
     }
@@ -1414,21 +1422,18 @@
     const p2Radii    = main.points.map((_, i) => outOfControl.includes(i) ? 8 : 4);
     const p2BorderW  = main.points.map((_, i) => outOfControl.includes(i) ? 3 : 2);
 
-    // Eje Y: siempre incluir rango LCI–LCS + 20% padding, usando afterDataLimits
-    // (más fiable que suggestedMin/Max porque se ejecuta DESPUÉS del auto-scaling)
-    function yScaleFor(ucl, lcl) {
-      const span = Math.max(ucl - lcl, Math.abs(ucl) * 0.1, 0.001);
-      const pad  = span * 0.20;
-      const yMin = lcl - pad;
-      const yMax = ucl + pad;
+    // Eje Y: rango fijo calculado desde UCL/LCL + datos reales (incluye OOC)
+    function computeYRange(ucl, lcl, points) {
+      const span    = Math.max(ucl - lcl, Math.abs(ucl) * 0.1, 0.001);
+      const pad     = span * 0.20;
+      const valid   = (points || []).filter(v => v != null && isFinite(v));
+      const allVals = [ucl, lcl, ...valid];
       return {
-        afterDataLimits(scale) {
-          if (scale.min > yMin) scale.min = yMin;
-          if (scale.max < yMax) scale.max = yMax;
-        }
+        min: Math.min(...allVals) - pad,
+        max: Math.max(...allVals) + pad
       };
     }
-    const mainYScale = yScaleFor(main.ucl, main.lcl);
+    const { min: mainYMin, max: mainYMax } = computeYRange(main.ucl, main.lcl, main.points);
 
     // ── Main chart ───────────────────────────────────────────────
     if (mainChartInst && mainChartInst.data.datasets.length === NDSM) {
@@ -1443,7 +1448,8 @@
       ds.datasets[4].pointBorderColor     = [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')];
       ds.datasets[4].pointRadius           = [...Array(p1Len).fill(0), ...p2Radii,  ...Array(futureExtra).fill(0)];
       ds.datasets[4].pointBorderWidth      = [...Array(p1Len).fill(0), ...p2BorderW,...Array(futureExtra).fill(0)];
-      mainChartInst.options.scales.y.afterDataLimits = mainYScale.afterDataLimits;
+      mainChartInst.options.scales.y.min = mainYMin;
+      mainChartInst.options.scales.y.max = mainYMax;
       mainChartInst.update({ duration: 400 });
     } else {
       const ctxM = document.getElementById('main-chart');
@@ -1491,7 +1497,7 @@
           ...CHART_DEFAULTS, animation: { duration: 400 },
           scales: {
             ...CHART_DEFAULTS.scales,
-            y: { ...CHART_DEFAULTS.scales.y, ...mainYScale }
+            y: { ...CHART_DEFAULTS.scales.y, min: mainYMin, max: mainYMax }
           },
           plugins: {
             ...CHART_DEFAULTS.plugins,
@@ -1534,7 +1540,9 @@
         ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')];
         ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')];
         ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)];
-        secChartInst.options.scales.y.afterDataLimits = yScaleFor(sec.ucl, sec.lcl ?? 0).afterDataLimits;
+        const { min: secYMin2, max: secYMax2 } = computeYRange(sec.ucl, sec.lcl ?? 0, sec.points);
+        secChartInst.options.scales.y.min = secYMin2;
+        secChartInst.options.scales.y.max = secYMax2;
         secChartInst.update({ duration: 400 });
       } else {
         const ctxS = document.getElementById('sec-chart');
@@ -1571,10 +1579,10 @@
           },
           options: {
             ...CHART_DEFAULTS, animation: { duration: 400 },
-            scales: {
-              ...CHART_DEFAULTS.scales,
-              y: { ...CHART_DEFAULTS.scales.y, ...yScaleFor(sec.ucl, sec.lcl ?? 0) }
-            },
+            scales: (() => {
+              const { min: secYMin, max: secYMax } = computeYRange(sec.ucl, sec.lcl ?? 0, sec.points);
+              return { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, min: secYMin, max: secYMax } };
+            })(),
             plugins: {
               ...CHART_DEFAULTS.plugins,
               legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#344054' } },

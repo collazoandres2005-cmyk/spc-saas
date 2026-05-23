@@ -390,10 +390,10 @@
     }
   }
 
-  async function deleteSelected() {
+  async function deleteSelected(skipConfirm = false) {
     const ids = [...selectedIds];
     if (!ids.length) return;
-    if (!confirm(`¿Eliminar ${ids.length} medición${ids.length !== 1 ? 'es' : ''} seleccionada${ids.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return;
+    if (!skipConfirm && !confirm(`¿Eliminar ${ids.length} medición${ids.length !== 1 ? 'es' : ''} seleccionada${ids.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return;
 
     const msgEl = document.getElementById('msg');
     const bar   = document.getElementById('bulk-bar');
@@ -433,7 +433,7 @@
       showAlert(msgEl, '⏳ Cargando todos los IDs...', 'info');
       const all = await measurementsApi.list(currentProcessId, 9999, 0, '2');
       all.data.forEach(m => selectedIds.add(m.id));
-      await deleteSelected();
+      await deleteSelected(true);
     } catch (err) {
       showAlert(msgEl, `Error: ${err.message}`, 'error');
     }

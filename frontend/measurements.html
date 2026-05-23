@@ -13,8 +13,28 @@
       background: #f8fafc; border: 1px solid var(--border);
       border-radius: var(--radius); font-size: 13px; color: var(--text-sec);
     }
-    .info-banner-icon { font-size: 20px; flex-shrink: 0; }
     .info-links { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+
+    /* Phase pills */
+    .phase-pills {
+      display: inline-flex; border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; background: var(--card-alt);
+    }
+    .phase-pill {
+      padding: 5px 16px; font-size: 12px; font-weight: 700;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--text-muted); transition: background .15s, color .15s;
+    }
+    .phase-pill.active { background: var(--primary); color: #fff; }
+    .phase-pill:not(:last-child) { border-right: 1px solid var(--border); }
+
+    /* Phase badge in table */
+    .phase-badge {
+      display: inline-block; font-size: 10px; font-weight: 700; border-radius: 99px;
+      padding: 2px 8px; white-space: nowrap;
+    }
+    .phase-badge.p1 { background: #eff6ff; color: #1d4ed8; }
+    .phase-badge.p2 { background: #f0fdf4; color: #15803d; }
   </style>
 </head>
 <body class="app-layout">
@@ -38,28 +58,38 @@
         <div>
           <div style="font-weight:600;margin-bottom:4px">Gestión de datos históricos</div>
           <div>
-            Para ingresar datos nuevos y ver los resultados en el mismo flujo,
-            ve directamente al módulo de análisis correspondiente.
+            Muestra todas las mediciones registradas: <strong>Fase 1</strong> (datos históricos de Cartas de Control)
+            y <strong>Fase 2</strong> (datos de Monitoreo en tiempo real).
           </div>
           <div class="info-links">
             <a href="/control-chart.html" class="btn btn-sm btn-secondary">
               Cartas de Control — toma de datos + gráficos
             </a>
-            <a href="/capability.html" class="btn btn-sm btn-secondary">
-              Capacidad — toma de datos + Cp / Cpk
+            <a href="/monitoring.html" class="btn btn-sm btn-secondary">
+              Monitoreo en Tiempo Real
             </a>
           </div>
         </div>
       </div>
 
-      <!-- Selector de proceso -->
+      <!-- Selector de proceso + filtro de fase -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-body" style="padding:14px 20px">
-          <div class="flex-center" style="gap:12px;flex-wrap:wrap">
-            <label style="margin:0;white-space:nowrap">Proceso:</label>
-            <select id="process-select" onchange="onProcessChange()" style="min-width:240px">
-              <option value="">— Selecciona un proceso —</option>
-            </select>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:220px">
+              <label style="margin:0;white-space:nowrap;font-weight:600;font-size:13px">Proceso:</label>
+              <select id="process-select" onchange="onProcessChange()" style="min-width:220px;flex:1">
+                <option value="">— Selecciona un proceso —</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px">Fase:</span>
+              <div class="phase-pills">
+                <button class="phase-pill active" id="pill-all" onclick="setPhase('all')">Todas</button>
+                <button class="phase-pill" id="pill-1" onclick="setPhase('1')">Fase 1</button>
+                <button class="phase-pill" id="pill-2" onclick="setPhase('2')">Fase 2</button>
+              </div>
+            </div>
             <span id="process-specs" style="font-size:12px;color:var(--text-sec)"></span>
           </div>
         </div>
@@ -80,6 +110,7 @@
               <thead>
                 <tr>
                   <th>#</th>
+                  <th>Fase</th>
                   <th>Valor</th>
                   <th>Subgrupo</th>
                   <th>Fecha / Hora</th>
@@ -88,7 +119,7 @@
                 </tr>
               </thead>
               <tbody id="meas-tbody">
-                <tr><td colspan="6" class="text-center"
+                <tr><td colspan="7" class="text-center"
                   style="padding:30px;color:var(--text-muted)">Selecciona un proceso</td></tr>
               </tbody>
             </table>
@@ -120,6 +151,7 @@
   let measData         = [];
   let total            = 0;
   let page             = 0;
+  let currentPhase     = 'all';
   const PAGE_SIZE      = 50;
 
   async function init() {
@@ -129,11 +161,22 @@
       processes.forEach(p =>
         sel.appendChild(new Option(`${p.name}${p.unit ? ` (${p.unit})` : ''}`, p.id))
       );
-      const urlPid = new URLSearchParams(location.search).get('process_id');
+      const params = new URLSearchParams(location.search);
+      const urlPid   = params.get('process_id');
+      const urlPhase = params.get('phase');
+      if (urlPhase && ['all','1','2'].includes(urlPhase)) setPhase(urlPhase, false);
       if (urlPid) { sel.value = urlPid; onProcessChange(); }
     } catch (err) {
       showAlert(document.getElementById('msg'), err.message, 'error');
     }
+  }
+
+  function setPhase(ph, reload = true) {
+    currentPhase = ph;
+    document.querySelectorAll('.phase-pill').forEach(b => b.classList.remove('active'));
+    const map = { all: 'pill-all', '1': 'pill-1', '2': 'pill-2' };
+    document.getElementById(map[ph])?.classList.add('active');
+    if (reload && currentProcessId) { page = 0; loadMeasurements(); }
   }
 
   async function onProcessChange() {
@@ -146,7 +189,7 @@
     page = 0;
     document.getElementById('content-area').classList.remove('hidden');
 
-    // Update quick-links with process_id
+    // Actualizar links con process_id
     document.querySelectorAll('.info-links a').forEach(a => {
       const base = a.getAttribute('href').split('?')[0];
       a.setAttribute('href', `${base}?process_id=${pid}`);
@@ -169,38 +212,47 @@
 
   async function loadMeasurements() {
     if (!currentProcessId) return;
+    const msgEl = document.getElementById('msg');
+    msgEl.innerHTML = '';
     try {
-      const result = await measurementsApi.list(currentProcessId, PAGE_SIZE, page * PAGE_SIZE);
+      const result = await measurementsApi.list(currentProcessId, PAGE_SIZE, page * PAGE_SIZE, currentPhase);
       measData = result.data;
       total    = result.total;
       renderTable();
       updatePagination();
     } catch (err) {
-      showAlert(document.getElementById('msg'), err.message, 'error');
+      showAlert(msgEl,
+        `Error al obtener las mediciones: ${err.message}. ` +
+        `Si el problema persiste, reinicia el servidor backend.`,
+        'error');
     }
   }
 
   function renderTable() {
     const tbody = document.getElementById('meas-tbody');
-    document.getElementById('meas-count').textContent = `${total} mediciones en total`;
+    const phaseLabel = { all: 'mediciones en total', '1': 'mediciones de Fase 1', '2': 'mediciones de Fase 2' };
+    document.getElementById('meas-count').textContent = `${total} ${phaseLabel[currentPhase] || 'mediciones'}`;
 
     if (!measData.length) {
-      tbody.innerHTML = `<tr><td colspan="6">
+      const msg = currentPhase === '2'
+        ? 'No hay datos de monitoreo (Fase 2) para este proceso aún. Ingresa datos desde Monitoreo en Tiempo Real.'
+        : currentPhase === '1'
+          ? 'No hay datos históricos (Fase 1) para este proceso. Ingresa datos desde Cartas de Control.'
+          : 'No hay mediciones para este proceso.';
+      tbody.innerHTML = `<tr><td colspan="7">
         <div class="empty-state">
           <div class="empty-title">Sin mediciones</div>
-          <div class="empty-sub">
-            Ingresa datos desde
-            <a href="/control-chart.html?process_id=${currentProcessId}">Cartas de Control</a>
-            o
-            <a href="/capability.html?process_id=${currentProcessId}">Capacidad</a>.
-          </div>
+          <div class="empty-sub">${msg}</div>
         </div></td></tr>`;
       return;
     }
 
-    tbody.innerHTML = measData.map((m, i) => `
+    tbody.innerHTML = measData.map((m, i) => {
+      const phase = parseInt(m.phase) === 2 ? 2 : 1;
+      return `
       <tr>
         <td style="color:var(--text-muted)">${page * PAGE_SIZE + i + 1}</td>
+        <td><span class="phase-badge p${phase}">Fase ${phase}</span></td>
         <td><strong>${Number(m.value).toFixed(4)}</strong></td>
         <td>${m.subgroup_id != null
           ? `<span class="badge badge-blue">SG ${m.subgroup_id}</span>`
@@ -209,7 +261,8 @@
         <td style="font-size:12px;color:var(--text-sec)">${escHtml(m.recorded_by_name || '—')}</td>
         <td><button class="btn btn-danger btn-sm btn-icon"
               onclick="deleteMeasurement('${m.id}')" title="Eliminar">✕</button></td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   }
 
   function updatePagination() {

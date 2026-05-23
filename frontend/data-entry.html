@@ -168,6 +168,35 @@
     .ooc-badge.none { background: var(--success-bg); color: var(--success); }
     .ooc-badge.some { background: var(--danger-bg);  color: var(--danger);  }
     .ooc-badge.nodata { background: #f1f5f9; color: var(--text-muted); }
+
+    /* ── Pestañas Variable / Atributo ────────────────────────── */
+    .tab-bar {
+      display: flex; gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 10px 28px; font-size: 14px; font-weight: 700;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted);
+      border-bottom: 3px solid transparent; margin-bottom: -2px;
+      transition: color .15s, border-color .15s; white-space: nowrap;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn:hover:not(.active) { color: var(--text); background: #f8fafc; }
+
+    /* ── Controles atributo ──────────────────────────────────── */
+    .attr-ctrl-bar {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 16px; margin-bottom: 16px;
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .attr-n-input {
+      width: 90px; padding: 5px 8px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 13px; color: var(--text);
+    }
   </style>
 </head>
 <body class="app-layout">
@@ -235,6 +264,16 @@
       </div>
 
       <div id="content-area" style="display:none">
+
+        <!-- ── Pestañas ──────────────────────────────────────── -->
+        <div class="tab-bar">
+          <button id="tab-var"  class="tab-btn active" onclick="switchTab('variable')">
+            📊 Variable (X̄-R, X̄-S)
+          </button>
+          <button id="tab-attr" class="tab-btn" onclick="switchTab('attribute')">
+            📋 Atributo (p, np, c, u)
+          </button>
+        </div>
 
         <!-- Aviso de datos existentes -->
         <div id="existing-notice" class="existing-notice" style="display:none">
@@ -329,6 +368,27 @@
 
         <!-- ══ ATRIBUTO (p, np, c, u) ═════════════════════════ -->
         <div id="attr-section" style="display:none">
+
+          <!-- Controles: tipo de carta y n -->
+          <div class="attr-ctrl-bar">
+            <label style="margin:0;font-weight:600;white-space:nowrap">Tipo de carta:</label>
+            <select id="attr-chart-select" onchange="onAttrChartChange()" style="min-width:240px">
+              <option value="p">Carta p — proporción de defectivos (n variable)</option>
+              <option value="np">Carta np — número de defectivos (n fijo)</option>
+              <option value="c">Carta c — número de defectos por unidad</option>
+              <option value="u">Carta u — defectos por unidad (n variable)</option>
+            </select>
+            <div id="np-n-group" style="display:none;align-items:center;gap:8px">
+              <label style="margin:0;font-weight:600;white-space:nowrap">n (muestra fija):</label>
+              <input id="np-n-input" type="number" class="attr-n-input"
+                     min="1" step="1" value="50"
+                     placeholder="ej. 50"
+                     oninput="updateAttrSummary()">
+              <span style="font-size:12px;color:var(--text-muted)">
+                mismo n para todos los subgrupos
+              </span>
+            </div>
+          </div>
 
           <!-- Resumen estadístico (renderizado por JS) -->
           <div id="attr-summary-grid" class="summary-grid" style="margin-bottom:20px"></div>
@@ -497,12 +557,13 @@ let tableData    = [];   // Array<string[]>  — datos de la tabla
 let processId    = null;
 let processSpec  = { usl: null, lsl: null };
 let chartType    = 'xbar_r';
+let activeTab    = 'variable';  // 'variable' | 'attribute'
 let attrData     = [];   // [{n, count}] — datos por atributo
 const INIT_ROWS      = 25;
 const INIT_ATTR_ROWS = 25;
 
-function isVariable()  { return ['xbar_r', 'xbar_s'].includes(chartType); }
-function isAttribute() { return !isVariable(); }
+function isVariable()  { return activeTab === 'variable'; }
+function isAttribute() { return activeTab === 'attribute'; }
 
 const CHART_TYPE_LABELS = {
   xbar_r: 'Carta X̄-R',  xbar_s: 'Carta X̄-S',
@@ -525,6 +586,34 @@ function toggleNSelect(show, labelText) {
     document.getElementById(id).style.display = show ? '' : 'none';
   });
   if (labelText) document.getElementById('n-select-label').textContent = labelText;
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('var-section').style.display  = tab === 'variable'  ? '' : 'none';
+  document.getElementById('attr-section').style.display = tab === 'attribute' ? '' : 'none';
+  document.getElementById('tab-var').classList.toggle('active',  tab === 'variable');
+  document.getElementById('tab-attr').classList.toggle('active', tab === 'attribute');
+  toggleNSelect(tab === 'variable', 'n (tamaño de subgrupo):');
+  if (tab === 'attribute') {
+    // Si el chartType actual es variable, defaultear a 'p'
+    if (['xbar_r','xbar_s'].includes(chartType)) {
+      chartType = 'p';
+      document.getElementById('attr-chart-select').value = 'p';
+    } else {
+      document.getElementById('attr-chart-select').value = chartType;
+    }
+    document.getElementById('np-n-group').style.display =
+      chartType === 'np' ? 'flex' : 'none';
+    buildAttrTable();
+  }
+}
+
+function onAttrChartChange() {
+  chartType = document.getElementById('attr-chart-select').value;
+  document.getElementById('np-n-group').style.display =
+    chartType === 'np' ? 'flex' : 'none';
+  initAttrTable();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -561,20 +650,7 @@ async function onProcessChange() {
   } catch { processSpec = { usl: null, lsl: null }; chartType = 'xbar_r'; }
 
   setChartTypeBadge(chartType);
-
-  const varSec  = document.getElementById('var-section');
-  const attrSec = document.getElementById('attr-section');
-  if (isVariable()) {
-    varSec.style.display  = '';
-    attrSec.style.display = 'none';
-    toggleNSelect(true, 'n (tamaño de subgrupo):');
-  } else {
-    varSec.style.display  = 'none';
-    attrSec.style.display = '';
-    toggleNSelect(chartType === 'np', 'n (muestra fija):');
-    document.getElementById('attr-table-title').textContent =
-      `Tabla de datos — ${CHART_TYPE_LABELS[chartType] || chartType}`;
-  }
+  switchTab(['xbar_r','xbar_s'].includes(chartType) ? 'variable' : 'attribute');
 
   // Update quick-links
   document.getElementById('link-historial').href = `/measurements.html?process_id=${pid}`;
@@ -1079,7 +1155,9 @@ async function saveData() {
       .map((r, i) => ({ ...r, sg: i + 1 }))
       .filter(r => r.count != null && r.count >= 0);
     if (!validRows.length) { alert('La tabla está vacía. Ingresa datos primero.'); return; }
-    const nFixed = chartType === 'np' ? subgroupSize : null;
+    const nFixed = chartType === 'np'
+      ? (parseInt(document.getElementById('np-n-input')?.value) || null)
+      : null;
     if (!confirm(`Se guardarán ${validRows.length} subgrupos de datos (${CHART_TYPE_LABELS[chartType]}).`)) return;
     const btn = document.getElementById('btn-save');
     btn.disabled = true; btn.textContent = 'Guardando...';
@@ -1215,6 +1293,8 @@ function initAttrTable() {
 }
 
 function buildAttrTable() {
+  const titleEl = document.getElementById('attr-table-title');
+  if (titleEl) titleEl.textContent = `Tabla de datos — ${CHART_TYPE_LABELS[chartType] || chartType}`;
   renderAttrHeader();
   renderAllAttrRows();
   renderAttrFooter();
@@ -1310,11 +1390,11 @@ function calcAttrStats() {
     return { center: pbar, ucl: pbar + 3 * sigma, lcl: Math.max(0, pbar - 3 * sigma), k, nbar };
   }
   if (chartType === 'np') {
-    const n     = subgroupSize;
+    const n     = parseInt(document.getElementById('np-n-input')?.value) || 50;
     const npbar = rows.reduce((a, r) => a + r.count, 0) / k;
     const pbar  = npbar / n;
     const sigma = Math.sqrt(npbar * (1 - pbar));
-    return { center: npbar, ucl: npbar + 3 * sigma, lcl: Math.max(0, npbar - 3 * sigma), k };
+    return { center: npbar, ucl: npbar + 3 * sigma, lcl: Math.max(0, npbar - 3 * sigma), k, n };
   }
   if (chartType === 'c') {
     const cbar  = rows.reduce((a, r) => a + r.count, 0) / k;

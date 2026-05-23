@@ -648,6 +648,35 @@
     localStorage.removeItem(ACTIVE_KEY);
   }
 
+  // ── Caché local de Fase 2 (backup cuando la API falla) ────────
+  function getPhase2Key(pid) { return `spc_p2_${pid}_${chartType}`; }
+
+  function savePhase2Cache() {
+    if (!processId) return;
+    try {
+      localStorage.setItem(getPhase2Key(processId), JSON.stringify({
+        sessionSubgroups,
+        undoStack,
+        nextSgId,
+        sessionCount,
+        sessionLog,
+        chartType,
+        savedAt: new Date().toISOString()
+      }));
+    } catch (e) { console.warn('No se pudo guardar caché Fase 2:', e); }
+  }
+
+  function loadPhase2Cache(pid) {
+    try {
+      const raw = localStorage.getItem(`spc_p2_${pid}_${chartType}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function clearPhase2Cache(pid) {
+    try { localStorage.removeItem(`spc_p2_${pid}_${chartType}`); } catch {}
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     setMode(mode);   // restore toggle appearance
@@ -761,70 +790,105 @@
     }
 
     // ── Fase 2: cargar datos previos ─────────────────────────────
+    function applyPhase2Rows(p2rows) {
+      if (!p2rows.length) return false;
+      const sgMap = new Map();
+      p2rows.forEach(m => {
+        const key = m.subgroup_id != null ? +m.subgroup_id : -(+m.id);
+        if (!sgMap.has(key)) sgMap.set(key, []);
+        sgMap.get(key).push(m);
+      });
+      const sortedKeys = [...sgMap.keys()].filter(k => k > 0).sort((a, b) => a - b);
+      if (!sortedKeys.length) return false;
+
+      if (XBAR_TYPES.includes(chartType)) {
+        const inferredN = Math.max(...sortedKeys.map(k => sgMap.get(k).length));
+        if (inferredN >= 2 && inferredN <= 10 && mode !== 'industrial') {
+          sgSize = inferredN; buildInputForm();
+        }
+        sessionSubgroups = sortedKeys.map(k => sgMap.get(k).map(m => +m.value));
+      } else {
+        sessionSubgroups = sortedKeys.map(k => {
+          const rws = sgMap.get(k);
+          const val = rws.reduce((s, m) => s + parseFloat(m.value), 0);
+          const n   = rws.reduce((s, m) => s + (m.sample_size ? parseFloat(m.sample_size) : 1), 0);
+          return { defectives: val, count: val, n };
+        });
+      }
+      undoStack    = sortedKeys.map(k => ({ ids: sgMap.get(k).map(m => m.id), sgId: k }));
+      nextSgId     = sortedKeys[sortedKeys.length - 1] + 1;
+      sessionCount = sessionSubgroups.length;
+      document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
+      document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
+      sessionLog = sessionSubgroups.map((sg, i) => {
+        const label = XBAR_TYPES.includes(chartType)
+          ? `X̄=${(sg.reduce((a,b)=>a+b,0)/sg.length).toFixed(3)}`
+          : ATTR_TYPES.includes(chartType) ? `${sg.defectives ?? sg.count}` : '—';
+        return { displayVal: label, sgId: sortedKeys[i], isOoc: false, time: '(guardado)', n: i + 1 };
+      }).reverse();
+      setUndoEnabled(true);
+      renderLog();
+      updateStats();
+      return true;
+    }
+
+    let p2Source = null;  // 'db' | 'cache' | null
+
     try {
       const p2resp = await measurementsApi.list(pid, 1000, 0, 2);
       const p2rows = (p2resp.data || []).slice().reverse();
-      if (p2rows.length > 0) {
-        const sgMap = new Map();
-        p2rows.forEach(m => {
-          const key = m.subgroup_id != null ? +m.subgroup_id : -(+m.id);
-          if (!sgMap.has(key)) sgMap.set(key, []);
-          sgMap.get(key).push(m);
-        });
-        const sortedKeys = [...sgMap.keys()].filter(k => k > 0).sort((a, b) => a - b);
-
-        if (sortedKeys.length) {
-          if (XBAR_TYPES.includes(chartType)) {
-            const inferredN = Math.max(...sortedKeys.map(k => sgMap.get(k).length));
-            if (inferredN >= 2 && inferredN <= 10 && mode !== 'industrial') {
-              sgSize = inferredN;
-              buildInputForm();
-            }
-            sessionSubgroups = sortedKeys.map(k => sgMap.get(k).map(m => +m.value));
-          } else {
-            // Attribute charts
-            sessionSubgroups = sortedKeys.map(k => {
-              const rws = sgMap.get(k);
-              const val = rws.reduce((s, m) => s + parseFloat(m.value), 0);
-              const n   = rws.reduce((s, m) => s + (m.sample_size ? parseFloat(m.sample_size) : 1), 0);
-              return { defectives: val, count: val, n };
-            });
-          }
-          undoStack    = sortedKeys.map(k => ({ ids: sgMap.get(k).map(m => m.id), sgId: k }));
-          nextSgId     = sortedKeys[sortedKeys.length - 1] + 1;
-          sessionCount = sessionSubgroups.length;
-          document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
-          document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
-
-          sessionLog = sessionSubgroups.map((sg, i) => {
-            const label = XBAR_TYPES.includes(chartType)
-              ? `X̄=${(sg.reduce((a,b)=>a+b,0)/sg.length).toFixed(3)}`
-              : ATTR_TYPES.includes(chartType) ? `${sg.defectives ?? sg.count}` : '—';
-            return { displayVal: label, sgId: sortedKeys[i], isOoc: false, time: '(guardado)', n: i + 1 };
-          }).reverse();
-          setUndoEnabled(true);
-          renderLog();
-          updateStats();
-          setStatusBar('stable', 'Datos de Fase 2 cargados', `${sessionCount} subgrupos de monitoreo`);
-          // Confirm to user that saved data was recovered
-          const okBanner = document.createElement('div');
-          okBanner.className = 'alert alert-success';
-          okBanner.style.cssText = 'margin-bottom:12px';
-          okBanner.textContent = `✅ ${sessionCount} subgrupo(s) de monitoreo recuperados desde la base de datos.`;
-          msg.appendChild(okBanner);
-          setTimeout(() => okBanner.remove(), 5000);
-        }
+      const loaded = applyPhase2Rows(p2rows);
+      if (loaded) {
+        p2Source = 'db';
+        savePhase2Cache();   // actualizar caché con los datos de la BD
       }
     } catch (e) {
-      console.error('Error cargando Fase 2:', e);
-      const errBanner = document.createElement('div');
-      errBanner.className = 'alert alert-error';
-      errBanner.style.cssText = 'margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
-      errBanner.innerHTML =
-        `<span>⚠️ <strong>Error al recuperar datos de monitoreo:</strong> ${escHtml(e.message)}. ` +
-        `Tus datos están en la base de datos pero no pudieron cargarse.</span>` +
-        `<button class="btn btn-secondary btn-sm" onclick="startMonitoring()">🔄 Reintentar</button>`;
-      msg.appendChild(errBanner);
+      console.error('Error cargando Fase 2 desde BD:', e);
+      // ── Fallback: intentar caché local ──────────────────────────
+      const cached = loadPhase2Cache(pid);
+      if (cached && cached.chartType === chartType && Array.isArray(cached.sessionSubgroups) && cached.sessionSubgroups.length) {
+        sessionSubgroups = cached.sessionSubgroups;
+        undoStack        = cached.undoStack   || [];
+        nextSgId         = cached.nextSgId    || 1;
+        sessionCount     = cached.sessionCount || 0;
+        sessionLog       = cached.sessionLog  || [];
+        document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
+        document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
+        setUndoEnabled(undoStack.length > 0);
+        renderLog();
+        updateStats();
+        p2Source = 'cache';
+      } else {
+        // Sin caché — mostrar error
+        const errBanner = document.createElement('div');
+        errBanner.className = 'alert alert-error';
+        errBanner.style.cssText = 'margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+        errBanner.innerHTML =
+          `<span>⚠️ <strong>Error del servidor:</strong> ${escHtml(e.message)}.</span>` +
+          `<button class="btn btn-secondary btn-sm" onclick="startMonitoring()">🔄 Reintentar</button>`;
+        msg.appendChild(errBanner);
+      }
+    }
+
+    // ── Banner informativo según fuente ──────────────────────────
+    if (p2Source === 'db' && sessionCount > 0) {
+      setStatusBar('stable', 'Datos de Fase 2 cargados', `${sessionCount} subgrupos de monitoreo`);
+      const okBanner = document.createElement('div');
+      okBanner.className = 'alert alert-success';
+      okBanner.style.cssText = 'margin-bottom:12px';
+      okBanner.textContent = `✅ ${sessionCount} subgrupo(s) recuperados desde la base de datos.`;
+      msg.appendChild(okBanner);
+      setTimeout(() => okBanner.remove(), 4000);
+    } else if (p2Source === 'cache') {
+      setStatusBar('warning', 'Datos desde caché local', `${sessionCount} subgrupos (servidor no disponible)`);
+      const warnBanner = document.createElement('div');
+      warnBanner.className = 'alert alert-warning';
+      warnBanner.style.cssText = 'margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+      warnBanner.innerHTML =
+        `<span>⚠️ El servidor no pudo cargarse. Se recuperaron <strong>${sessionCount} subgrupo(s)</strong> ` +
+        `desde caché local. Puedes seguir ingresando datos normalmente.</span>` +
+        `<button class="btn btn-secondary btn-sm" onclick="startMonitoring()">🔄 Reintentar BD</button>`;
+      msg.appendChild(warnBanner);
     }
 
     if (phase1Limits) refreshChart();
@@ -984,6 +1048,7 @@
 
       updateStats();
       refreshChart();
+      savePhase2Cache();   // ← guardar en localStorage tras cada adición exitosa
     } catch (err) {
       showAlert(entryMsg, err.message, 'error');
     } finally {
@@ -1011,6 +1076,7 @@
       setUndoEnabled(undoStack.length > 0);
       document.getElementById('ooc-banner').style.display = 'none';
       refreshChart();
+      savePhase2Cache();   // ← actualizar caché tras deshacer
     } catch (err) {
       showAlert(document.getElementById('entry-msg'), `Error al deshacer: ${err.message}`, 'error');
     } finally {
@@ -1718,6 +1784,7 @@
     updateStats();
     renderLog();
     refreshChart();
+    savePhase2Cache();   // ← guardar caché tras importación masiva
 
     if (errors.length) {
       showAlert(entryMsg, `Importados ${imported} subgrupos. Errores: ${errors.join(' | ')}`, 'error');

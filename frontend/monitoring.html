@@ -1398,6 +1398,14 @@
     const p2Radii    = main.points.map((_, i) => outOfControl.includes(i) ? 8 : 4);
     const p2BorderW  = main.points.map((_, i) => outOfControl.includes(i) ? 3 : 2);
 
+    // Eje Y fijo: siempre mostrar al menos el rango LCI–LCS + 15% de padding
+    function yScaleFor(ucl, lcl) {
+      const span    = (ucl - lcl) || Math.abs(ucl) * 0.2 || 1;
+      const pad     = span * 0.15;
+      return { suggestedMin: lcl - pad, suggestedMax: ucl + pad };
+    }
+    const mainYScale = yScaleFor(main.ucl, main.lcl);
+
     // ── Main chart ───────────────────────────────────────────────
     if (mainChartInst && mainChartInst.data.datasets.length === NDSM) {
       const ds = mainChartInst.data;
@@ -1411,6 +1419,9 @@
       ds.datasets[4].pointBorderColor     = [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')];
       ds.datasets[4].pointRadius           = [...Array(p1Len).fill(0), ...p2Radii,  ...Array(futureExtra).fill(0)];
       ds.datasets[4].pointBorderWidth      = [...Array(p1Len).fill(0), ...p2BorderW,...Array(futureExtra).fill(0)];
+      // Actualizar escala Y para mantener referencia LCI-LCS
+      mainChartInst.options.scales.y.suggestedMin = mainYScale.suggestedMin;
+      mainChartInst.options.scales.y.suggestedMax = mainYScale.suggestedMax;
       mainChartInst.update({ duration: 400 });
     } else {
       const ctxM = document.getElementById('main-chart');
@@ -1456,6 +1467,10 @@
         },
         options: {
           ...CHART_DEFAULTS, animation: { duration: 400 },
+          scales: {
+            ...CHART_DEFAULTS.scales,
+            y: { ...CHART_DEFAULTS.scales.y, ...mainYScale }
+          },
           plugins: {
             ...CHART_DEFAULTS.plugins,
             legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#344054' } },
@@ -1497,6 +1512,9 @@
         ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')];
         ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')];
         ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)];
+        const secYScale = yScaleFor(sec.ucl, sec.lcl ?? 0);
+        secChartInst.options.scales.y.suggestedMin = secYScale.suggestedMin;
+        secChartInst.options.scales.y.suggestedMax = secYScale.suggestedMax;
         secChartInst.update({ duration: 400 });
       } else {
         const ctxS = document.getElementById('sec-chart');
@@ -1533,6 +1551,10 @@
           },
           options: {
             ...CHART_DEFAULTS, animation: { duration: 400 },
+            scales: {
+              ...CHART_DEFAULTS.scales,
+              y: { ...CHART_DEFAULTS.scales.y, ...yScaleFor(sec.ucl, sec.lcl ?? 0) }
+            },
             plugins: {
               ...CHART_DEFAULTS.plugins,
               legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#344054' } },

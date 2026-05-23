@@ -193,10 +193,11 @@
           <select id="process-select" onchange="onProcessChange()" style="min-width:220px">
             <option value="">— Selecciona —</option>
           </select>
+          <span id="chart-type-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;background:#dbeafe;color:#1e40af"></span>
 
-          <div class="ctrl-sep"></div>
+          <div class="ctrl-sep" id="n-ctrl-sep"></div>
 
-          <label style="margin:0;white-space:nowrap;font-weight:600">
+          <label id="n-select-label" style="margin:0;white-space:nowrap;font-weight:600">
             n (tamaño de subgrupo):
           </label>
           <select id="n-select" onchange="onChangeN()" style="width:62px">
@@ -249,80 +250,115 @@
           </a>
         </div>
 
-        <!-- ── Resumen estadístico ────────────────────────────── -->
-        <div class="summary-grid" id="summary-grid">
-          <!-- Fila 1: estadísticos del proceso -->
-          <div class="s-stat ok">
-            <span class="s-lbl">X̄̄ (Media global)</span>
-            <span class="s-val" id="s-xbarbar">—</span>
-          </div>
-          <div class="s-stat">
-            <span class="s-lbl">R̄ (Rango medio)</span>
-            <span class="s-val" id="s-rbar">—</span>
-          </div>
-          <div class="s-stat">
-            <span class="s-lbl">σ̂ = R̄/d₂</span>
-            <span class="s-val" id="s-sigma">—</span>
-          </div>
-          <div class="s-stat">
-            <span class="s-lbl">k (subgrupos completos)</span>
-            <span class="s-val" id="s-k">0</span>
-          </div>
-          <div class="s-stat" style="grid-row:span 1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px">
-            <span class="s-lbl">Estado de la carta</span>
-            <span id="s-ooc-badge" class="ooc-badge nodata">Sin datos</span>
-          </div>
+        <!-- ══ VARIABLE (Xbar-R, Xbar-S) ════════════════════════ -->
+        <div id="var-section">
 
-          <!-- Fila 2: límites de X̄ -->
-          <div class="s-stat hi">
-            <span class="s-lbl">LCS (X̄)</span>
-            <span class="s-val" id="s-uclx">—</span>
-          </div>
-          <div class="s-stat cl">
-            <span class="s-lbl">LC (X̄)</span>
-            <span class="s-val" id="s-clx">—</span>
-          </div>
-          <div class="s-stat lo">
-            <span class="s-lbl">LCI (X̄)</span>
-            <span class="s-val" id="s-lclx">—</span>
-          </div>
-          <!-- Fila 2: límites de R -->
-          <div class="s-stat hi">
-            <span class="s-lbl">LCS (R)</span>
-            <span class="s-val" id="s-uclr">—</span>
-          </div>
-          <div class="s-stat cl">
-            <span class="s-lbl">LC (R) = R̄</span>
-            <span class="s-val" id="s-clr">—</span>
-          </div>
-        </div>
-
-        <!-- ── Tabla de datos ──────────────────────────────────── -->
-        <div class="card">
-          <div class="card-header" style="padding:10px 16px">
-            <div class="card-title" style="font-size:13px" id="table-title">
-              Tabla de mediciones por subgrupo
+          <!-- ── Resumen estadístico ──────────────────────────── -->
+          <div class="summary-grid" id="summary-grid">
+            <!-- Fila 1: estadísticos del proceso -->
+            <div class="s-stat ok">
+              <span class="s-lbl">X̄̄ (Media global)</span>
+              <span class="s-val" id="s-xbarbar">—</span>
             </div>
-            <span style="font-size:11px;color:var(--text-muted)" id="table-hint">
-              Tab / Enter para navegar · Ctrl+V para pegar desde Excel
-            </span>
+            <div class="s-stat">
+              <span class="s-lbl">R̄ (Rango medio)</span>
+              <span class="s-val" id="s-rbar">—</span>
+            </div>
+            <div class="s-stat">
+              <span class="s-lbl">σ̂ = R̄/d₂</span>
+              <span class="s-val" id="s-sigma">—</span>
+            </div>
+            <div class="s-stat">
+              <span class="s-lbl">k (subgrupos completos)</span>
+              <span class="s-val" id="s-k">0</span>
+            </div>
+            <div class="s-stat" style="grid-row:span 1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px">
+              <span class="s-lbl">Estado de la carta</span>
+              <span id="s-ooc-badge" class="ooc-badge nodata">Sin datos</span>
+            </div>
+            <!-- Fila 2: límites de X̄ -->
+            <div class="s-stat hi">
+              <span class="s-lbl">LCS (X̄)</span>
+              <span class="s-val" id="s-uclx">—</span>
+            </div>
+            <div class="s-stat cl">
+              <span class="s-lbl">LC (X̄)</span>
+              <span class="s-val" id="s-clx">—</span>
+            </div>
+            <div class="s-stat lo">
+              <span class="s-lbl">LCI (X̄)</span>
+              <span class="s-val" id="s-lclx">—</span>
+            </div>
+            <!-- Fila 2: límites de R -->
+            <div class="s-stat hi">
+              <span class="s-lbl">LCS (R)</span>
+              <span class="s-val" id="s-uclr">—</span>
+            </div>
+            <div class="s-stat cl">
+              <span class="s-lbl">LC (R) = R̄</span>
+              <span class="s-val" id="s-clr">—</span>
+            </div>
           </div>
 
-          <div class="spc-scroll">
-            <table class="spc-table" id="spc-table">
-              <thead id="spc-thead"></thead>
-              <tbody id="spc-tbody"></tbody>
-              <tfoot id="spc-tfoot"></tfoot>
-            </table>
+          <!-- ── Tabla de mediciones por subgrupo ──────────────── -->
+          <div class="card">
+            <div class="card-header" style="padding:10px 16px">
+              <div class="card-title" style="font-size:13px" id="table-title">
+                Tabla de mediciones por subgrupo
+              </div>
+              <span style="font-size:11px;color:var(--text-muted)" id="table-hint">
+                Tab / Enter para navegar · Ctrl+V para pegar desde Excel
+              </span>
+            </div>
+            <div class="spc-scroll">
+              <table class="spc-table" id="spc-table">
+                <thead id="spc-thead"></thead>
+                <tbody id="spc-tbody"></tbody>
+                <tfoot id="spc-tfoot"></tfoot>
+              </table>
+            </div>
+            <div style="padding:10px 16px;display:flex;align-items:center;gap:10px">
+              <button class="btn btn-secondary btn-sm" onclick="addRows(5)">
+                + Agregar 5 filas
+              </button>
+              <span id="row-count" style="font-size:12px;color:var(--text-muted)"></span>
+            </div>
           </div>
 
-          <div style="padding:10px 16px;display:flex;align-items:center;gap:10px">
-            <button class="btn btn-secondary btn-sm" onclick="addRows(5)">
-              + Agregar 5 filas
-            </button>
-            <span id="row-count" style="font-size:12px;color:var(--text-muted)"></span>
+        </div><!-- /var-section -->
+
+        <!-- ══ ATRIBUTO (p, np, c, u) ═════════════════════════ -->
+        <div id="attr-section" style="display:none">
+
+          <!-- Resumen estadístico (renderizado por JS) -->
+          <div id="attr-summary-grid" class="summary-grid" style="margin-bottom:20px"></div>
+
+          <!-- Tabla de atributos -->
+          <div class="card">
+            <div class="card-header" style="padding:10px 16px">
+              <div class="card-title" style="font-size:13px" id="attr-table-title">
+                Tabla de datos por atributo
+              </div>
+              <span style="font-size:11px;color:var(--text-muted)">
+                Tab / Enter para navegar
+              </span>
+            </div>
+            <div class="spc-scroll">
+              <table class="spc-table" id="attr-table">
+                <thead id="attr-thead"></thead>
+                <tbody id="attr-tbody"></tbody>
+                <tfoot id="attr-tfoot"></tfoot>
+              </table>
+            </div>
+            <div style="padding:10px 16px;display:flex;align-items:center;gap:10px">
+              <button class="btn btn-secondary btn-sm" onclick="addAttrRows(5)">
+                + Agregar 5 filas
+              </button>
+              <span id="attr-row-count" style="font-size:12px;color:var(--text-muted)"></span>
+            </div>
           </div>
-        </div>
+
+        </div><!-- /attr-section -->
 
       </div><!-- /content-area -->
     </div>
@@ -459,8 +495,37 @@ const XBAR_R = {
 let subgroupSize = 5;
 let tableData    = [];   // Array<string[]>  — datos de la tabla
 let processId    = null;
-let processSpec  = { usl: null, lsl: null };  // límites de especificación del proceso
-const INIT_ROWS  = 25;
+let processSpec  = { usl: null, lsl: null };
+let chartType    = 'xbar_r';
+let attrData     = [];   // [{n, count}] — datos por atributo
+const INIT_ROWS      = 25;
+const INIT_ATTR_ROWS = 25;
+
+function isVariable()  { return ['xbar_r', 'xbar_s'].includes(chartType); }
+function isAttribute() { return !isVariable(); }
+
+const CHART_TYPE_LABELS = {
+  xbar_r: 'Carta X̄-R',  xbar_s: 'Carta X̄-S',
+  p:      'Carta p',      np:     'Carta np',
+  c:      'Carta c',      u:      'Carta u'
+};
+
+function setChartTypeBadge(ct) {
+  const el = document.getElementById('chart-type-badge');
+  const label = CHART_TYPE_LABELS[ct] || ct;
+  el.textContent = label;
+  el.style.display = ct ? 'inline-block' : 'none';
+  const isAttr = !['xbar_r','xbar_s'].includes(ct);
+  el.style.background = isAttr ? '#dcfce7' : '#dbeafe';
+  el.style.color       = isAttr ? '#15803d' : '#1e40af';
+}
+
+function toggleNSelect(show, labelText) {
+  ['n-ctrl-sep','n-select-label','n-select'].forEach(id => {
+    document.getElementById(id).style.display = show ? '' : 'none';
+  });
+  if (labelText) document.getElementById('n-select-label').textContent = labelText;
+}
 
 /* ══════════════════════════════════════════════════════════════
    INICIALIZACIÓN
@@ -492,7 +557,24 @@ async function onProcessChange() {
       usl: p.usl != null ? parseFloat(p.usl) : null,
       lsl: p.lsl != null ? parseFloat(p.lsl) : null
     };
-  } catch { processSpec = { usl: null, lsl: null }; }
+    chartType = p.chart_type || 'xbar_r';
+  } catch { processSpec = { usl: null, lsl: null }; chartType = 'xbar_r'; }
+
+  setChartTypeBadge(chartType);
+
+  const varSec  = document.getElementById('var-section');
+  const attrSec = document.getElementById('attr-section');
+  if (isVariable()) {
+    varSec.style.display  = '';
+    attrSec.style.display = 'none';
+    toggleNSelect(true, 'n (tamaño de subgrupo):');
+  } else {
+    varSec.style.display  = 'none';
+    attrSec.style.display = '';
+    toggleNSelect(chartType === 'np', 'n (muestra fija):');
+    document.getElementById('attr-table-title').textContent =
+      `Tabla de datos — ${CHART_TYPE_LABELS[chartType] || chartType}`;
+  }
 
   // Update quick-links
   document.getElementById('link-historial').href = `/measurements.html?process_id=${pid}`;
@@ -849,10 +931,16 @@ function caretAtStart(input) { return input.selectionStart === 0; }
 ══════════════════════════════════════════════════════════════ */
 function clearTable(confirm_ = true) {
   if (confirm_) {
-    const hasData = tableData.some(row => row.some(v => v.trim()));
+    const hasData = isAttribute()
+      ? attrData.some(r => r.count != null)
+      : tableData.some(row => row.some(v => v.trim()));
     if (hasData && !confirm('¿Limpiar toda la tabla? Los datos no guardados se perderán.')) return;
   }
-  initEmptyTable();
+  if (isAttribute()) {
+    initAttrTable();
+  } else {
+    initEmptyTable();
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -985,6 +1073,41 @@ async function saveData() {
 
   if (!pid) { alert('Selecciona un proceso primero.'); return; }
 
+  // ── Rama atributo ──────────────────────────────────────────
+  if (isAttribute()) {
+    const validRows = attrData
+      .map((r, i) => ({ ...r, sg: i + 1 }))
+      .filter(r => r.count != null && r.count >= 0);
+    if (!validRows.length) { alert('La tabla está vacía. Ingresa datos primero.'); return; }
+    const nFixed = chartType === 'np' ? subgroupSize : null;
+    if (!confirm(`Se guardarán ${validRows.length} subgrupos de datos (${CHART_TYPE_LABELS[chartType]}).`)) return;
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      const items = validRows.map(r => ({
+        process_id:  pid,
+        value:       r.count,
+        subgroup_id: r.sg,
+        sample_size: nFixed ?? (r.n || null)
+      }));
+      const result = await measurementsApi.createBatch(items);
+      msgEl.style.display = 'block';
+      msgEl.innerHTML = `
+        <div class="alert alert-success" style="margin:0">
+          <span><strong>${result.inserted}</strong> registros guardados en
+          <strong>${validRows.length}</strong> subgrupos.
+          <a href="/control-chart.html?process_id=${pid}" style="margin-left:8px">Ver carta →</a></span>
+        </div>`;
+      await loadExistingCount(pid);
+    } catch (err) {
+      msgEl.style.display = 'block';
+      msgEl.innerHTML = `<div class="alert alert-error" style="margin:0"><span>${escHtml(err.message)}</span></div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = '💾 Guardar en proceso';
+    }
+    return;
+  }
+
   const completeRows = [], partialNums = [];
   tableData.forEach((row, i) => {
     const vals = row.map(v => v.trim() ? parseDecimal(v) : NaN);
@@ -1081,6 +1204,253 @@ async function loadExistingCount(pid) {
       notice.style.display = 'none';
     }
   } catch { document.getElementById('existing-notice').style.display = 'none'; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ATRIBUTO — tabla y estadísticos
+══════════════════════════════════════════════════════════════ */
+function initAttrTable() {
+  attrData = Array.from({ length: INIT_ATTR_ROWS }, () => ({ n: null, count: null }));
+  buildAttrTable();
+}
+
+function buildAttrTable() {
+  renderAttrHeader();
+  renderAllAttrRows();
+  renderAttrFooter();
+  updateAttrSummary();
+  updateAttrRowCount();
+  attachAttrListeners();
+}
+
+function attrNeedsN() { return chartType === 'p' || chartType === 'u'; }
+
+function attrCountLabel() {
+  return chartType === 'c' || chartType === 'u' ? 'Defectos' : 'Defectivos';
+}
+
+function attrRateLabel() { return chartType === 'u' ? 'û' : 'p̂'; }
+
+function renderAttrHeader() {
+  let cols = '<th class="th-sg">SG</th>';
+  if (attrNeedsN()) cols += '<th class="th-x">n (muestra)</th>';
+  cols += `<th class="th-x">${attrCountLabel()}</th>`;
+  if (chartType === 'p' || chartType === 'u') cols += `<th class="th-calc">${attrRateLabel()}</th>`;
+  cols += '<th class="th-del"></th>';
+  document.getElementById('attr-thead').innerHTML = `<tr>${cols}</tr>`;
+}
+
+function attrRowHTML(row, i) {
+  const { n, count } = row;
+  const sg = i + 1;
+  let cells = '';
+
+  if (attrNeedsN()) {
+    const nVal = n != null ? n : '';
+    cells += `<td><input class="spc-input" type="text" inputmode="decimal"
+      data-arow="${i}" data-acol="n" value="${nVal}" autocomplete="off"></td>`;
+  }
+  const cVal = count != null ? count : '';
+  cells += `<td><input class="spc-input" type="text" inputmode="decimal"
+    data-arow="${i}" data-acol="count" value="${cVal}" autocomplete="off"></td>`;
+
+  if (chartType === 'p' || chartType === 'u') {
+    let rate = '—';
+    if (count != null && n != null && n > 0) rate = (count / n).toFixed(4);
+    cells += `<td class="td-calc" id="arc-${i}">${rate}</td>`;
+  }
+
+  cells += `<td class="td-del"><button class="btn btn-danger btn-icon btn-sm"
+    data-adel="${i}" title="Eliminar fila">✕</button></td>`;
+
+  const hasCount = count != null;
+  const rowCls   = hasCount ? 'row-ok' : '';
+  return `<tr data-arow="${i}" class="${rowCls}"><td class="td-sg">${sg}</td>${cells}</tr>`;
+}
+
+function renderAllAttrRows() {
+  document.getElementById('attr-tbody').innerHTML =
+    attrData.map((row, i) => attrRowHTML(row, i)).join('');
+}
+
+function renderAttrFooter() {
+  const cols = 2 + (attrNeedsN() ? 1 : 0) + (chartType === 'p' || chartType === 'u' ? 1 : 0);
+  document.getElementById('attr-tfoot').innerHTML = `
+    <tr><td colspan="${cols}" style="text-align:center;font-style:italic">
+      ${attrData.length} filas · ${CHART_TYPE_LABELS[chartType] || chartType}
+    </td></tr>`;
+}
+
+function updateAttrRowCalc(i) {
+  const row = attrData[i];
+  if (!row) return;
+  const tr = document.querySelector(`tr[data-arow="${i}"]`);
+  if (!tr) return;
+  tr.className = row.count != null ? 'row-ok' : '';
+  if (chartType === 'p' || chartType === 'u') {
+    const cell = document.getElementById(`arc-${i}`);
+    if (cell) {
+      cell.textContent = (row.count != null && row.n != null && row.n > 0)
+        ? (row.count / row.n).toFixed(4) : '—';
+    }
+  }
+}
+
+function calcAttrStats() {
+  const rows = attrData.filter(r => r.count != null);
+  const k = rows.length;
+  if (k < 2) return null;
+
+  if (chartType === 'p') {
+    const sumN  = rows.reduce((a, r) => a + (r.n || 0), 0);
+    if (!sumN) return null;
+    const pbar  = rows.reduce((a, r) => a + r.count, 0) / sumN;
+    const nbar  = sumN / k;
+    const sigma = Math.sqrt(pbar * (1 - pbar) / nbar);
+    return { center: pbar, ucl: pbar + 3 * sigma, lcl: Math.max(0, pbar - 3 * sigma), k, nbar };
+  }
+  if (chartType === 'np') {
+    const n     = subgroupSize;
+    const npbar = rows.reduce((a, r) => a + r.count, 0) / k;
+    const pbar  = npbar / n;
+    const sigma = Math.sqrt(npbar * (1 - pbar));
+    return { center: npbar, ucl: npbar + 3 * sigma, lcl: Math.max(0, npbar - 3 * sigma), k };
+  }
+  if (chartType === 'c') {
+    const cbar  = rows.reduce((a, r) => a + r.count, 0) / k;
+    return { center: cbar, ucl: cbar + 3 * Math.sqrt(cbar), lcl: Math.max(0, cbar - 3 * Math.sqrt(cbar)), k };
+  }
+  if (chartType === 'u') {
+    const sumN  = rows.reduce((a, r) => a + (r.n || 0), 0);
+    if (!sumN) return null;
+    const ubar  = rows.reduce((a, r) => a + r.count, 0) / sumN;
+    const nbar  = sumN / k;
+    const sigma = Math.sqrt(ubar / nbar);
+    return { center: ubar, ucl: ubar + 3 * sigma, lcl: Math.max(0, ubar - 3 * sigma), k, nbar };
+  }
+  return null;
+}
+
+function countAttrOOC(stats) {
+  let ooc = 0;
+  attrData.forEach(r => {
+    if (r.count == null) return;
+    let val;
+    if (chartType === 'p')  val = (r.n && r.n > 0) ? r.count / r.n : null;
+    if (chartType === 'np') val = r.count;
+    if (chartType === 'c')  val = r.count;
+    if (chartType === 'u')  val = (r.n && r.n > 0) ? r.count / r.n : null;
+    if (val != null && (val > stats.ucl || val < stats.lcl)) ooc++;
+  });
+  return ooc;
+}
+
+function updateAttrSummary() {
+  const stats = calcAttrStats();
+  const grid  = document.getElementById('attr-summary-grid');
+  const f     = v => v != null ? v.toFixed(4) : '—';
+
+  const labels = { p: 'p̄ (proporción media)', np: 'n̄p (defectivos medios)',
+                   c: 'c̄ (defectos medios)',  u: 'ū (defectos/unidad)' };
+
+  const oocCount = stats ? countAttrOOC(stats) : 0;
+  const badgeCls = !stats ? 'nodata' : oocCount === 0 ? 'none' : 'some';
+  const badgeTxt = !stats ? 'Sin datos (k < 2)'
+    : oocCount === 0 ? `${stats.k} subgrupos en control`
+    : `${oocCount} señal${oocCount > 1 ? 'es' : ''} fuera de control`;
+
+  grid.style.gridTemplateColumns = 'repeat(5,1fr)';
+  grid.innerHTML = `
+    <div class="s-stat ok">
+      <span class="s-lbl">${labels[chartType] || 'LC'}</span>
+      <span class="s-val">${stats ? f(stats.center) : '—'}</span>
+    </div>
+    <div class="s-stat hi">
+      <span class="s-lbl">LCS</span>
+      <span class="s-val">${stats ? f(stats.ucl) : '—'}</span>
+    </div>
+    <div class="s-stat lo">
+      <span class="s-lbl">LCI</span>
+      <span class="s-val">${stats ? f(stats.lcl) : '—'}</span>
+    </div>
+    <div class="s-stat">
+      <span class="s-lbl">k (subgrupos)</span>
+      <span class="s-val">${stats ? stats.k : '0'}</span>
+    </div>
+    <div class="s-stat" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px">
+      <span class="s-lbl">Estado</span>
+      <span class="ooc-badge ${badgeCls}">${badgeTxt}</span>
+    </div>`;
+}
+
+function attachAttrListeners() {
+  const tbody = document.getElementById('attr-tbody');
+  const fresh = tbody.cloneNode(true);
+  tbody.parentNode.replaceChild(fresh, tbody);
+  const tb = document.getElementById('attr-tbody');
+
+  tb.addEventListener('input', e => {
+    if (!e.target.classList.contains('spc-input')) return;
+    const i   = +e.target.dataset.arow;
+    const col = e.target.dataset.acol;
+    const val = parseDecimal(e.target.value);
+    if (col === 'n')     attrData[i].n     = isNaN(val) ? null : val;
+    if (col === 'count') attrData[i].count = isNaN(val) ? null : val;
+    e.target.classList.toggle('bad', e.target.value.trim() !== '' && isNaN(val));
+    updateAttrRowCalc(i);
+    updateAttrSummary();
+    updateAttrRowCount();
+    if (i === attrData.length - 1 && e.target.value.trim()) addAttrRows(5, false);
+  });
+
+  tb.addEventListener('keydown', e => {
+    if (!e.target.classList.contains('spc-input')) return;
+    const i   = +e.target.dataset.arow;
+    const col = e.target.dataset.acol;
+    const cols = attrNeedsN() ? ['n','count'] : ['count'];
+    const ci   = cols.indexOf(col);
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      e.preventDefault();
+      ci + 1 < cols.length
+        ? focusAttrCell(i, cols[ci + 1])
+        : focusAttrCell(i + 1, cols[0]);
+    } else if (e.key === 'ArrowDown') { e.preventDefault(); focusAttrCell(i + 1, col); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); focusAttrCell(i - 1, col); }
+  });
+
+  tb.addEventListener('click', e => {
+    const btn = e.target.closest('[data-adel]');
+    if (!btn) return;
+    deleteAttrRow(+btn.dataset.adel);
+  });
+}
+
+function focusAttrCell(row, col) {
+  row = Math.max(0, Math.min(row, attrData.length - 1));
+  const inp = document.querySelector(`input[data-arow="${row}"][data-acol="${col}"]`);
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function addAttrRows(count, rebuild = true) {
+  for (let i = 0; i < count; i++) attrData.push({ n: null, count: null });
+  if (rebuild) {
+    renderAllAttrRows();
+    renderAttrFooter();
+    attachAttrListeners();
+    updateAttrRowCount();
+  }
+}
+
+function deleteAttrRow(i) {
+  attrData.splice(i, 1);
+  if (!attrData.length) attrData.push({ n: null, count: null });
+  buildAttrTable();
+}
+
+function updateAttrRowCount() {
+  const filled = attrData.filter(r => r.count != null).length;
+  document.getElementById('attr-row-count').textContent =
+    `${attrData.length} filas · ${filled} con datos`;
 }
 
 /* ══════════════════════════════════════════════════════════════

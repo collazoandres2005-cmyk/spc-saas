@@ -14,6 +14,6 @@
  *   3. Pégala en backendUrl y recarga
  */
 window.SPC_CONFIG = {
-  backendUrl: 'https://spc-saas.onrender.com', // ← URL ngrok del backend (solo cuando lo necesites)
+  backendUrl: '', // ← vacío en producción (Vercel reescribe /api/* a Render vía vercel.json)
   suppressConfigWarning: true // ← true en producción (Vercel + Render)
 };

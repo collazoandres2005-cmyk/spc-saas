@@ -28,7 +28,8 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'Proceso no encontrado.' });
     }
 
-    const phaseFilter = phase === 'all' ? '' : `AND m.phase = ${phase === '2' ? 2 : 1}`;
+    // Sin alias 'm.' para que sea compatible tanto con la query principal como con el COUNT
+    const phaseFilter = phase === 'all' ? '' : `AND phase = ${phase === '2' ? 2 : 1}`;
 
     // Try with sample_size; fall back gracefully if the column doesn't exist yet (migration pending)
     let result;

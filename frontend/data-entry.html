@@ -459,6 +459,7 @@ const XBAR_R = {
 let subgroupSize = 5;
 let tableData    = [];   // Array<string[]>  — datos de la tabla
 let processId    = null;
+let processSpec  = { usl: null, lsl: null };  // límites de especificación del proceso
 const INIT_ROWS  = 25;
 
 /* ══════════════════════════════════════════════════════════════
@@ -487,7 +488,11 @@ async function onProcessChange() {
   try {
     const p = await processesApi.get(pid);
     document.getElementById('process-crumb').textContent = `· ${p.name}`;
-  } catch {}
+    processSpec = {
+      usl: p.usl != null ? parseFloat(p.usl) : null,
+      lsl: p.lsl != null ? parseFloat(p.lsl) : null
+    };
+  } catch { processSpec = { usl: null, lsl: null }; }
 
   // Update quick-links
   document.getElementById('link-historial').href = `/measurements.html?process_id=${pid}`;
@@ -997,10 +1002,25 @@ async function saveData() {
     return;
   }
 
+  // Detectar valores fuera de especificación (LSI/LSE)
+  const { usl, lsl } = processSpec;
+  const oosSubs = [];
+  completeRows.forEach(r => {
+    const hasOos = r.values.some(v =>
+      (usl != null && v > usl) || (lsl != null && v < lsl)
+    );
+    if (hasOos) oosSubs.push(r.index + 1);
+  });
+
   let msg = `Se guardarán ${completeRows.length * subgroupSize} mediciones en `
     + `${completeRows.length} subgrupos.`;
   if (partialNums.length) {
     msg += `\n\nSubgrupos INCOMPLETOS (se omitirán): ${partialNums.join(', ')}`;
+  }
+  if (oosSubs.length) {
+    msg += `\n\n⚠ ADVERTENCIA: los subgrupos ${oosSubs.join(', ')} tienen valores FUERA de especificación`
+      + `${lsl != null ? ` (LSI=${lsl}` : ''}${usl != null ? (lsl != null ? `, LSE=${usl})` : ` (LSE=${usl})`) : ')'}.\n`
+      + `Verifica que los datos sean correctos antes de guardar.`;
   }
   if (!confirm(msg)) return;
   if (!completeRows.length) { alert('No hay subgrupos completos para guardar.'); return; }

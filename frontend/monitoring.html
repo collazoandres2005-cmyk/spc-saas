@@ -1422,18 +1422,14 @@
     const p2Radii    = main.points.map((_, i) => outOfControl.includes(i) ? 8 : 4);
     const p2BorderW  = main.points.map((_, i) => outOfControl.includes(i) ? 3 : 2);
 
-    // Eje Y: rango fijo calculado desde UCL/LCL + datos reales (incluye OOC)
-    function computeYRange(ucl, lcl, points) {
-      const span    = Math.max(ucl - lcl, Math.abs(ucl) * 0.1, 0.001);
-      const pad     = span * 0.20;
-      const valid   = (points || []).filter(v => v != null && isFinite(v));
-      const allVals = [ucl, lcl, ...valid];
-      return {
-        min: Math.min(...allVals) - pad,
-        max: Math.max(...allVals) + pad
-      };
+    // Eje Y: rango fijo basado solo en UCL/LCL — nunca cambia al agregar datos
+    // Los puntos OOC se dibujan y la línea llega al borde del gráfico (no hay zoom)
+    function computeYRange(ucl, lcl) {
+      const span = Math.max(ucl - lcl, Math.abs(ucl) * 0.1, 0.001);
+      const pad  = span * 0.25;
+      return { min: lcl - pad, max: ucl + pad };
     }
-    const { min: mainYMin, max: mainYMax } = computeYRange(main.ucl, main.lcl, main.points);
+    const { min: mainYMin, max: mainYMax } = computeYRange(main.ucl, main.lcl);
 
     // ── Main chart ───────────────────────────────────────────────
     if (mainChartInst && mainChartInst.data.datasets.length === NDSM) {
@@ -1540,7 +1536,7 @@
         ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')];
         ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')];
         ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)];
-        const { min: secYMin2, max: secYMax2 } = computeYRange(sec.ucl, sec.lcl ?? 0, sec.points);
+        const { min: secYMin2, max: secYMax2 } = computeYRange(sec.ucl, sec.lcl ?? 0);
         secChartInst.options.scales.y.min = secYMin2;
         secChartInst.options.scales.y.max = secYMax2;
         secChartInst.update({ duration: 400 });
@@ -1580,7 +1576,7 @@
           options: {
             ...CHART_DEFAULTS, animation: { duration: 400 },
             scales: (() => {
-              const { min: secYMin, max: secYMax } = computeYRange(sec.ucl, sec.lcl ?? 0, sec.points);
+              const { min: secYMin, max: secYMax } = computeYRange(sec.ucl, sec.lcl ?? 0);
               return { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, min: secYMin, max: secYMax } };
             })(),
             plugins: {

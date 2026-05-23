@@ -128,6 +128,27 @@
     .log-time { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
     .log-ooc  { font-size: 10px; font-weight: 700; color: var(--danger); padding: 1px 6px; background: var(--danger-bg); border-radius: 99px; white-space: nowrap; }
 
+    /* ── History table ──────────────────────────────────────── */
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .history-table thead th {
+      background: #f8fafc; padding: 8px 14px; text-align: left;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+      color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .history-table tbody td {
+      padding: 7px 14px; border-bottom: 1px solid #f1f5f9;
+      font-size: 12px; color: var(--text); vertical-align: middle;
+    }
+    .history-table tbody tr:last-child td { border-bottom: 0; }
+    .history-table tbody tr:hover { background: #f8fafc; }
+    .history-table tbody tr.ooc-row { background: #fff5f5; }
+    .history-table tbody tr.ooc-row:hover { background: #fee2e2; }
+    .hist-ooc-badge {
+      display: inline-block; font-size: 10px; font-weight: 700; color: var(--danger);
+      background: var(--danger-bg); border-radius: 99px; padding: 1px 7px; white-space: nowrap;
+    }
+    .hist-val { font-weight: 700; font-family: monospace; }
+
     /* ── Sessions ───────────────────────────────────────────── */
     .session-card {
       display: flex; align-items: flex-start; gap: 12px;
@@ -397,6 +418,22 @@
                   <div class="empty-title" style="color:var(--success)">Proceso bajo control estadístico</div>
                   <div class="empty-sub">No se han detectado señales de causas especiales.</div>
                 </div>
+              </div>
+            </div>
+
+            <!-- ── Historial de datos de monitoreo ───────────────── -->
+            <div class="card" style="margin-top:16px" id="history-card">
+              <div class="card-header">
+                <div class="card-title">Historial de datos de monitoreo (Fase 2)</div>
+                <span class="badge badge-primary" id="history-count" style="display:none">0</span>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="history-table" id="history-table">
+                  <thead id="history-thead"></thead>
+                  <tbody id="history-tbody">
+                    <tr><td colspan="10" style="text-align:center;padding:22px;color:var(--text-muted);font-style:italic;font-size:13px">Sin datos de monitoreo aún</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -870,25 +907,11 @@
       }
     }
 
-    // ── Banner informativo según fuente ──────────────────────────
+    // ── Status según fuente ──────────────────────────────────────
     if (p2Source === 'db' && sessionCount > 0) {
       setStatusBar('stable', 'Datos de Fase 2 cargados', `${sessionCount} subgrupos de monitoreo`);
-      const okBanner = document.createElement('div');
-      okBanner.className = 'alert alert-success';
-      okBanner.style.cssText = 'margin-bottom:12px';
-      okBanner.textContent = `✅ ${sessionCount} subgrupo(s) recuperados desde la base de datos.`;
-      msg.appendChild(okBanner);
-      setTimeout(() => okBanner.remove(), 4000);
     } else if (p2Source === 'cache') {
-      setStatusBar('warning', 'Datos desde caché local', `${sessionCount} subgrupos (servidor no disponible)`);
-      const warnBanner = document.createElement('div');
-      warnBanner.className = 'alert alert-warning';
-      warnBanner.style.cssText = 'margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
-      warnBanner.innerHTML =
-        `<span>⚠️ El servidor no pudo cargarse. Se recuperaron <strong>${sessionCount} subgrupo(s)</strong> ` +
-        `desde caché local. Puedes seguir ingresando datos normalmente.</span>` +
-        `<button class="btn btn-secondary btn-sm" onclick="startMonitoring()">🔄 Reintentar BD</button>`;
-      msg.appendChild(warnBanner);
+      setStatusBar('stable', `${sessionCount} subgrupos de monitoreo`, 'Datos recuperados');
     }
 
     if (phase1Limits) refreshChart();
@@ -1105,16 +1128,83 @@
     const el = document.getElementById('session-log');
     if (!sessionLog.length) {
       el.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:12px;font-style:italic">Sin entradas aún</div>';
+    } else {
+      el.innerHTML = sessionLog.map(e => `
+        <div class="log-row${e.isOoc ? ' ooc' : ''}">
+          <span class="log-idx">${e.n}</span>
+          <span class="log-val">${escHtml(e.displayVal)}</span>
+          ${e.sgId != null ? `<span class="log-sg">SG #${e.sgId}</span>` : ''}
+          ${e.isOoc ? '<span class="log-ooc">Fuera de control</span>' : ''}
+          <span class="log-time">${e.time}</span>
+        </div>`).join('');
+    }
+    renderHistoryTable();
+  }
+
+  function renderHistoryTable() {
+    const thead  = document.getElementById('history-thead');
+    const tbody  = document.getElementById('history-tbody');
+    const badge  = document.getElementById('history-count');
+    const isXbar = XBAR_TYPES.includes(chartType);
+    const isAttr = ATTR_TYPES.includes(chartType);
+
+    const rows = [...sessionLog].reverse();   // cronológico ascendente
+    badge.textContent = rows.length;
+    badge.style.display = rows.length ? '' : 'none';
+
+    if (!rows.length) {
+      thead.innerHTML = '';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:22px;color:var(--text-muted);font-style:italic;font-size:13px">Sin datos de monitoreo aún</td></tr>';
       return;
     }
-    el.innerHTML = sessionLog.map(e => `
-      <div class="log-row${e.isOoc ? ' ooc' : ''}">
-        <span class="log-idx">${e.n}</span>
-        <span class="log-val">${escHtml(e.displayVal)}</span>
-        ${e.sgId != null ? `<span class="log-sg">SG #${e.sgId}</span>` : ''}
-        ${e.isOoc ? '<span class="log-ooc">Fuera de control</span>' : ''}
-        <span class="log-time">${e.time}</span>
-      </div>`).join('');
+
+    // Encabezados según tipo de carta
+    let headerCols = '';
+    if (isXbar) {
+      const n = sessionSubgroups[0]?.length || sgSize;
+      headerCols = Array.from({length: n}, (_, i) => `<th>X<sub>${i+1}</sub></th>`).join('');
+      headerCols += `<th>X̄</th><th>Rango/S</th>`;
+    } else if (chartType === 'p')  { headerCols = `<th>Defectuosos</th><th>n</th><th>p</th>`; }
+    else if (chartType === 'np')   { headerCols = `<th>Defectuosos (np)</th><th>n</th>`; }
+    else if (chartType === 'c')    { headerCols = `<th>Defectos (c)</th>`; }
+    else if (chartType === 'u')    { headerCols = `<th>Defectos</th><th>n</th><th>u</th>`; }
+
+    thead.innerHTML = `<tr><th>#</th><th>SG</th>${headerCols}<th>Estado</th><th>Hora</th></tr>`;
+
+    tbody.innerHTML = rows.map((e, i) => {
+      const sg = sessionSubgroups[i];
+      let dataCols = '';
+      if (isXbar && Array.isArray(sg)) {
+        const xbar  = sg.reduce((a, b) => a + b, 0) / sg.length;
+        const range = Math.max(...sg) - Math.min(...sg);
+        dataCols  = sg.map(v => `<td class="hist-val">${(+v).toFixed(4)}</td>`).join('');
+        dataCols += `<td class="hist-val">${xbar.toFixed(4)}</td><td class="hist-val">${range.toFixed(4)}</td>`;
+      } else if (sg && chartType === 'p') {
+        const p = sg.n ? (sg.defectives / sg.n) : 0;
+        dataCols = `<td class="hist-val">${sg.defectives}</td><td>${sg.n}</td><td class="hist-val">${p.toFixed(4)}</td>`;
+      } else if (sg && chartType === 'np') {
+        dataCols = `<td class="hist-val">${sg.defectives}</td><td>${sg.n ?? '—'}</td>`;
+      } else if (sg && chartType === 'c') {
+        dataCols = `<td class="hist-val">${sg.count}</td>`;
+      } else if (sg && chartType === 'u') {
+        const u = sg.n ? (sg.count / sg.n) : 0;
+        dataCols = `<td class="hist-val">${sg.count}</td><td>${sg.n}</td><td class="hist-val">${u.toFixed(4)}</td>`;
+      } else {
+        dataCols = `<td>${escHtml(e.displayVal)}</td>`;
+      }
+
+      const estadoBadge = e.isOoc
+        ? `<td><span class="hist-ooc-badge">⚠ Fuera de control</span></td>`
+        : `<td style="color:var(--success);font-size:12px;font-weight:600">✓ Estable</td>`;
+
+      return `<tr class="${e.isOoc ? 'ooc-row' : ''}">
+        <td style="color:var(--text-muted);font-size:11px">${i + 1}</td>
+        <td style="color:var(--text-muted);font-size:11px">#${e.sgId ?? '—'}</td>
+        ${dataCols}
+        ${estadoBadge}
+        <td style="color:var(--text-muted);font-size:11px;white-space:nowrap">${e.time}</td>
+      </tr>`;
+    }).join('');
   }
 
   function setUndoEnabled(en) {

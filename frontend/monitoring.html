@@ -1174,30 +1174,46 @@
     tbody.innerHTML = rows.map((e, i) => {
       const sg = sessionSubgroups[i];
       let dataCols = '';
+      let statVal  = null;  // the plotted statistic (xbar, p, np, c, u) for OOC check
+
       if (isXbar && Array.isArray(sg)) {
         const xbar  = sg.reduce((a, b) => a + b, 0) / sg.length;
         const range = Math.max(...sg) - Math.min(...sg);
         dataCols  = sg.map(v => `<td class="hist-val">${(+v).toFixed(4)}</td>`).join('');
         dataCols += `<td class="hist-val">${xbar.toFixed(4)}</td><td class="hist-val">${range.toFixed(4)}</td>`;
+        statVal = xbar;
       } else if (sg && chartType === 'p') {
         const p = sg.n ? (sg.defectives / sg.n) : 0;
         dataCols = `<td class="hist-val">${sg.defectives}</td><td>${sg.n}</td><td class="hist-val">${p.toFixed(4)}</td>`;
+        statVal = p;
       } else if (sg && chartType === 'np') {
         dataCols = `<td class="hist-val">${sg.defectives}</td><td>${sg.n ?? '—'}</td>`;
+        statVal = sg.defectives;
       } else if (sg && chartType === 'c') {
         dataCols = `<td class="hist-val">${sg.count}</td>`;
+        statVal = sg.count;
       } else if (sg && chartType === 'u') {
         const u = sg.n ? (sg.count / sg.n) : 0;
         dataCols = `<td class="hist-val">${sg.count}</td><td>${sg.n}</td><td class="hist-val">${u.toFixed(4)}</td>`;
+        statVal = u;
       } else {
         dataCols = `<td>${escHtml(e.displayVal)}</td>`;
       }
 
-      const estadoBadge = e.isOoc
+      // Compute OOC directly from limits instead of relying on the incomplete e.isOoc flag
+      let isActuallyOoc = false;
+      if (statVal !== null && phase1Limits?.main) {
+        const { ucl, lcl } = phase1Limits.main;
+        isActuallyOoc = (ucl != null && statVal > ucl) || (lcl != null && statVal < lcl);
+      } else {
+        isActuallyOoc = !!e.isOoc;  // fallback
+      }
+
+      const estadoBadge = isActuallyOoc
         ? `<td><span class="hist-ooc-badge">⚠ Fuera de control</span></td>`
         : `<td style="color:var(--success);font-size:12px;font-weight:600">✓ Estable</td>`;
 
-      return `<tr class="${e.isOoc ? 'ooc-row' : ''}">
+      return `<tr class="${isActuallyOoc ? 'ooc-row' : ''}">
         <td style="color:var(--text-muted);font-size:11px">${i + 1}</td>
         <td style="color:var(--text-muted);font-size:11px">#${e.sgId ?? '—'}</td>
         ${dataCols}

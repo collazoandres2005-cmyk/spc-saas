@@ -6,7 +6,6 @@
   <title>Historial de Datos — SPC SaaS</title>
   <link rel="stylesheet" href="/css/main.css">
   <style>
-    .meas-count { font-size: 11px; color: var(--text-muted); }
     .info-banner {
       display: flex; align-items: flex-start; gap: 12px;
       padding: 14px 18px; margin-bottom: 20px;
@@ -28,13 +27,31 @@
     .phase-pill.active { background: var(--primary); color: #fff; }
     .phase-pill:not(:last-child) { border-right: 1px solid var(--border); }
 
-    /* Phase badge in table */
+    /* Phase badge */
     .phase-badge {
       display: inline-block; font-size: 10px; font-weight: 700; border-radius: 99px;
       padding: 2px 8px; white-space: nowrap;
     }
     .phase-badge.p1 { background: #eff6ff; color: #1d4ed8; }
     .phase-badge.p2 { background: #f0fdf4; color: #15803d; }
+
+    /* Bulk action bar */
+    .bulk-bar {
+      display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px; background: #eff6ff;
+      border-bottom: 1px solid #bfdbfe; font-size: 13px;
+    }
+    .bulk-bar.visible { display: flex; }
+    .bulk-count { font-weight: 700; color: var(--primary); }
+
+    /* Checkbox column */
+    .cb-col { width: 36px; padding-left: 14px !important; }
+    input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary); }
+    tr.selected-row { background: #eff6ff !important; }
+    tr.selected-row:hover { background: #dbeafe !important; }
+
+    /* meas-count */
+    .meas-count { font-size: 11px; color: var(--text-muted); }
   </style>
 </head>
 <body class="app-layout">
@@ -53,26 +70,22 @@
 
     <div class="page-content">
 
-      <!-- Información contextual -->
+      <!-- Info banner -->
       <div class="info-banner">
         <div>
           <div style="font-weight:600;margin-bottom:4px">Gestión de datos históricos</div>
           <div>
-            Muestra todas las mediciones registradas: <strong>Fase 1</strong> (datos históricos de Cartas de Control)
-            y <strong>Fase 2</strong> (datos de Monitoreo en tiempo real).
+            Muestra todas las mediciones: <strong>Fase 1</strong> (histórico de Cartas de Control)
+            y <strong>Fase 2</strong> (Monitoreo en tiempo real). Selecciona filas para borrarlas en lote.
           </div>
           <div class="info-links">
-            <a href="/control-chart.html" class="btn btn-sm btn-secondary">
-              Cartas de Control — toma de datos + gráficos
-            </a>
-            <a href="/monitoring.html" class="btn btn-sm btn-secondary">
-              Monitoreo en Tiempo Real
-            </a>
+            <a href="/control-chart.html" class="btn btn-sm btn-secondary">Cartas de Control</a>
+            <a href="/monitoring.html"    class="btn btn-sm btn-secondary">Monitoreo en Tiempo Real</a>
           </div>
         </div>
       </div>
 
-      <!-- Selector de proceso + filtro de fase -->
+      <!-- Filtros -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-body" style="padding:14px 20px">
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
@@ -86,8 +99,8 @@
               <span style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px">Fase:</span>
               <div class="phase-pills">
                 <button class="phase-pill active" id="pill-all" onclick="setPhase('all')">Todas</button>
-                <button class="phase-pill" id="pill-1" onclick="setPhase('1')">Fase 1</button>
-                <button class="phase-pill" id="pill-2" onclick="setPhase('2')">Fase 2</button>
+                <button class="phase-pill"         id="pill-1"   onclick="setPhase('1')">Fase 1</button>
+                <button class="phase-pill"         id="pill-2"   onclick="setPhase('2')">Fase 2</button>
               </div>
             </div>
             <span id="process-specs" style="font-size:12px;color:var(--text-sec)"></span>
@@ -98,17 +111,35 @@
       <div id="msg"></div>
 
       <div id="content-area" class="hidden">
-
-        <!-- Historial de mediciones -->
         <div class="card">
+
+          <!-- Cabecera tabla -->
           <div class="card-header">
-            <div class="card-title">Mediciones registradas</div>
-            <span class="meas-count" id="meas-count"></span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="card-title">Mediciones registradas</div>
+              <span class="meas-count" id="meas-count"></span>
+            </div>
+            <!-- Botón eliminar página completa -->
+            <button class="btn btn-danger btn-sm" id="btn-del-phase"
+                    onclick="deleteCurrentPhase()" style="display:none">
+              🗑 Eliminar Fase 2 de este proceso
+            </button>
           </div>
+
+          <!-- Barra de acciones en lote (aparece al seleccionar) -->
+          <div class="bulk-bar" id="bulk-bar">
+            <span class="bulk-count" id="bulk-count">0 seleccionadas</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑 Eliminar seleccionadas</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearSelection()">✕ Deseleccionar todo</button>
+          </div>
+
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th class="cb-col">
+                    <input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)" title="Seleccionar todo">
+                  </th>
                   <th>#</th>
                   <th>Fase</th>
                   <th>Valor</th>
@@ -119,22 +150,23 @@
                 </tr>
               </thead>
               <tbody id="meas-tbody">
-                <tr><td colspan="7" class="text-center"
-                  style="padding:30px;color:var(--text-muted)">Selecciona un proceso</td></tr>
+                <tr><td colspan="8" style="padding:30px;text-align:center;color:var(--text-muted)">
+                  Selecciona un proceso
+                </td></tr>
               </tbody>
             </table>
           </div>
+
+          <!-- Paginación -->
           <div class="card-body" style="padding:12px 20px;border-top:1px solid var(--border)">
-            <div class="flex-center" style="gap:10px">
-              <button class="btn btn-secondary btn-sm" id="btn-prev"
-                      onclick="prevPage()" disabled>← Anterior</button>
+            <div class="flex-center" style="gap:10px;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" id="btn-prev" onclick="prevPage()" disabled>← Anterior</button>
               <span id="page-info" style="font-size:12px;color:var(--text-sec)"></span>
-              <button class="btn btn-secondary btn-sm" id="btn-next"
-                      onclick="nextPage()" disabled>Siguiente →</button>
+              <button class="btn btn-secondary btn-sm" id="btn-next" onclick="nextPage()" disabled>Siguiente →</button>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:8px" id="sel-hint"></span>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -152,8 +184,10 @@
   let total            = 0;
   let page             = 0;
   let currentPhase     = 'all';
-  const PAGE_SIZE      = 50;
+  let selectedIds      = new Set();
+  const PAGE_SIZE      = 100;   // más filas por página para facilitar selección
 
+  // ── Init ──────────────────────────────────────────────────────
   async function init() {
     try {
       const processes = await processesApi.list();
@@ -161,7 +195,7 @@
       processes.forEach(p =>
         sel.appendChild(new Option(`${p.name}${p.unit ? ` (${p.unit})` : ''}`, p.id))
       );
-      const params = new URLSearchParams(location.search);
+      const params   = new URLSearchParams(location.search);
       const urlPid   = params.get('process_id');
       const urlPhase = params.get('phase');
       if (urlPhase && ['all','1','2'].includes(urlPhase)) setPhase(urlPhase, false);
@@ -171,30 +205,28 @@
     }
   }
 
+  // ── Filtro fase ───────────────────────────────────────────────
   function setPhase(ph, reload = true) {
     currentPhase = ph;
     document.querySelectorAll('.phase-pill').forEach(b => b.classList.remove('active'));
-    const map = { all: 'pill-all', '1': 'pill-1', '2': 'pill-2' };
-    document.getElementById(map[ph])?.classList.add('active');
+    ({ all:'pill-all', '1':'pill-1', '2':'pill-2' })[ph] &&
+      document.getElementById(({ all:'pill-all', '1':'pill-1', '2':'pill-2' })[ph]).classList.add('active');
+    clearSelection();
     if (reload && currentProcessId) { page = 0; loadMeasurements(); }
   }
 
+  // ── Proceso ───────────────────────────────────────────────────
   async function onProcessChange() {
     const pid = document.getElementById('process-select').value;
-    if (!pid) {
-      document.getElementById('content-area').classList.add('hidden');
-      return;
-    }
+    if (!pid) { document.getElementById('content-area').classList.add('hidden'); return; }
     currentProcessId = pid;
     page = 0;
+    clearSelection();
     document.getElementById('content-area').classList.remove('hidden');
-
-    // Actualizar links con process_id
     document.querySelectorAll('.info-links a').forEach(a => {
       const base = a.getAttribute('href').split('?')[0];
       a.setAttribute('href', `${base}?process_id=${pid}`);
     });
-
     try {
       currentProcess = await processesApi.get(pid);
       document.getElementById('process-name-crumb').textContent = `· ${currentProcess.name}`;
@@ -206,10 +238,10 @@
       document.getElementById('process-specs').textContent =
         specs ? `[${specs}] ${currentProcess.unit || ''}` : '';
     } catch {}
-
     await loadMeasurements();
   }
 
+  // ── Cargar mediciones ──────────────────────────────────────────
   async function loadMeasurements() {
     if (!currentProcessId) return;
     const msgEl = document.getElementById('msg');
@@ -222,67 +254,188 @@
       updatePagination();
     } catch (err) {
       showAlert(msgEl,
-        `Error al obtener las mediciones: ${err.message}. ` +
-        `Si el problema persiste, reinicia el servidor backend.`,
+        `Error al obtener las mediciones: ${err.message}. Si el problema persiste, reinicia el servidor backend.`,
         'error');
     }
   }
 
+  // ── Render tabla ──────────────────────────────────────────────
   function renderTable() {
     const tbody = document.getElementById('meas-tbody');
-    const phaseLabel = { all: 'mediciones en total', '1': 'mediciones de Fase 1', '2': 'mediciones de Fase 2' };
+    const phaseLabel = { all:'mediciones en total', '1':'mediciones de Fase 1', '2':'mediciones de Fase 2' };
     document.getElementById('meas-count').textContent = `${total} ${phaseLabel[currentPhase] || 'mediciones'}`;
 
+    // Mostrar botón "Eliminar Fase 2" solo cuando se filtra por Fase 2
+    document.getElementById('btn-del-phase').style.display = currentPhase === '2' && total > 0 ? '' : 'none';
+
     if (!measData.length) {
-      const msg = currentPhase === '2'
-        ? 'No hay datos de monitoreo (Fase 2) para este proceso aún. Ingresa datos desde Monitoreo en Tiempo Real.'
-        : currentPhase === '1'
-          ? 'No hay datos históricos (Fase 1) para este proceso. Ingresa datos desde Cartas de Control.'
+      const emptyMsg = currentPhase==='2'
+        ? 'No hay datos de monitoreo (Fase 2). Ingresa desde Monitoreo en Tiempo Real.'
+        : currentPhase==='1'
+          ? 'No hay datos históricos (Fase 1). Ingresa desde Cartas de Control.'
           : 'No hay mediciones para este proceso.';
-      tbody.innerHTML = `<tr><td colspan="7">
-        <div class="empty-state">
-          <div class="empty-title">Sin mediciones</div>
-          <div class="empty-sub">${msg}</div>
-        </div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+        <div class="empty-title">Sin mediciones</div>
+        <div class="empty-sub">${emptyMsg}</div>
+      </div></td></tr>`;
+      document.getElementById('chk-all').checked = false;
       return;
     }
 
     tbody.innerHTML = measData.map((m, i) => {
-      const phase = parseInt(m.phase) === 2 ? 2 : 1;
-      return `
-      <tr>
-        <td style="color:var(--text-muted)">${page * PAGE_SIZE + i + 1}</td>
+      const phase   = parseInt(m.phase) === 2 ? 2 : 1;
+      const checked = selectedIds.has(m.id) ? 'checked' : '';
+      const selCls  = selectedIds.has(m.id) ? ' selected-row' : '';
+      return `<tr class="${selCls}" id="row-${m.id}">
+        <td class="cb-col">
+          <input type="checkbox" ${checked} onchange="toggleRow('${m.id}',this.checked)" data-id="${m.id}">
+        </td>
+        <td style="color:var(--text-muted);font-size:12px">${page * PAGE_SIZE + i + 1}</td>
         <td><span class="phase-badge p${phase}">Fase ${phase}</span></td>
         <td><strong>${Number(m.value).toFixed(4)}</strong></td>
         <td>${m.subgroup_id != null
           ? `<span class="badge badge-blue">SG ${m.subgroup_id}</span>`
-          : '<span class="text-muted">—</span>'}</td>
+          : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="font-size:12px">${formatDate(m.recorded_at)}</td>
         <td style="font-size:12px;color:var(--text-sec)">${escHtml(m.recorded_by_name || '—')}</td>
-        <td><button class="btn btn-danger btn-sm btn-icon"
-              onclick="deleteMeasurement('${m.id}')" title="Eliminar">✕</button></td>
+        <td>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteSingle('${m.id}')" title="Eliminar">✕</button>
+        </td>
       </tr>`;
     }).join('');
+
+    // Sincronizar estado del checkbox de cabecera
+    const allChecked = measData.every(m => selectedIds.has(m.id));
+    const anyChecked = measData.some(m => selectedIds.has(m.id));
+    const chkAll = document.getElementById('chk-all');
+    chkAll.checked       = allChecked;
+    chkAll.indeterminate = !allChecked && anyChecked;
   }
 
+  // ── Paginación ────────────────────────────────────────────────
   function updatePagination() {
     const pages = Math.ceil(total / PAGE_SIZE);
     document.getElementById('page-info').textContent =
       `Página ${page + 1} de ${Math.max(1, pages)}`;
     document.getElementById('btn-prev').disabled = page === 0;
     document.getElementById('btn-next').disabled = (page + 1) * PAGE_SIZE >= total;
+    const hint = selectedIds.size > 0
+      ? `${selectedIds.size} seleccionada(s) en total (todas las páginas)`
+      : '';
+    document.getElementById('sel-hint').textContent = hint;
   }
 
   function prevPage() { if (page > 0)                   { page--; loadMeasurements(); } }
   function nextPage() { if ((page+1)*PAGE_SIZE < total) { page++; loadMeasurements(); } }
 
-  async function deleteMeasurement(id) {
+  // ── Selección ─────────────────────────────────────────────────
+  function toggleRow(id, checked) {
+    if (checked) selectedIds.add(id); else selectedIds.delete(id);
+    const row = document.getElementById(`row-${id}`);
+    if (row) row.className = checked ? 'selected-row' : '';
+    updateBulkBar();
+    // Sincronizar cabecera
+    const allChecked = measData.every(m => selectedIds.has(m.id));
+    const anyChecked = measData.some(m => selectedIds.has(m.id));
+    const chkAll = document.getElementById('chk-all');
+    chkAll.checked       = allChecked;
+    chkAll.indeterminate = !allChecked && anyChecked;
+    updatePagination();
+  }
+
+  function toggleAll(checked) {
+    measData.forEach(m => {
+      if (checked) selectedIds.add(m.id); else selectedIds.delete(m.id);
+      const row = document.getElementById(`row-${m.id}`);
+      if (row) row.className = checked ? 'selected-row' : '';
+      const cb = row?.querySelector('input[type=checkbox]');
+      if (cb) cb.checked = checked;
+    });
+    updateBulkBar();
+    updatePagination();
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    updateBulkBar();
+    document.querySelectorAll('#meas-tbody tr').forEach(tr => tr.classList.remove('selected-row'));
+    document.querySelectorAll('#meas-tbody input[type=checkbox]').forEach(cb => cb.checked = false);
+    const chkAll = document.getElementById('chk-all');
+    if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+    updatePagination();
+  }
+
+  function updateBulkBar() {
+    const bar = document.getElementById('bulk-bar');
+    const n   = selectedIds.size;
+    if (n > 0) {
+      bar.classList.add('visible');
+      document.getElementById('bulk-count').textContent =
+        `${n} medición${n !== 1 ? 'es' : ''} seleccionada${n !== 1 ? 's' : ''}`;
+    } else {
+      bar.classList.remove('visible');
+    }
+  }
+
+  // ── Borrar ────────────────────────────────────────────────────
+  async function deleteSingle(id) {
     if (!confirm('¿Eliminar esta medición?')) return;
     try {
       await measurementsApi.delete(id);
+      selectedIds.delete(id);
+      updateBulkBar();
       await loadMeasurements();
     } catch (err) {
       showAlert(document.getElementById('msg'), err.message, 'error');
+    }
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (!confirm(`¿Eliminar ${ids.length} medición${ids.length !== 1 ? 'es' : ''} seleccionada${ids.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return;
+
+    const msgEl = document.getElementById('msg');
+    const bar   = document.getElementById('bulk-bar');
+    bar.innerHTML = `<span style="color:var(--primary);font-weight:600">⏳ Eliminando ${ids.length} mediciones...</span>`;
+
+    let ok = 0, fail = 0;
+    // Eliminar en lotes de 10 para no saturar el servidor
+    const BATCH = 10;
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const chunk = ids.slice(i, i + BATCH);
+      await Promise.allSettled(chunk.map(id =>
+        measurementsApi.delete(id)
+          .then(() => { ok++; selectedIds.delete(id); })
+          .catch(() => { fail++; })
+      ));
+      // Actualizar progreso
+      bar.innerHTML = `<span style="color:var(--primary);font-weight:600">⏳ Eliminando... ${ok + fail}/${ids.length}</span>`;
+    }
+
+    updateBulkBar();
+    await loadMeasurements();
+
+    if (fail > 0) {
+      showAlert(msgEl, `Eliminadas ${ok} mediciones. ${fail} no pudieron eliminarse.`, 'warning');
+    } else {
+      showAlert(msgEl, `✅ ${ok} medición${ok !== 1 ? 'es' : ''} eliminada${ok !== 1 ? 's' : ''} correctamente.`, 'success');
+      setTimeout(() => { msgEl.innerHTML = ''; }, 4000);
+    }
+  }
+
+  async function deleteCurrentPhase() {
+    if (currentPhase !== '2') return;
+    if (!confirm(`¿Eliminar TODOS los datos de monitoreo (Fase 2) de este proceso?\n\nTotal: ${total} mediciones.\n\nEsta acción no se puede deshacer.`)) return;
+    // Cargar todos los IDs de Fase 2
+    const msgEl = document.getElementById('msg');
+    try {
+      showAlert(msgEl, '⏳ Cargando todos los IDs...', 'info');
+      const all = await measurementsApi.list(currentProcessId, 9999, 0, '2');
+      all.data.forEach(m => selectedIds.add(m.id));
+      await deleteSelected();
+    } catch (err) {
+      showAlert(msgEl, `Error: ${err.message}`, 'error');
     }
   }
 

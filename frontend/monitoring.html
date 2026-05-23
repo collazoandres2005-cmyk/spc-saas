@@ -280,6 +280,7 @@
               <div class="card-header">
                 <div class="card-title" id="entry-title">Ingreso de datos</div>
                 <div style="display:flex;align-items:center;gap:8px">
+                  <button class="btn btn-secondary btn-sm" onclick="startMonitoring()" title="Recargar datos de monitoreo desde la base de datos">🔄</button>
                   <button class="btn btn-secondary btn-sm" onclick="saveSession()" title="Guardar sesión actual para continuar después">💾 Guardar</button>
                   <div class="live-indicator"><span class="live-dot"></span>EN VIVO</div>
                 </div>
@@ -805,9 +806,26 @@
           renderLog();
           updateStats();
           setStatusBar('stable', 'Datos de Fase 2 cargados', `${sessionCount} subgrupos de monitoreo`);
+          // Confirm to user that saved data was recovered
+          const okBanner = document.createElement('div');
+          okBanner.className = 'alert alert-success';
+          okBanner.style.cssText = 'margin-bottom:12px';
+          okBanner.textContent = `✅ ${sessionCount} subgrupo(s) de monitoreo recuperados desde la base de datos.`;
+          msg.appendChild(okBanner);
+          setTimeout(() => okBanner.remove(), 5000);
         }
       }
-    } catch (e) { console.warn('Error cargando Fase 2:', e); }
+    } catch (e) {
+      console.error('Error cargando Fase 2:', e);
+      const errBanner = document.createElement('div');
+      errBanner.className = 'alert alert-error';
+      errBanner.style.cssText = 'margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+      errBanner.innerHTML =
+        `<span>⚠️ <strong>Error al recuperar datos de monitoreo:</strong> ${escHtml(e.message)}. ` +
+        `Tus datos están en la base de datos pero no pudieron cargarse.</span>` +
+        `<button class="btn btn-secondary btn-sm" onclick="startMonitoring()">🔄 Reintentar</button>`;
+      msg.appendChild(errBanner);
+    }
 
     if (phase1Limits) refreshChart();
     const firstInp = document.querySelector('.sg-cell-inp, .attr-inp');

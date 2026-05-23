@@ -30,15 +30,33 @@ router.get('/', async (req, res) => {
 
     const phaseFilter = phase === 'all' ? '' : `AND m.phase = ${phase === '2' ? 2 : 1}`;
 
-    const result = await db.query(
-      `SELECT m.id, m.value, m.subgroup_id, m.phase, m.sample_size, m.recorded_at, u.name as recorded_by_name
-       FROM measurements m
-       LEFT JOIN users u ON m.recorded_by = u.id
-       WHERE m.process_id=$1 AND m.company_id=$2 ${phaseFilter}
-       ORDER BY m.recorded_at DESC
-       LIMIT $3 OFFSET $4`,
-      [process_id, req.user.company_id, parseInt(limit), parseInt(offset)]
-    );
+    // Try with sample_size; fall back gracefully if the column doesn't exist yet (migration pending)
+    let result;
+    try {
+      result = await db.query(
+        `SELECT m.id, m.value, m.subgroup_id, m.phase, m.sample_size, m.recorded_at, u.name as recorded_by_name
+         FROM measurements m
+         LEFT JOIN users u ON m.recorded_by = u.id
+         WHERE m.process_id=$1 AND m.company_id=$2 ${phaseFilter}
+         ORDER BY m.recorded_at DESC
+         LIMIT $3 OFFSET $4`,
+        [process_id, req.user.company_id, parseInt(limit), parseInt(offset)]
+      );
+    } catch (colErr) {
+      if (colErr.message && colErr.message.includes('sample_size')) {
+        result = await db.query(
+          `SELECT m.id, m.value, m.subgroup_id, m.phase, NULL AS sample_size, m.recorded_at, u.name as recorded_by_name
+           FROM measurements m
+           LEFT JOIN users u ON m.recorded_by = u.id
+           WHERE m.process_id=$1 AND m.company_id=$2 ${phaseFilter}
+           ORDER BY m.recorded_at DESC
+           LIMIT $3 OFFSET $4`,
+          [process_id, req.user.company_id, parseInt(limit), parseInt(offset)]
+        );
+      } else {
+        throw colErr;
+      }
+    }
 
     const countResult = await db.query(
       `SELECT COUNT(*) FROM measurements WHERE process_id=$1 AND company_id=$2 ${phaseFilter}`,

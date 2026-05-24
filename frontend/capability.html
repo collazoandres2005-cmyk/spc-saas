@@ -207,6 +207,10 @@
           </div>
         </div>
 
+        <!-- Índices corto plazo (σ̂w) -->
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px" id="lbl-cp-section">
+          Índices de corto plazo (σ̂<sub style="font-size:9px">w</sub>)
+        </div>
         <div class="cap-grid">
           <div class="cap-card">
             <div class="cap-val" id="val-cp">—</div>
@@ -227,6 +231,33 @@
             <div class="cap-val" id="val-cpl">—</div>
             <div class="cap-lbl">Cpl</div>
             <div class="cap-sublbl">Capacidad hacia LSI</div>
+          </div>
+        </div>
+
+        <!-- Índices largo plazo (σ_total) -->
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:10px 0 6px" id="lbl-pp-section">
+          Índices de largo plazo (σ<sub style="font-size:9px">total</sub>)
+        </div>
+        <div class="cap-grid" style="margin-bottom:20px">
+          <div class="cap-card">
+            <div class="cap-val" id="val-pp">—</div>
+            <div class="cap-lbl">Pp</div>
+            <div class="cap-sublbl">Desempeño potencial</div>
+          </div>
+          <div class="cap-card">
+            <div class="cap-val" id="val-ppk">—</div>
+            <div class="cap-lbl">Ppk</div>
+            <div class="cap-sublbl">Desempeño real</div>
+          </div>
+          <div class="cap-card">
+            <div class="cap-val" id="val-ppu">—</div>
+            <div class="cap-lbl">Ppu</div>
+            <div class="cap-sublbl">Desempeño hacia LSE</div>
+          </div>
+          <div class="cap-card">
+            <div class="cap-val" id="val-ppl">—</div>
+            <div class="cap-lbl">Ppl</div>
+            <div class="cap-sublbl">Desempeño hacia LSI</div>
           </div>
         </div>
 
@@ -486,7 +517,7 @@
   }
 
   function renderCapability({ process, capability }, histogram = null) {
-    const { cp, cpk, cpu, cpl, xbar, sigma, sigmaTotal, sigmaMethod, status, n,
+    const { cp, cpk, cpu, cpl, pp, ppk, ppu, ppl, xbar, sigma, sigmaTotal, sigmaMethod, status, n,
             n_subgroups, subgroup_size, tolerance, distToUsl, distToLsl, distToNominal,
             ppmUpper, ppmLower, ppmTotal } = capability;
 
@@ -513,6 +544,24 @@
     document.getElementById('val-cpu').textContent  = formatNum(cpu, 3);
     document.getElementById('val-cpl').textContent  = formatNum(cpl, 3);
 
+    // Pp/Ppk — largo plazo
+    document.getElementById('val-pp').textContent   = formatNum(pp, 3);
+    document.getElementById('val-ppu').textContent  = formatNum(ppu, 3);
+    document.getElementById('val-ppl').textContent  = formatNum(ppl, 3);
+    const ppkEl = document.getElementById('val-ppk');
+    ppkEl.textContent  = formatNum(ppk, 3);
+    const ppkStatus = ppk < 1.0 ? 'no_capaz' : ppk < 1.33 ? 'marginal' : 'capaz';
+    ppkEl.className = `cap-val ${ppkStatus === 'capaz' ? 'text-success' : ppkStatus === 'marginal' ? 'text-warning' : 'text-danger'}`;
+
+    // Si no hay subgrupos, Pp = Cp (misma σ) — indicarlo visualmente
+    const hasSubgroups = sigmaMethod === 'within';
+    document.getElementById('lbl-cp-section').innerHTML = hasSubgroups
+      ? 'Índices de corto plazo (σ̂<sub style="font-size:9px">w</sub> = R̄/d₂)'
+      : 'Índices de capacidad (σ = σ<sub style="font-size:9px">total</sub>, sin subgrupos)';
+    document.getElementById('lbl-pp-section').innerHTML = hasSubgroups
+      ? 'Índices de largo plazo (σ<sub style="font-size:9px">total</sub>)'
+      : 'Índices de largo plazo <span style="font-size:10px;font-weight:400;color:var(--text-muted)">(= Cp/Cpk sin subgrupos)</span>';
+
     // %PNC por cola
     const pncLsi   = fmtPnc(ppmLower);
     const pncLse   = fmtPnc(ppmUpper);
@@ -537,7 +586,7 @@
     document.getElementById('val-unit').textContent = process.unit || '';
 
     document.getElementById('val-cpk').className =
-      `cap-val ${status === 'capaz' ? 'text-success' : status === 'marginal' ? 'text-warning' : 'text-danger'}`;
+      `cap-val ${cpk >= 1.33 ? 'text-success' : cpk >= 1.0 ? 'text-warning' : 'text-danger'}`;
 
     if (sigmaMethod === 'within') {
       document.getElementById('lbl-sigma').textContent = 'Desv. Estándar σ̂w (corto plazo)';

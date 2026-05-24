@@ -317,18 +317,19 @@ function initSidebar(activePage) {
   ];
 
   const fase1Pages = [
-    { id: 'processes',     href: '/processes.html',      label: 'Procesos'          },
-    { id: 'data-entry',    href: '/data-entry.html',     label: 'Entrada de Datos'  },
-    { id: 'control-chart', href: '/control-chart.html',  label: 'Cartas de Control' },
-    { id: 'capability',    href: '/capability.html',     label: 'Capacidad'         },
+    { id: 'processes',     href: '/processes.html',      label: 'Procesos'              },
+    { id: 'data-entry',    href: '/data-entry.html',     label: 'Entrada de Datos'      },
+    { id: 'control-chart', href: '/control-chart.html',  label: 'Cartas de Control'     },
+    { id: 'capability',    href: '/capability.html',     label: 'Capacidad del Proceso' },
   ];
 
   const fase2Pages = [
-    { id: 'monitoring', href: '/monitoring.html', label: 'Monitoreo en Tiempo Real' },
+    { id: 'monitoring',      href: '/monitoring.html',      label: 'Monitoreo SPC'           },
+    { id: 'spc-performance', href: '/spc-performance.html', label: 'Evaluación del Desempeño'},
   ];
 
-  const advancedPages = [
-    { id: 'spc-performance', href: '/spc-performance.html', label: 'Evaluación del Desempeño' },
+  const mod3Pages = [
+    { id: 'sampling-plan', href: '/sampling-plan.html', label: 'Diseño de Planes' },
   ];
 
   const adminPages = [
@@ -340,10 +341,10 @@ function initSidebar(activePage) {
       ${escHtml(p.label)}
     </a>`;
 
-  const topHtml      = topPages.map(makeNavItem).join('');
-  const fase1Html    = fase1Pages.map(makeNavItem).join('');
-  const fase2Html    = fase2Pages.map(makeNavItem).join('');
-  const advancedHtml = advancedPages.map(makeNavItem).join('');
+  const topHtml   = topPages.map(makeNavItem).join('');
+  const fase1Html = fase1Pages.map(makeNavItem).join('');
+  const fase2Html = fase2Pages.map(makeNavItem).join('');
+  const mod3Html  = mod3Pages.map(makeNavItem).join('');
 
   const adminHtml = user?.role === 'admin' ? `
     <div class="nav-section">Admin</div>
@@ -363,12 +364,12 @@ function initSidebar(activePage) {
     </div>
     <nav class="sidebar-nav">
       ${topHtml}
-      <div class="nav-section">Fase 1</div>
+      <div class="nav-section">Fase I — Estabilización</div>
       ${fase1Html}
-      <div class="nav-section">Fase 2</div>
+      <div class="nav-section">Fase II — Monitoreo y Desempeño</div>
       ${fase2Html}
-      <div class="nav-section">Análisis Avanzado</div>
-      ${advancedHtml}
+      <div class="nav-section">Módulo 3 — Planes de Muestreo</div>
+      ${mod3Html}
       ${adminHtml}
     </nav>
     <div class="sidebar-footer">

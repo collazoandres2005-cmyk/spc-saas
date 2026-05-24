@@ -60,6 +60,11 @@ function calculateCapability(values, usl, lsl, nominal) {
   const cpu = (usl - xbar) / (3 * sigma);
   const cpl = (xbar - lsl) / (3 * sigma);
   const cpk = Math.min(cpu, cpl);
+  // Sin subgrupos: σ = σ_total, Pp = Cp, Ppk = Cpk
+  const pp  = cp;
+  const ppu = cpu;
+  const ppl = cpl;
+  const ppk = cpk;
 
   const zUpper = (usl - xbar) / sigma;
   const zLower = (xbar - lsl) / sigma;
@@ -81,6 +86,10 @@ function calculateCapability(values, usl, lsl, nominal) {
     cpu:   round(cpu,   3),
     cpl:   round(cpl,   3),
     cpk:   round(cpk,   3),
+    pp:  round(pp,  3),
+    ppu: round(ppu, 3),
+    ppl: round(ppl, 3),
+    ppk: round(ppk, 3),
     ppmUpper: round(ppmUpper, 2),
     ppmLower: round(ppmLower, 2),
     ppmTotal: round(ppmTotal, 2),
@@ -109,6 +118,11 @@ function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
   const cpu = (usl - xbar) / (3 * sigmaW);
   const cpl = (xbar - lsl) / (3 * sigmaW);
   const cpk = Math.min(cpu, cpl);
+  // Largo plazo: usa σ_total (variación entre + dentro de subgrupos)
+  const pp  = (usl - lsl) / (6 * sigmaTotal);
+  const ppu = (usl - xbar) / (3 * sigmaTotal);
+  const ppl = (xbar - lsl) / (3 * sigmaTotal);
+  const ppk = Math.min(ppu, ppl);
 
   const zUpper   = (usl - xbar) / sigmaW;
   const zLower   = (xbar - lsl) / sigmaW;
@@ -132,6 +146,10 @@ function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
     cpu:           round(cpu, 3),
     cpl:           round(cpl, 3),
     cpk:           round(cpk, 3),
+    pp:            round(pp,  3),
+    ppu:           round(ppu, 3),
+    ppl:           round(ppl, 3),
+    ppk:           round(ppk, 3),
     ppmUpper:      round(ppmUpper, 2),
     ppmLower:      round(ppmLower, 2),
     ppmTotal:      round(ppmTotal, 2),

@@ -81,7 +81,9 @@ function calculateCapability(values, usl, lsl, nominal) {
     cpu:   round(cpu,   3),
     cpl:   round(cpl,   3),
     cpk:   round(cpk,   3),
-    ppmTotal: round(ppmTotal, 1),
+    ppmUpper: round(ppmUpper, 2),
+    ppmLower: round(ppmLower, 2),
+    ppmTotal: round(ppmTotal, 2),
     status,
     n:            values.length,
     tolerance:    round(usl - lsl, 4),
@@ -108,9 +110,11 @@ function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
   const cpl = (xbar - lsl) / (3 * sigmaW);
   const cpk = Math.min(cpu, cpl);
 
-  const zUpper  = (usl - xbar) / sigmaW;
-  const zLower  = (xbar - lsl) / sigmaW;
-  const ppmTotal = (normalCDF(-zUpper) + normalCDF(-zLower)) * 1_000_000;
+  const zUpper   = (usl - xbar) / sigmaW;
+  const zLower   = (xbar - lsl) / sigmaW;
+  const ppmUpper = normalCDF(-zUpper) * 1_000_000;
+  const ppmLower = normalCDF(-zLower) * 1_000_000;
+  const ppmTotal = ppmUpper + ppmLower;
 
   let status;
   if (cpk < 1.0)       status = 'no_capaz';
@@ -128,7 +132,9 @@ function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
     cpu:           round(cpu, 3),
     cpl:           round(cpl, 3),
     cpk:           round(cpk, 3),
-    ppmTotal:      round(ppmTotal, 1),
+    ppmUpper:      round(ppmUpper, 2),
+    ppmLower:      round(ppmLower, 2),
+    ppmTotal:      round(ppmTotal, 2),
     status,
     n:             allValues.length,
     n_subgroups:   subgroups.length,

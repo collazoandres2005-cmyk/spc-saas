@@ -230,6 +230,25 @@
           </div>
         </div>
 
+        <!-- %PNC por cola -->
+        <div class="cap-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;display:none" id="pnc-grid">
+          <div class="cap-card" id="pnc-card-lsi">
+            <div class="cap-val" id="val-pnc-lsi" style="font-size:26px">—</div>
+            <div class="cap-lbl">%PNC hacia LSI</div>
+            <div class="cap-sublbl" id="ppm-lsi-sub">cola inferior</div>
+          </div>
+          <div class="cap-card" id="pnc-card-lse">
+            <div class="cap-val" id="val-pnc-lse" style="font-size:26px">—</div>
+            <div class="cap-lbl">%PNC hacia LSE</div>
+            <div class="cap-sublbl" id="ppm-lse-sub">cola superior</div>
+          </div>
+          <div class="cap-card" id="pnc-card-total">
+            <div class="cap-val" id="val-pnc-total" style="font-size:26px">—</div>
+            <div class="cap-lbl">%PNC Total</div>
+            <div class="cap-sublbl" id="ppm-total-sub">ambas colas</div>
+          </div>
+        </div>
+
         <!-- Métricas principales -->
         <div class="metrics-grid" style="margin-bottom:14px">
           <div class="metric-card">
@@ -454,9 +473,22 @@
   }
 
   // ── Render capacidad ───────────────────────────────────────
+  function fmtPnc(ppm) {
+    if (ppm == null) return { pct: '—', sub: '' };
+    const pct = ppm / 10000;
+    const pctStr = pct < 0.0001
+      ? pct.toExponential(2) + '%'
+      : pct < 0.01
+        ? pct.toFixed(4) + '%'
+        : pct.toFixed(3) + '%';
+    const ppmStr = ppm < 1 ? `${ppm.toFixed(2)} PPM` : `${Math.round(ppm).toLocaleString('es')} PPM`;
+    return { pct: pctStr, sub: ppmStr };
+  }
+
   function renderCapability({ process, capability }, histogram = null) {
     const { cp, cpk, cpu, cpl, xbar, sigma, sigmaTotal, sigmaMethod, status, n,
-            n_subgroups, subgroup_size, tolerance, distToUsl, distToLsl, distToNominal } = capability;
+            n_subgroups, subgroup_size, tolerance, distToUsl, distToLsl, distToNominal,
+            ppmUpper, ppmLower, ppmTotal } = capability;
 
     // Semáforo
     const banner = document.getElementById('status-banner');
@@ -480,6 +512,27 @@
     document.getElementById('val-cpk').textContent  = formatNum(cpk, 3);
     document.getElementById('val-cpu').textContent  = formatNum(cpu, 3);
     document.getElementById('val-cpl').textContent  = formatNum(cpl, 3);
+
+    // %PNC por cola
+    const pncLsi   = fmtPnc(ppmLower);
+    const pncLse   = fmtPnc(ppmUpper);
+    const pncTot   = fmtPnc(ppmTotal);
+    const pncColor = ppm => {
+      if (ppm == null) return '';
+      if (ppm < 100)   return 'text-success';
+      if (ppm < 1000)  return 'text-warning';
+      return 'text-danger';
+    };
+    const setCard = (valId, subId, cardId, fmt, ppm) => {
+      document.getElementById(valId).textContent  = fmt.pct;
+      document.getElementById(subId).textContent  = fmt.sub;
+      document.getElementById(valId).className    = `cap-val ${pncColor(ppm)}`;
+    };
+    setCard('val-pnc-lsi', 'ppm-lsi-sub',   'pnc-card-lsi',   pncLsi,  ppmLower);
+    setCard('val-pnc-lse', 'ppm-lse-sub',   'pnc-card-lse',   pncLse,  ppmUpper);
+    setCard('val-pnc-total','ppm-total-sub', 'pnc-card-total', pncTot,  ppmTotal);
+    document.getElementById('pnc-grid').style.display =
+      (ppmTotal != null) ? 'grid' : 'none';
     document.getElementById('val-xbar').textContent = formatNum(xbar, 4);
     document.getElementById('val-unit').textContent = process.unit || '';
 

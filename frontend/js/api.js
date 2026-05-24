@@ -327,6 +327,10 @@ function initSidebar(activePage) {
     { id: 'monitoring', href: '/monitoring.html', label: 'Monitoreo en Tiempo Real' },
   ];
 
+  const advancedPages = [
+    { id: 'spc-performance', href: '/spc-performance.html', label: 'Evaluación del Desempeño' },
+  ];
+
   const adminPages = [
     { id: 'admin', href: '/admin.html', label: 'Administración' }
   ];
@@ -336,9 +340,10 @@ function initSidebar(activePage) {
       ${escHtml(p.label)}
     </a>`;
 
-  const topHtml   = topPages.map(makeNavItem).join('');
-  const fase1Html = fase1Pages.map(makeNavItem).join('');
-  const fase2Html = fase2Pages.map(makeNavItem).join('');
+  const topHtml      = topPages.map(makeNavItem).join('');
+  const fase1Html    = fase1Pages.map(makeNavItem).join('');
+  const fase2Html    = fase2Pages.map(makeNavItem).join('');
+  const advancedHtml = advancedPages.map(makeNavItem).join('');
 
   const adminHtml = user?.role === 'admin' ? `
     <div class="nav-section">Admin</div>
@@ -362,6 +367,8 @@ function initSidebar(activePage) {
       ${fase1Html}
       <div class="nav-section">Fase 2</div>
       ${fase2Html}
+      <div class="nav-section">Análisis Avanzado</div>
+      ${advancedHtml}
       ${adminHtml}
     </nav>
     <div class="sidebar-footer">

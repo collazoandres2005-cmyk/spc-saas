@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluación del Desempeño SPC</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* ── Configuración ────────────────────────────────────────── */
+    .cfg-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .cfg-field { display: flex; flex-direction: column; gap: 5px; }
+    .cfg-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--text-muted);
+    }
+    .cfg-label span {
+      font-size: 11px; font-weight: 400; text-transform: none;
+      letter-spacing: 0; color: var(--text-muted); margin-left: 4px;
+    }
+    .cfg-input {
+      padding: 7px 10px; border: 1px solid var(--border);
+      border-radius: var(--radius); font-size: 14px; font-weight: 600;
+      color: var(--text); background: var(--card);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .cfg-input:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .cfg-input:disabled {
+      background: #f1f5f9; color: var(--text-muted); cursor: not-allowed;
+    }
+    .cfg-hint {
+      font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 2px;
+    }
+    .cfg-divider {
+      grid-column: 1 / -1; border: none;
+      border-top: 1px solid var(--border); margin: 4px 0;
+    }
+
+    /* ── Toggle modo manual ───────────────────────────────────── */
+    .toggle-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .toggle-label { font-size: 13px; font-weight: 600; color: var(--text-sec); }
+    .toggle-switch {
+      position: relative; width: 38px; height: 20px;
+      display: inline-block; cursor: pointer;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0; background: #cbd5e1;
+      border-radius: 20px; transition: background .2s;
+    }
+    .toggle-switch input:checked + .toggle-track { background: var(--primary); }
+    .toggle-knob {
+      position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+      background: #fff; border-radius: 50%; transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .toggle-switch input:checked ~ .toggle-knob { transform: translateX(18px); }
+
+    /* ── Tarjetas estadísticas ────────────────────────────────── */
+    .perf-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-bottom: 12px;
+    }
+    @media (max-width:1100px) { .perf-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width:600px)  { .perf-grid { grid-template-columns: 1fr 1fr; } }
+
+    .perf-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px;
+      position: relative; overflow: hidden;
+    }
+    .perf-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; background: var(--card-accent, var(--border));
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .perf-card.good   { --card-accent: #22c55e; }
+    .perf-card.warn   { --card-accent: #f59e0b; }
+    .perf-card.danger { --card-accent: #ef4444; }
+    .perf-card.info   { --card-accent: #3b82f6; }
+    .perf-card.neutral{ --card-accent: #94a3b8; }
+
+    .pc-label {
+      font-size: 10px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 5px; margin-bottom: 6px;
+    }
+    .pc-value {
+      font-size: 26px; font-weight: 900; color: var(--text);
+      letter-spacing: -.5px; line-height: 1.1; margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .pc-unit   { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .pc-status { font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .pc-status.good   { color: #16a34a; }
+    .pc-status.warn   { color: #d97706; }
+    .pc-status.danger { color: #dc2626; }
+    .pc-status.info   { color: #2563eb; }
+
+    /* Tarjeta PPNC grande */
+    .perf-card.ppnc-card {
+      grid-column: span 2;
+      display: flex; align-items: center; gap: 24px;
+      padding: 18px 24px;
+    }
+    .ppnc-num {
+      font-size: 40px; font-weight: 900; color: var(--text);
+      letter-spacing: -1px; white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .ppnc-desc { flex: 1; }
+    .ppnc-desc-title {
+      font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 4px;
+    }
+    .ppnc-desc-sub {
+      font-size: 12px; color: var(--text-muted); line-height: 1.5;
+    }
+
+    /* ── Interpretación ───────────────────────────────────────── */
+    .interp-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px;
+    }
+    .interp-title {
+      font-size: 12px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--text-muted); margin-bottom: 12px;
+    }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 700;
+    }
+    .badge.good   { background: #dcfce7; color: #15803d; }
+    .badge.warn   { background: #fef3c7; color: #92400e; }
+    .badge.danger { background: #fee2e2; color: #991b1b; }
+    .badge.info   { background: #dbeafe; color: #1e40af; }
+    .badge.neutral{ background: #f1f5f9; color: #475569; }
+    .interp-text {
+      font-size: 13px; color: var(--text-sec); line-height: 1.7;
+      border-left: 3px solid var(--border); padding-left: 12px;
+    }
+
+    /* ── Tabla de sensibilidad ────────────────────────────────── */
+    .sens-table-wrap {
+      overflow-x: auto; border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .sens-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      background: var(--card);
+    }
+    .sens-table thead tr { background: #1e3a5f; }
+    .sens-table thead th {
+      padding: 9px 14px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .3px; color: #cbd5e1;
+      text-align: right; white-space: nowrap;
+      border: 1px solid #2d4a6e;
+    }
+    .sens-table thead th:first-child { text-align: center; }
+    .sens-table tbody tr { transition: background .08s; }
+    .sens-table tbody tr:hover { background: #f8fafc; }
+    .sens-table tbody tr.row-current { background: #eff6ff; }
+    .sens-table tbody td {
+      padding: 7px 14px; border: 1px solid #e2e8f0;
+      text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .sens-table tbody td:first-child { text-align: center; font-weight: 700; }
+    .sens-table .cell-good   { color: #16a34a; font-weight: 700; }
+    .sens-table .cell-warn   { color: #d97706; font-weight: 700; }
+    .sens-table .cell-danger { color: #dc2626; font-weight: 700; }
+
+    /* ── Referencia de fórmulas ───────────────────────────────── */
+    .formula-ref {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px; margin-top: 16px;
+    }
+    .formula-item {
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 14px;
+    }
+    .formula-name {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .3px; color: var(--primary); margin-bottom: 4px;
+    }
+    .formula-eq {
+      font-size: 13px; font-family: 'Courier New', monospace;
+      color: var(--text); margin-bottom: 3px;
+    }
+    .formula-note { font-size: 11px; color: var(--text-muted); }
+
+    /* ── Modo avanzado row ────────────────────────────────────── */
+    .mode-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 99px;
+      font-size: 11px; font-weight: 700; background: #dbeafe; color: #1e40af;
+      margin-left: 10px;
+    }
+    .mode-pill.manual { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">
+          Evaluación del Desempeño SPC
+          <span id="mode-pill" class="mode-pill">Modo automático</span>
+        </div>
+        <span class="top-bar-breadcrumb">Análisis estadístico avanzado del plan de control</span>
+      </div>
+      <div class="top-bar-right">
+        <span class="sub-badge" id="sub-status-badge">...</span>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- ══ PANEL DE CONFIGURACIÓN ═════════════════════════════ -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">Configuración del Plan de Control</div>
+          <span style="font-size:11px;color:var(--text-muted)">
+            Los resultados se recalculan automáticamente
+          </span>
+        </div>
+        <div style="padding:16px 20px">
+          <div class="cfg-grid">
+
+            <!-- Col 1: parámetros de la carta -->
+            <div class="cfg-field">
+              <label class="cfg-label">Límites sigma (k)<span>multiplica σ</span></label>
+              <select id="inp-k" class="cfg-input" onchange="recalc()">
+                <option value="1.5">1.5 σ</option>
+                <option value="2">2 σ</option>
+                <option value="2.5">2.5 σ</option>
+                <option value="3" selected>3 σ — estándar</option>
+                <option value="3.5">3.5 σ</option>
+                <option value="4">4 σ</option>
+              </select>
+              <p class="cfg-hint">Define α automáticamente. Más sigma = menos falsas alarmas.</p>
+            </div>
+
+            <div class="cfg-field">
+              <label class="cfg-label">Tamaño de subgrupo (n)</label>
+              <input id="inp-n" class="cfg-input" type="number" min="1" max="50"
+                     value="5" oninput="recalc()">
+              <p class="cfg-hint">Número de mediciones por muestra. Mayor n → más potencia.</p>
+            </div>
+
+            <div class="cfg-field">
+              <label class="cfg-label">Intervalo de muestreo (h)<span>horas</span></label>
+              <input id="inp-h" class="cfg-input" type="number" min="0.25" step="0.25"
+                     value="4" oninput="recalc()">
+              <p class="cfg-hint">Tiempo entre cada subgrupo inspeccionado.</p>
+            </div>
+
+            <div class="cfg-field">
+              <label class="cfg-label">Cambio a detectar (δ)<span>en σ del proceso</span></label>
+              <input id="inp-delta" class="cfg-input" type="number" min="0.1" step="0.25"
+                     value="1.0" oninput="recalc()">
+              <p class="cfg-hint">δ=1.0: el proceso se desplaza 1 σ. δ=2.0: se desplaza 2 σ.</p>
+            </div>
+
+            <div class="cfg-field">
+              <label class="cfg-label">% No conformes (%PNC)<span>cuando proceso OOC</span></label>
+              <input id="inp-pnc" class="cfg-input" type="number" min="0.01" max="100"
+                     step="0.1" value="2.5" oninput="recalc()">
+              <p class="cfg-hint">Proporción de unidades defectuosas mientras el proceso está fuera de control.</p>
+            </div>
+
+            <div class="cfg-field">
+              <label class="cfg-label">Tasa de producción<span>unidades / hora</span></label>
+              <input id="inp-prod" class="cfg-input" type="number" min="1"
+                     value="100" oninput="recalc()">
+              <p class="cfg-hint">Unidades producidas por hora. Afecta solo el cálculo de PPNC.</p>
+            </div>
+
+            <!-- Separador + modo manual -->
+            <hr class="cfg-divider">
+
+            <!-- Modo manual -->
+            <div style="grid-column:1/-1">
+              <div class="toggle-row">
+                <label class="toggle-switch" id="toggle-manual-lbl">
+                  <input type="checkbox" id="chk-manual" onchange="toggleManualMode()">
+                  <span class="toggle-track"></span>
+                  <span class="toggle-knob"></span>
+                </label>
+                <span class="toggle-label">Modo manual — ingresar α y β directamente</span>
+                <span style="font-size:11px;color:var(--text-muted);margin-left:4px">
+                  (útil para cartas de atributos o valores experimentales)
+                </span>
+              </div>
+            </div>
+
+            <div class="cfg-field" id="row-alpha">
+              <label class="cfg-label">Error tipo I (α)<span>calculado desde k</span></label>
+              <input id="inp-alpha" class="cfg-input" type="number" min="0.00001"
+                     max="0.5" step="0.0001" value="0.0027" disabled oninput="recalc()">
+              <p class="cfg-hint">P(falsa alarma). Automático = 2(1−Φ(k)) para carta Shewhart 2 colas.</p>
+            </div>
+
+            <div class="cfg-field" id="row-beta">
+              <label class="cfg-label">Error tipo II (β)<span>calculado desde k, δ, n</span></label>
+              <input id="inp-beta" class="cfg-input" type="number" min="0.00001"
+                     max="0.9999" step="0.0001" value="0.8413" disabled oninput="recalc()">
+              <p class="cfg-hint">P(no detectar | cambio δ). Automático = Φ(k−δ√n)−Φ(−k−δ√n).</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TARJETAS DE DESEMPEÑO ══════════════════════════════ -->
+      <div style="margin-bottom:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">
+        Desempeño estadístico
+      </div>
+
+      <!-- Fila 1: errores y potencia -->
+      <div class="perf-grid" style="margin-bottom:12px">
+        <div class="perf-card neutral" id="card-alpha">
+          <div class="pc-label">Error tipo I — α</div>
+          <div class="pc-value" id="val-alpha">0.0027</div>
+          <div class="pc-unit">P(falsa alarma por subgrupo)</div>
+          <div class="pc-status" id="sta-alpha">Nivel estándar 3σ</div>
+        </div>
+        <div class="perf-card neutral" id="card-beta">
+          <div class="pc-label">Error tipo II — β</div>
+          <div class="pc-value" id="val-beta">0.8413</div>
+          <div class="pc-unit">P(no detectar el cambio δ)</div>
+          <div class="pc-status" id="sta-beta">Potencia 15.9%</div>
+        </div>
+        <div class="perf-card neutral" id="card-power">
+          <div class="pc-label">Potencia — 1 − β</div>
+          <div class="pc-value" id="val-power">15.9%</div>
+          <div class="pc-unit">P(detectar el cambio δ)</div>
+          <div class="pc-status" id="sta-power">Detección moderada</div>
+        </div>
+        <div class="perf-card neutral" id="card-arl0">
+          <div class="pc-label">ARL₀</div>
+          <div class="pc-value" id="val-arl0">370.4</div>
+          <div class="pc-unit">subgrupos entre falsas alarmas</div>
+          <div class="pc-status" id="sta-arl0">Buen nivel industrial</div>
+        </div>
+      </div>
+
+      <!-- Fila 2: ARL y ATS -->
+      <div class="perf-grid" style="margin-bottom:12px">
+        <div class="perf-card neutral" id="card-arl1">
+          <div class="pc-label">ARL₁</div>
+          <div class="pc-value" id="val-arl1">6.3</div>
+          <div class="pc-unit">subgrupos hasta detectar el cambio</div>
+          <div class="pc-status" id="sta-arl1">Detección rápida</div>
+        </div>
+        <div class="perf-card neutral" id="card-ats0">
+          <div class="pc-label">ATS₀ = ARL₀ × h</div>
+          <div class="pc-value" id="val-ats0">1 481.5</div>
+          <div class="pc-unit">horas entre falsas alarmas</div>
+          <div class="pc-status" id="sta-ats0"></div>
+        </div>
+        <div class="perf-card neutral" id="card-ats1">
+          <div class="pc-label">ATS₁ = ARL₁ × h</div>
+          <div class="pc-value" id="val-ats1">25.2</div>
+          <div class="pc-unit">horas hasta detectar el cambio</div>
+          <div class="pc-status" id="sta-ats1"></div>
+        </div>
+        <div class="perf-card neutral ppnc-card" id="card-ppnc">
+          <div>
+            <div class="ppnc-num" id="val-ppnc">63</div>
+            <div class="pc-unit" style="margin-top:2px">unidades no conformes esperadas</div>
+            <div class="pc-status" id="sta-ppnc" style="margin-top:6px"></div>
+          </div>
+          <div class="ppnc-desc">
+            <div class="ppnc-desc-title">PPNC — Promedio de Productos No Conformes</div>
+            <div class="ppnc-desc-sub" id="ppnc-formula">
+              ATS₁ × %PNC × λ = 25.2 h × 2.5% × 100 u/h
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ INTERPRETACIÓN AUTOMÁTICA ══════════════════════════ -->
+      <div class="interp-card">
+        <div class="interp-title">Interpretación automática del sistema</div>
+        <div class="badge-row" id="badge-row"></div>
+        <div class="interp-text" id="interp-text"></div>
+      </div>
+
+      <!-- ══ TABLA DE SENSIBILIDAD ══════════════════════════════ -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">Análisis de Sensibilidad — ARL₁ en función del cambio δ</div>
+          <span style="font-size:11px;color:var(--text-muted)">
+            Fila resaltada = configuración actual. Parámetros k y n fijos.
+          </span>
+        </div>
+        <div style="padding:0 0 16px">
+          <div class="sens-table-wrap" style="margin:0 20px">
+            <table class="sens-table">
+              <thead>
+                <tr>
+                  <th style="text-align:center">δ (σ)</th>
+                  <th>β (Error II)</th>
+                  <th>Potencia (1−β)</th>
+                  <th>ARL₁</th>
+                  <th>ATS₁ (h)</th>
+                  <th>PPNC (u)</th>
+                </tr>
+              </thead>
+              <tbody id="sens-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ REFERENCIA DE FÓRMULAS ═════════════════════════════ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Referencia de Fórmulas</div>
+          <span style="font-size:11px;color:var(--text-muted)">
+            Carta Shewhart de variables de dos colas (X̄-R, X̄-S, I-MR)
+          </span>
+        </div>
+        <div style="padding:0 20px 20px">
+          <div class="formula-ref">
+            <div class="formula-item">
+              <div class="formula-name">Error tipo I (α)</div>
+              <div class="formula-eq">α = 2 · (1 − Φ(k))</div>
+              <div class="formula-note">Φ = CDF normal estándar. Automático desde k.</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">Error tipo II (β) — carta X̄</div>
+              <div class="formula-eq">β = Φ(k − δ√n) − Φ(−k − δ√n)</div>
+              <div class="formula-note">δ en σ del proceso. Automático desde k, δ, n.</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">ARL₀ (proceso bajo control)</div>
+              <div class="formula-eq">ARL₀ = 1 / α</div>
+              <div class="formula-note">Subgrupos esperados entre falsas alarmas.</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">ARL₁ (proceso fuera de control)</div>
+              <div class="formula-eq">ARL₁ = 1 / (1 − β)</div>
+              <div class="formula-note">Subgrupos hasta detectar el cambio δ.</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">ATS₀ — Tiempo medio en control</div>
+              <div class="formula-eq">ATS₀ = ARL₀ × h</div>
+              <div class="formula-note">h = intervalo de muestreo (horas).</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">ATS₁ — Tiempo medio de detección</div>
+              <div class="formula-eq">ATS₁ = ARL₁ × h</div>
+              <div class="formula-note">Horas desde el cambio hasta la señal.</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">PPNC — Productos No Conformes</div>
+              <div class="formula-eq">PPNC = ATS₁ × (%PNC/100) × λ</div>
+              <div class="formula-note">λ = tasa de producción (u/h). Unidades defectuosas promedio antes de detectar.</div>
+            </div>
+            <div class="formula-item">
+              <div class="formula-name">Qué es editable vs automático</div>
+              <div class="formula-eq" style="font-size:11px">
+                Editables: k, δ, n, h, %PNC, λ<br>
+                Automáticos: α, β, Power, ARL, ATS, PPNC
+              </div>
+              <div class="formula-note">Usa modo manual para cartas de atributos (p, np, c, u).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+if (!requireLogin()) { /* redirected */ }
+initSidebar('spc-performance');
+initTopBar('Evaluación del Desempeño SPC');
+
+/* ══════════════════════════════════════════════════════════════
+   MATEMÁTICAS
+══════════════════════════════════════════════════════════════ */
+function phi(x) {
+  const a = [0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429];
+  const p  = 0.3275911;
+  const s  = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  const t  = 1 / (1 + p * x);
+  const y  = 1 - (((((a[4] * t + a[3]) * t) + a[2]) * t + a[1]) * t + a[0]) * t * Math.exp(-x * x);
+  return 0.5 * (1 + s * y);
+}
+
+function calcAlpha(k)          { return 2 * (1 - phi(k)); }
+function calcBeta(k, delta, n) { const sh = delta * Math.sqrt(n); return phi(k - sh) - phi(-k - sh); }
+
+const FMT = {
+  pct:   v => (v * 100).toFixed(3) + '%',
+  num:   v => v >= 1e6 ? '> 1 M' : v.toLocaleString('es', { maximumFractionDigits: 1 }),
+  prob:  v => v.toFixed(4),
+  hours: v => v >= 1e5 ? '> 100 000 h' : v.toLocaleString('es', { maximumFractionDigits: 1 })
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO / TOGGLE MANUAL
+══════════════════════════════════════════════════════════════ */
+function toggleManualMode() {
+  const manual = document.getElementById('chk-manual').checked;
+  ['inp-alpha','inp-beta'].forEach(id => {
+    document.getElementById(id).disabled = !manual;
+  });
+  document.getElementById('row-alpha').querySelector('.cfg-label span').textContent =
+    manual ? '(editable)' : 'calculado desde k';
+  document.getElementById('row-beta').querySelector('.cfg-label span').textContent =
+    manual ? '(editable)' : 'calculado desde k, δ, n';
+  const pill = document.getElementById('mode-pill');
+  pill.textContent = manual ? 'Modo manual' : 'Modo automático';
+  pill.className   = manual ? 'mode-pill manual' : 'mode-pill';
+  recalc();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RECÁLCULO PRINCIPAL
+══════════════════════════════════════════════════════════════ */
+function recalc() {
+  const k     = parseFloat(document.getElementById('inp-k').value)     || 3;
+  const n     = Math.max(1, parseInt(document.getElementById('inp-n').value)    || 5);
+  const h     = Math.max(0.01, parseFloat(document.getElementById('inp-h').value)    || 4);
+  const delta = Math.max(0.01, parseFloat(document.getElementById('inp-delta').value) || 1);
+  const pnc   = Math.max(0, Math.min(100, parseFloat(document.getElementById('inp-pnc').value) || 2.5)) / 100;
+  const prod  = Math.max(0, parseFloat(document.getElementById('inp-prod').value) || 100);
+  const manual = document.getElementById('chk-manual').checked;
+
+  let alpha = calcAlpha(k);
+  let beta  = calcBeta(k, delta, n);
+
+  if (manual) {
+    alpha = Math.max(1e-9, Math.min(0.9999, parseFloat(document.getElementById('inp-alpha').value) || alpha));
+    beta  = Math.max(1e-9, Math.min(0.9999, parseFloat(document.getElementById('inp-beta').value)  || beta));
+  } else {
+    document.getElementById('inp-alpha').value = alpha.toFixed(6);
+    document.getElementById('inp-beta').value  = beta.toFixed(6);
+  }
+
+  const power = Math.max(1e-9, 1 - beta);
+  const arl0  = 1 / alpha;
+  const arl1  = 1 / power;
+  const ats0  = arl0 * h;
+  const ats1  = arl1 * h;
+  const ppnc  = ats1 * pnc * prod;
+
+  renderCards({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, pnc, prod });
+  renderInterpretation({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, delta, n });
+  renderSensitivity({ k, n, h, delta, pnc, prod });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER TARJETAS
+══════════════════════════════════════════════════════════════ */
+function levelAlpha(a) {
+  if (a < 0.001)  return { cls: 'warn',   txt: 'Muy pocas falsas alarmas' };
+  if (a <= 0.005) return { cls: 'good',   txt: 'Nivel estándar industrial' };
+  if (a <= 0.05)  return { cls: 'warn',   txt: 'Falsas alarmas frecuentes' };
+  return              { cls: 'danger', txt: 'Demasiadas falsas alarmas' };
+}
+function levelPower(p) {
+  if (p >= 0.90) return { cls: 'good',   txt: 'Alta sensibilidad' };
+  if (p >= 0.70) return { cls: 'good',   txt: 'Buena detección' };
+  if (p >= 0.40) return { cls: 'warn',   txt: 'Detección moderada' };
+  return             { cls: 'danger', txt: 'Detección baja' };
+}
+function levelARL1(a) {
+  if (a < 5)  return { cls: 'good',   txt: 'Detección muy rápida' };
+  if (a < 20) return { cls: 'good',   txt: 'Detección rápida' };
+  if (a < 50) return { cls: 'warn',   txt: 'Detección moderada' };
+  return          { cls: 'danger', txt: 'Detección lenta' };
+}
+function levelATS1(t, h) {
+  if (t <= h)    return { cls: 'good',   txt: '≤ 1 ciclo de muestreo' };
+  if (t <= 8)    return { cls: 'good',   txt: 'Detección en ≤ 1 turno' };
+  if (t <= 24)   return { cls: 'warn',   txt: 'Puede tardar hasta 1 día' };
+  return             { cls: 'danger', txt: 'Riesgo: más de 1 día sin detección' };
+}
+
+function setCard(cardId, valueClass, statusText) {
+  const card = document.getElementById(cardId);
+  card.className = card.className.replace(/\b(good|warn|danger|info|neutral)\b/g, '');
+  card.className += ' ' + valueClass;
+  const sta = card.querySelector('[id^="sta-"]');
+  if (sta) { sta.textContent = statusText; sta.className = `pc-status ${valueClass}`; }
+}
+
+function renderCards(d) {
+  const la  = levelAlpha(d.alpha);
+  const lp  = levelPower(d.power);
+  const la1 = levelARL1(d.arl1);
+  const lt1 = levelATS1(d.ats1, d.h);
+
+  // α
+  document.getElementById('val-alpha').textContent = d.alpha < 0.001
+    ? d.alpha.toExponential(2) : d.alpha.toFixed(4);
+  setCard('card-alpha', la.cls, la.txt);
+
+  // β
+  document.getElementById('val-beta').textContent = d.beta.toFixed(4);
+  document.getElementById('sta-beta').textContent = `Potencia ${FMT.pct(d.power)}`;
+  document.getElementById('sta-beta').className   = `pc-status ${lp.cls}`;
+  const cardBeta = document.getElementById('card-beta');
+  cardBeta.className = cardBeta.className.replace(/\b(good|warn|danger|info|neutral)\b/g, '') + ' ' + lp.cls;
+
+  // Potencia
+  document.getElementById('val-power').textContent = FMT.pct(d.power);
+  setCard('card-power', lp.cls, lp.txt);
+
+  // ARL₀
+  document.getElementById('val-arl0').textContent = FMT.num(d.arl0);
+  setCard('card-arl0', la.cls, `${FMT.num(d.arl0)} subgrupos`);
+
+  // ARL₁
+  document.getElementById('val-arl1').textContent = FMT.num(d.arl1);
+  setCard('card-arl1', la1.cls, la1.txt);
+
+  // ATS₀
+  document.getElementById('val-ats0').textContent = FMT.hours(d.ats0);
+  setCard('card-ats0', la.cls, `≈ ${(d.ats0/24).toFixed(1)} días`);
+
+  // ATS₁
+  document.getElementById('val-ats1').textContent = FMT.hours(d.ats1);
+  setCard('card-ats1', lt1.cls, lt1.txt);
+
+  // PPNC
+  document.getElementById('val-ppnc').textContent = FMT.num(ppncSafe(d));
+  document.getElementById('ppnc-formula').textContent =
+    `ATS₁ × %PNC × λ = ${FMT.hours(d.ats1)} h × ${(d.pnc*100).toFixed(2)}% × ${d.prod} u/h`;
+  const ppncLevel = d.ppnc < 10 ? 'good' : d.ppnc < 100 ? 'warn' : 'danger';
+  setCard('card-ppnc', ppncLevel, ppncLevel === 'good'
+    ? 'Impacto bajo antes de detectar'
+    : ppncLevel === 'warn' ? 'Impacto moderado — revisar h o n'
+    : 'Impacto alto — reducir ATS₁');
+}
+
+function ppncSafe(d) {
+  return isFinite(d.ppnc) ? d.ppnc : 999999;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INTERPRETACIÓN NARRATIVA
+══════════════════════════════════════════════════════════════ */
+function renderInterpretation(d) {
+  const badges = [];
+  const notes  = [];
+
+  // α
+  if (d.alpha < 0.001) {
+    badges.push({ cls:'warn',   txt:'Muy pocas falsas alarmas' });
+    notes.push('El nivel α es muy bajo — el sistema difícilmente señalizará erroneamente, pero puede ser insuficientemente sensible a cambios reales.');
+  } else if (d.alpha <= 0.005) {
+    badges.push({ cls:'good',   txt:'α óptimo (3σ estándar)' });
+    notes.push('El nivel α está dentro del rango industrial estándar (0.27%). El sistema generará falsas alarmas con muy baja frecuencia.');
+  } else if (d.alpha <= 0.05) {
+    badges.push({ cls:'warn',   txt:'Falsas alarmas frecuentes' });
+    notes.push(`Con α = ${(d.alpha*100).toFixed(2)}%, se espera una falsa alarma aproximadamente cada ${Math.round(d.arl0)} subgrupos. Considera aumentar k.`);
+  } else {
+    badges.push({ cls:'danger', txt:'Demasiadas falsas alarmas' });
+    notes.push('El α es demasiado alto. Los operadores ignorarán las señales al ver tantas falsas alarmas. Aumenta k o revisa el cálculo de σ.');
+  }
+
+  // Potencia
+  if (d.power >= 0.90) {
+    badges.push({ cls:'good',   txt:'Alta potencia de detección' });
+    notes.push(`Con ${FMT.pct(d.power)} de potencia, el sistema detecta el cambio de ${d.delta}σ en promedio en ${FMT.num(d.arl1)} subgrupos.`);
+  } else if (d.power >= 0.50) {
+    badges.push({ cls:'warn',   txt:'Potencia moderada' });
+    notes.push(`La potencia de ${FMT.pct(d.power)} indica que el sistema puede tardar varios subgrupos en detectar un cambio de ${d.delta}σ. Considera aumentar n.`);
+  } else {
+    badges.push({ cls:'danger', txt:'Detección lenta' });
+    notes.push(`Con solo ${FMT.pct(d.power)} de potencia para δ=${d.delta}σ, el proceso puede operar fuera de control durante muchos ciclos sin señal. Aumenta n o reduce k.`);
+  }
+
+  // ATS₁
+  if (d.ats1 <= d.h) {
+    badges.push({ cls:'good',   txt:'Respuesta < 1 ciclo' });
+  } else if (d.ats1 <= 8) {
+    badges.push({ cls:'good',   txt:'Respuesta rápida (< 1 turno)' });
+    notes.push(`El tiempo medio de detección (ATS₁ = ${FMT.hours(d.ats1)} h) permite actuar dentro del turno.`);
+  } else if (d.ats1 <= 24) {
+    badges.push({ cls:'warn',   txt:'Respuesta en el día' });
+    notes.push(`ATS₁ = ${FMT.hours(d.ats1)} h puede implicar que el cambio no se detecta hasta el siguiente turno o día.`);
+  } else {
+    badges.push({ cls:'danger', txt:'Respuesta lenta (> 1 día)' });
+    notes.push(`ATS₁ = ${FMT.hours(d.ats1)} h es un tiempo de detección muy largo. Reduce el intervalo h o aumenta n para mejorar la respuesta.`);
+  }
+
+  // PPNC
+  const ppnc = isFinite(d.ppnc) ? d.ppnc : 999999;
+  if (ppnc < 10) {
+    badges.push({ cls:'good', txt:'PPNC bajo — impacto mínimo' });
+  } else if (ppnc < 100) {
+    badges.push({ cls:'warn', txt:`PPNC ≈ ${Math.round(ppnc)} unidades` });
+    notes.push(`Se esperan aproximadamente ${Math.round(ppnc)} unidades no conformes antes de detectar el fallo. Evalúa si es aceptable para el proceso.`);
+  } else {
+    badges.push({ cls:'danger', txt:`PPNC alto ≈ ${Math.round(ppnc)} unidades` });
+    notes.push(`El PPNC de ${Math.round(ppnc)} unidades es elevado. Para reducirlo: disminuye h, aumenta n, o mejora el proceso base.`);
+  }
+
+  // Diagnóstico global
+  const isBalanced = d.alpha >= 0.001 && d.alpha <= 0.005 && d.power >= 0.7;
+  const isTooConservative = d.alpha < 0.0010 && d.power < 0.5;
+  const isTooSensitive = d.alpha > 0.05;
+  if (isBalanced) {
+    badges.push({ cls:'info', txt:'Sistema bien balanceado' });
+  } else if (isTooConservative) {
+    badges.push({ cls:'warn', txt:'Sistema demasiado conservador' });
+    notes.push('El sistema tiene pocas falsas alarmas pero también poca potencia. Evalúa reducir k o aumentar n para mejorar la detección.');
+  } else if (isTooSensitive) {
+    badges.push({ cls:'danger', txt:'Sistema demasiado sensible' });
+  }
+
+  document.getElementById('badge-row').innerHTML =
+    badges.map(b => `<span class="badge ${b.cls}">${b.txt}</span>`).join('');
+  document.getElementById('interp-text').innerHTML =
+    notes.map(n => `<p style="margin:0 0 6px 0">${n}</p>`).join('') ||
+    '<p style="margin:0">El sistema opera dentro de los parámetros esperados.</p>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TABLA DE SENSIBILIDAD
+══════════════════════════════════════════════════════════════ */
+const DELTA_RANGE = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
+
+function sensitivityClass(arl1) {
+  if (arl1 < 5)  return 'cell-good';
+  if (arl1 < 20) return 'cell-good';
+  if (arl1 < 50) return 'cell-warn';
+  return 'cell-danger';
+}
+
+function renderSensitivity({ k, n, h, delta: currentDelta, pnc, prod }) {
+  const tbody = document.getElementById('sens-tbody');
+  tbody.innerHTML = DELTA_RANGE.map(d => {
+    const b     = calcBeta(k, d, n);
+    const power = 1 - b;
+    const arl1  = 1 / Math.max(power, 1e-9);
+    const ats1  = arl1 * h;
+    const ppnc  = ats1 * pnc * prod;
+    const cls   = sensitivityClass(arl1);
+    const cur   = Math.abs(d - currentDelta) < 0.001;
+
+    return `<tr class="${cur ? 'row-current' : ''}">
+      <td>${cur ? `<strong>${d.toFixed(2)} ←</strong>` : d.toFixed(2)}</td>
+      <td>${b.toFixed(4)}</td>
+      <td class="${power < 0.4 ? 'cell-danger' : power < 0.7 ? 'cell-warn' : 'cell-good'}">${FMT.pct(power)}</td>
+      <td class="${cls}">${FMT.num(arl1)}</td>
+      <td class="${ats1 > 24 ? 'cell-danger' : ats1 > 8 ? 'cell-warn' : 'cell-good'}">${FMT.hours(ats1)}</td>
+      <td class="${ppnc > 100 ? 'cell-danger' : ppnc > 10 ? 'cell-warn' : 'cell-good'}">${FMT.num(isFinite(ppnc) ? ppnc : 999999)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ARRANQUE
+══════════════════════════════════════════════════════════════ */
+recalc();
+</script>
+</body>
+</html>

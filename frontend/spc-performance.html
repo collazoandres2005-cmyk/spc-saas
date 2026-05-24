@@ -577,12 +577,8 @@ function buildChartInfo(ccRes, proc) {
   const main    = ccRes.chartData[mainKey];
   const second  = ccRes.chartData.r || ccRes.chartData.s || null;
 
-  // n de subgrupo
-  let n = parseInt(proc.n_size) || 0;
-  if (n < 1) {
-    // inferir de los datos: simulado o del selector
-    n = ccRes.simulate_n || 5;
-  }
+  // n de subgrupo: prioridad = effectiveN del API (calculado de los datos reales)
+  let n = ccRes.effectiveN || parseInt(proc.n_size) || 5;
 
   // σ̂ del proceso (solo para cartas variable)
   let sigmaProcess = null;

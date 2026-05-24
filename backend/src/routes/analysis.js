@@ -102,8 +102,9 @@ router.get('/control-chart', async (req, res) => {
     if (rows.length < 2) return res.status(400).json({ error: 'Se necesitan al menos 2 mediciones.' });
 
     let chartData;
-    let simulated = false;
+    let simulated  = false;
     let variableN  = false;
+    let effectiveN = null;
     const labels   = [];
     const ruleOpts = {
       detectOutOfControl: rule_ooc   !== '0',
@@ -129,7 +130,8 @@ router.get('/control-chart', async (req, res) => {
           labels.push(`SG ${g + 1}`);
         }
         chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
-        simulated = true;
+        simulated  = true;
+        effectiveN = n;
 
       } else {
         const subgroupMap = new Map();
@@ -148,9 +150,10 @@ router.get('/control-chart', async (req, res) => {
           });
         }
         subgroups.forEach(sg => labels.push(`SG ${sg.key}`));
-        chartData = type === 'xbar_r'
+        chartData  = type === 'xbar_r'
           ? spc.calculateXbarR(subgroups.map(sg => sg.values))
           : spc.calculateXbarS(subgroups.map(sg => sg.values));
+        effectiveN = subgroups[0]?.values.length || null;
       }
 
     // ── Carta p (proporción) ────────────────────────────────────────────────
@@ -170,8 +173,9 @@ router.get('/control-chart', async (req, res) => {
       if (subgroups.length < 2) {
         return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta p.' });
       }
-      chartData = spc.calculatePChart(subgroups);
-      variableN = chartData.p.variableN;
+      chartData  = spc.calculatePChart(subgroups);
+      variableN  = chartData.p.variableN;
+      effectiveN = Math.round(subgroups.reduce((s, sg) => s + sg.n, 0) / subgroups.length);
 
     // ── Carta np (número de defectuosos, n fijo) ────────────────────────────
     } else if (type === 'np') {
@@ -211,7 +215,8 @@ router.get('/control-chart', async (req, res) => {
       if (subgroups.length < 2) {
         return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta np.' });
       }
-      chartData = spc.calculateNPChart(subgroups, nFixed);
+      chartData  = spc.calculateNPChart(subgroups, nFixed);
+      effectiveN = nFixed;
 
     // ── Carta c (defectos por unidad, área constante) ───────────────────────
     } else if (type === 'c') {
@@ -247,8 +252,9 @@ router.get('/control-chart', async (req, res) => {
       if (subgroups.length < 2) {
         return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos para la carta u.' });
       }
-      chartData = spc.calculateUChart(subgroups);
-      variableN = chartData.u.variableN;
+      chartData  = spc.calculateUChart(subgroups);
+      variableN  = chartData.u.variableN;
+      effectiveN = Math.round(subgroups.reduce((s, sg) => s + sg.n, 0) / subgroups.length);
     }
 
     // ── Aplicar reglas SPC (3 reglas) ──────────────────────────────────────
@@ -263,7 +269,8 @@ router.get('/control-chart', async (req, res) => {
 
     res.json({
       process, chartData, violations, outOfControl, type, labels,
-      variableN, simulated, simulate_n: simulated ? parseInt(simulate_n) : null
+      variableN, simulated, simulate_n: simulated ? parseInt(simulate_n) : null,
+      effectiveN
     });
   } catch (err) {
     console.error(err);

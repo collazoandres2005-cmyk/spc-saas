@@ -3,149 +3,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diseño de Planes de Muestreo — SPC</title>
+  <title>Planes de Muestreo por Atributos — SPC</title>
   <link rel="stylesheet" href="/css/main.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
-    /* ── Chart info panel ─────────────────────────────────────── */
-    .chart-info-card {
-      background: #1e3a5f; border-radius: var(--radius);
-      padding: 14px 20px; margin-bottom: 20px; color: #e2e8f0;
+    /* ── Tarjetas de resultado ─────────────────────────────────── */
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px; margin-bottom: 20px;
     }
-    .chart-info-top {
-      font-size: 13px; font-weight: 800; color: #7dd3fc;
-      margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
-    }
-    .chart-info-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
-    }
-    .ci-stat { background: rgba(255,255,255,.07); border-radius: 6px; padding: 8px 12px; }
-    .ci-lbl  { font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #94a3b8; margin-bottom: 2px; }
-    .ci-val  { font-size: 16px; font-weight: 800; color: #f1f5f9; }
+    @media (max-width: 900px) { .plan-grid { grid-template-columns: repeat(2,1fr); } }
 
-    /* ── Parameters ───────────────────────────────────────────── */
+    .plan-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .plan-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background: var(--card-accent, var(--border));
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .plan-card.blue   { --card-accent: #3b82f6; }
+    .plan-card.green  { --card-accent: #22c55e; }
+    .plan-card.amber  { --card-accent: #f59e0b; }
+    .plan-card.red    { --card-accent: #ef4444; }
+    .plan-card.purple { --card-accent: #8b5cf6; }
+    .plan-card.teal   { --card-accent: #14b8a6; }
+
+    .pc-lbl   { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 6px; }
+    .pc-val   { font-size: 38px; font-weight: 900; line-height: 1.1; color: var(--text); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+    .pc-sub   { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+    .pc-badge { font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .pc-badge.good   { color: #16a34a; }
+    .pc-badge.warn   { color: #d97706; }
+    .pc-badge.danger { color: #dc2626; }
+
+    /* ── Riesgo pills ─────────────────────────────────────────── */
+    .risk-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .risk-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 600; flex: 1; min-width: 200px;
+    }
+    .risk-pill.producer { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .risk-pill.consumer { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
+    .risk-pill.good.producer { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .risk-pill.good.consumer { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .risk-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; opacity: .75; }
+
+    /* ── Params ───────────────────────────────────────────────── */
     .param-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 16px;
     }
     .param-field { display: flex; flex-direction: column; gap: 5px; }
-    .param-label {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .4px; color: var(--text-muted);
-    }
+    .param-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
     .param-input {
       padding: 7px 10px; border: 1px solid var(--border);
-      border-radius: var(--radius); font-size: 14px; font-weight: 600;
-      color: var(--text); background: var(--card);
+      border-radius: var(--radius); font-size: 14px; font-weight: 600; color: var(--text); background: var(--card);
     }
     .param-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
     .param-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
 
-    /* ── H checkboxes ─────────────────────────────────────────── */
-    .h-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-    .h-chip  {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600;
-      border: 1.5px solid var(--border); background: var(--card); cursor: pointer;
-      color: var(--text-sec); transition: all .12s;
+    /* ── Mode toggle ──────────────────────────────────────────── */
+    .mode-tabs {
+      display: flex; border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 20px; width: fit-content;
     }
-    .h-chip input { display: none; }
-    .h-chip.selected { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
+    .mode-tab {
+      padding: 7px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+      background: var(--card); color: var(--text-sec); border: none; transition: all .12s;
+    }
+    .mode-tab.active { background: var(--primary); color: #fff; }
 
-    /* ── Optimal plan banner ──────────────────────────────────── */
-    .optimal-banner {
-      background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
-      border-radius: var(--radius); padding: 20px 24px; color: #fff;
-      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-    .opt-main { display: flex; flex-direction: column; gap: 2px; }
-    .opt-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: #93c5fd; }
-    .opt-value { font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1; }
-    .opt-divider { width: 1px; height: 60px; background: rgba(255,255,255,.2); }
-    .opt-stats { display: flex; gap: 20px; flex-wrap: wrap; }
-    .opt-stat  { display: flex; flex-direction: column; }
-    .opt-stat-lbl { font-size: 10px; color: #93c5fd; font-weight: 700; text-transform: uppercase; }
-    .opt-stat-val { font-size: 20px; font-weight: 800; }
-    .opt-badge {
-      margin-left: auto; padding: 6px 16px; border-radius: 99px;
-      font-size: 12px; font-weight: 800; background: rgba(255,255,255,.15);
-      border: 1.5px solid rgba(255,255,255,.3); color: #fff; white-space: nowrap;
-    }
-    .opt-infeasible {
-      background: #f1f5f9; border: 2px dashed var(--border);
-      border-radius: var(--radius); padding: 20px 24px; color: var(--text-muted);
-      text-align: center; margin-bottom: 20px;
-    }
+    /* ── CO Curve chart ───────────────────────────────────────── */
+    .oc-wrap { height: 360px; }
 
-    /* ── Matrix table ─────────────────────────────────────────── */
-    .matrix-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-    .matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); }
-    .matrix-table thead tr { background: #1e3a5f; }
-    .matrix-table thead th {
-      padding: 9px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .3px; color: #cbd5e1; text-align: center; white-space: nowrap;
-      border: 1px solid #2d4a6e;
-    }
-    .matrix-table tbody tr:hover { background: #f8fafc; }
-    .matrix-table tbody th {
-      padding: 8px 12px; background: #f8fafc; font-weight: 700; font-size: 12px;
-      color: var(--text); border: 1px solid #e2e8f0; text-align: center;
-    }
-    .matrix-table tbody td {
-      padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center;
-      font-size: 11px; font-variant-numeric: tabular-nums; vertical-align: middle;
-    }
-    .cell-val   { font-size: 13px; font-weight: 800; display: block; }
-    .cell-sub   { font-size: 10px; color: var(--text-muted); display: block; margin-top: 1px; }
-    .cell-good  { background: #f0fdf4; }
-    .cell-warn  { background: #fefce8; }
-    .cell-bad   { background: #fef2f2; }
-    .cell-opt   { outline: 3px solid #1d4ed8; outline-offset: -3px; background: #eff6ff !important; }
-    .cell-na    { color: #94a3b8; font-size: 11px; }
-
-    /* ── Ranked table ─────────────────────────────────────────── */
-    .ranked-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .ranked-table thead tr { background: #1e3a5f; }
-    .ranked-table thead th {
+    /* ── Candidate table ──────────────────────────────────────── */
+    .cand-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .cand-table thead tr { background: #1e3a5f; }
+    .cand-table thead th {
       padding: 8px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;
       letter-spacing: .3px; color: #cbd5e1; text-align: right; white-space: nowrap;
       border: 1px solid #2d4a6e;
     }
-    .ranked-table thead th:first-child { text-align: center; }
-    .ranked-table tbody tr { transition: background .08s; }
-    .ranked-table tbody tr:hover { background: #f8fafc; }
-    .ranked-table tbody tr.row-opt { background: #eff6ff; font-weight: 700; }
-    .ranked-table tbody td {
+    .cand-table thead th:first-child { text-align: center; }
+    .cand-table tbody tr { transition: background .08s; }
+    .cand-table tbody tr:hover { background: #f8fafc; }
+    .cand-table tbody tr.row-sel { background: #eff6ff; font-weight: 700; }
+    .cand-table tbody td {
       padding: 7px 12px; border: 1px solid #e2e8f0; text-align: right;
       font-variant-numeric: tabular-nums;
     }
-    .ranked-table tbody td:first-child { text-align: center; }
-    .rank-badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 800;
+    .cand-table tbody td:first-child { text-align: center; }
+    .ok   { color: #16a34a; font-weight: 700; }
+    .warn { color: #d97706; font-weight: 700; }
+    .bad  { color: #dc2626; font-weight: 700; }
+
+    /* ── AOQ chart ────────────────────────────────────────────── */
+    .aoq-wrap { height: 260px; }
+
+    /* ── Infeasible / empty ───────────────────────────────────── */
+    .infeasible-box {
+      text-align: center; padding: 32px 20px;
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: var(--radius); color: #991b1b; margin-bottom: 20px;
     }
-    .rank-1 { background: #fef3c7; color: #92400e; }
-    .rank-2 { background: #f1f5f9; color: #475569; }
-    .rank-3 { background: #fef9c3; color: #713f12; }
-    .feas   { color: #16a34a; font-weight: 700; }
-    .infeas { color: #dc2626; }
-
-    /* ── Tradeoff chart ───────────────────────────────────────── */
-    .tradeoff-wrap { height: 300px; }
-
-    /* ── Empty state ──────────────────────────────────────────── */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-    .empty-state-icon  { font-size: 48px; margin-bottom: 12px; }
-    .empty-state-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-    .empty-state-sub   { font-size: 13px; }
+    .empty-icon  { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .empty-sub   { font-size: 13px; }
 
-    /* ── Rec items ────────────────────────────────────────────── */
+    /* ── Rec ──────────────────────────────────────────────────── */
     .rec-list { display: flex; flex-direction: column; gap: 8px; }
     .rec-item {
-      display: flex; align-items: flex-start; gap: 10px;
       padding: 10px 14px; border-radius: var(--radius);
-      font-size: 13px; border-left: 3px solid;
+      font-size: 13px; border-left: 3px solid; line-height: 1.55;
     }
     .rec-item.good   { background: #f0fdf4; border-color: #22c55e; color: #15803d; }
     .rec-item.warn   { background: #fefce8; border-color: #f59e0b; color: #92400e; }
@@ -160,8 +137,8 @@
     <div class="top-bar">
       <div>
         <div class="top-bar-title">Diseño de Planes de Muestreo</div>
-        <span class="top-bar-breadcrumb" id="proc-crumb">
-          Optimización inteligente del esquema SPC
+        <span class="top-bar-breadcrumb">
+          Muestreo de aceptación por atributos — Curva CO, NAC, NCR, AOQ
         </span>
       </div>
       <div class="top-bar-right">
@@ -171,198 +148,217 @@
 
     <div class="page-content">
 
-      <!-- ══ SELECTOR ════════════════════════════════════════════ -->
+      <!-- ══ MODO ════════════════════════════════════════════════ -->
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-auto" onclick="setMode('auto')">
+          Diseño automático
+        </button>
+        <button class="mode-tab" id="tab-manual" onclick="setMode('manual')">
+          Ingresar n y NAC manualmente
+        </button>
+      </div>
+
+      <!-- ══ PARÁMETROS ══════════════════════════════════════════ -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-header">
-          <div class="card-title">Proceso a optimizar</div>
-          <span style="font-size:11px;color:var(--text-muted)">
-            Usa los parámetros reales de la carta de control (Fase I + Fase II)
+          <div class="card-title" id="params-title">Parámetros del plan</div>
+          <span style="font-size:11px;color:var(--text-muted)" id="params-sub">
+            Define las restricciones de calidad — el plan óptimo (n, NAC) se calcula automáticamente
           </span>
         </div>
-        <div style="padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <label style="margin:0;font-weight:600;white-space:nowrap">Proceso:</label>
-          <select id="proc-sel" style="min-width:280px" class="param-input" onchange="loadProcess()">
-            <option value="">— Selecciona un proceso —</option>
-          </select>
-          <span id="load-status" style="font-size:12px;color:var(--text-muted)"></span>
+        <div style="padding:16px 20px">
+
+          <!-- Modo automático -->
+          <div id="panel-auto">
+            <div class="param-grid">
+              <div class="param-field">
+                <label class="param-label">N — Tamaño del lote</label>
+                <input id="inp-N" class="param-input" type="number" min="2" value="1000" oninput="recalc()">
+                <p class="param-hint">Número de unidades en el lote a inspeccionar.</p>
+              </div>
+              <div class="param-field">
+                <label class="param-label">NCA / AQL (%)</label>
+                <input id="inp-aql" class="param-input" type="number" min="0.01" max="15" step="0.01" value="1.0" oninput="recalc()">
+                <p class="param-hint">Nivel de Calidad Aceptable — % defectivos que el productor quiere proteger.</p>
+              </div>
+              <div class="param-field">
+                <label class="param-label">α — Riesgo del productor (%)</label>
+                <input id="inp-alpha" class="param-input" type="number" min="0.1" max="20" step="0.1" value="5" oninput="recalc()">
+                <p class="param-hint">P(rechazar lote bueno). Típicamente 5%.</p>
+              </div>
+              <div class="param-field">
+                <label class="param-label">NRC / LTPD (%)</label>
+                <input id="inp-ltpd" class="param-input" type="number" min="0.1" max="50" step="0.1" value="5.0" oninput="recalc()">
+                <p class="param-hint">Nivel de Calidad Rechazable — % defectivos que el consumidor no acepta.</p>
+              </div>
+              <div class="param-field">
+                <label class="param-label">β — Riesgo del consumidor (%)</label>
+                <input id="inp-beta" class="param-input" type="number" min="0.1" max="20" step="0.1" value="10" oninput="recalc()">
+                <p class="param-hint">P(aceptar lote malo). Típicamente 10%.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modo manual -->
+          <div id="panel-manual" style="display:none">
+            <div class="param-grid">
+              <div class="param-field">
+                <label class="param-label">N — Tamaño del lote</label>
+                <input id="inp-N-m" class="param-input" type="number" min="2" value="1000" oninput="recalc()">
+              </div>
+              <div class="param-field">
+                <label class="param-label">n — Tamaño de muestra</label>
+                <input id="inp-n-m" class="param-input" type="number" min="1" value="80" oninput="recalc()">
+              </div>
+              <div class="param-field">
+                <label class="param-label">NAC — Número de Aceptación (c)</label>
+                <input id="inp-nac-m" class="param-input" type="number" min="0" step="1" value="2" oninput="recalc()">
+                <p class="param-hint">Acepta el lote si defectivos ≤ NAC.</p>
+              </div>
+              <div class="param-field">
+                <label class="param-label">NCA / AQL (%) — referencia</label>
+                <input id="inp-aql-m" class="param-input" type="number" min="0.01" max="15" step="0.01" value="1.0" oninput="recalc()">
+                <p class="param-hint">Solo para mostrar el punto de referencia en la curva CO.</p>
+              </div>
+              <div class="param-field">
+                <label class="param-label">NRC / LTPD (%) — referencia</label>
+                <input id="inp-ltpd-m" class="param-input" type="number" min="0.1" max="50" step="0.1" value="5.0" oninput="recalc()">
+                <p class="param-hint">Solo para referencia visual en la curva CO.</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- ══ INFO CARTA ══════════════════════════════════════════ -->
-      <div id="chart-info-panel" style="display:none" class="chart-info-card">
-        <div class="chart-info-top">
-          <span>📊</span>
-          <span id="ci-title">—</span>
-        </div>
-        <div class="chart-info-grid" id="ci-grid"></div>
+      <!-- ══ RESULTADO DEL PLAN ══════════════════════════════════ -->
+      <div id="result-infeasible" style="display:none" class="infeasible-box">
+        <div style="font-size:22px;margin-bottom:8px">⚠️</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:4px" id="infeas-title">No se encontró un plan factible</div>
+        <div style="font-size:13px" id="infeas-msg">Ajusta NCA, NRC o los riesgos α y β.</div>
       </div>
 
-      <!-- ══ VACÍO ═══════════════════════════════════════════════ -->
-      <div id="empty-state" class="card">
-        <div class="empty-state">
-          <div class="empty-state-icon">🎯</div>
-          <div class="empty-state-title">Selecciona un proceso para diseñar el plan óptimo</div>
-          <div class="empty-state-sub">
-            El módulo cargará los parámetros reales de la carta de control y optimizará n y h
-            para minimizar productos no conformes antes de detección.
+      <div id="result-area" style="display:none">
+
+        <!-- Tarjetas principales -->
+        <div class="plan-grid">
+          <div class="plan-card blue">
+            <div class="pc-lbl">n — Tamaño de muestra</div>
+            <div class="pc-val" id="val-n">—</div>
+            <div class="pc-sub" id="sub-n">unidades a inspeccionar</div>
+          </div>
+          <div class="plan-card green">
+            <div class="pc-lbl">NAC — Número de Aceptación</div>
+            <div class="pc-val" id="val-nac">—</div>
+            <div class="pc-sub">Acepta lote si defect. ≤ NAC</div>
+          </div>
+          <div class="plan-card red">
+            <div class="pc-lbl">NCR — Número de Rechazo</div>
+            <div class="pc-val" id="val-ncr">—</div>
+            <div class="pc-sub">Rechaza lote si defect. ≥ NCR</div>
+          </div>
+          <div class="plan-card teal">
+            <div class="pc-lbl">Fracción inspeccionada</div>
+            <div class="pc-val" id="val-frac" style="font-size:28px">—</div>
+            <div class="pc-sub" id="sub-frac">n / N</div>
           </div>
         </div>
-      </div>
 
-      <!-- ══ CONTENIDO ═══════════════════════════════════════════ -->
-      <div id="main-content" style="display:none">
+        <!-- Riesgo productor / consumidor -->
+        <div class="risk-row" id="risk-row"></div>
 
-        <!-- ── Parámetros de optimización ───────────────────────── -->
+        <!-- Métricas adicionales -->
+        <div class="plan-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+          <div class="plan-card blue">
+            <div class="pc-lbl">Pa en NCA (AQL)</div>
+            <div class="pc-val" id="val-pa-aql" style="font-size:26px">—</div>
+            <div class="pc-sub">P(aceptar | p = NCA)</div>
+            <div class="pc-badge" id="badge-pa-aql"></div>
+          </div>
+          <div class="plan-card amber">
+            <div class="pc-lbl">Pa en NRC (LTPD)</div>
+            <div class="pc-val" id="val-pa-ltpd" style="font-size:26px">—</div>
+            <div class="pc-sub">P(aceptar | p = NRC)</div>
+            <div class="pc-badge" id="badge-pa-ltpd"></div>
+          </div>
+          <div class="plan-card purple">
+            <div class="pc-lbl">AOQL</div>
+            <div class="pc-val" id="val-aoql" style="font-size:26px">—</div>
+            <div class="pc-sub">Calidad saliente promedio máx.</div>
+            <div class="pc-badge" id="badge-aoql"></div>
+          </div>
+          <div class="plan-card green">
+            <div class="pc-lbl">ATI en AQL</div>
+            <div class="pc-val" id="val-ati" style="font-size:26px">—</div>
+            <div class="pc-sub">Inspección total promedio (u)</div>
+          </div>
+        </div>
+
+        <!-- ── Curva CO ─────────────────────────────────────────── -->
         <div class="card" style="margin-bottom:20px">
           <div class="card-header">
-            <div class="card-title">Parámetros de optimización</div>
+            <div class="card-title">Curva Característica de Operación (CO)</div>
             <span style="font-size:11px;color:var(--text-muted)">
-              Define las restricciones del plan — los resultados se actualizan automáticamente
+              Pa = P(aceptar el lote) vs % defectivos en el lote — Aproximación binomial
             </span>
           </div>
           <div style="padding:16px 20px">
-            <div class="param-grid">
-
-              <div class="param-field">
-                <label class="param-label">Desplazamiento a detectar (δ) · en σ</label>
-                <input id="inp-delta" class="param-input" type="number" min="0.25" step="0.25" value="1.0" oninput="recalc()">
-                <p class="param-hint" id="delta-hint">Cambio mínimo que el plan debe detectar.</p>
-              </div>
-
-              <div class="param-field">
-                <label class="param-label">Límites sigma (k)</label>
-                <select id="inp-k" class="param-input" onchange="recalc()">
-                  <option value="2">2 σ</option>
-                  <option value="2.5">2.5 σ</option>
-                  <option value="3" selected>3 σ — estándar</option>
-                  <option value="3.5">3.5 σ</option>
-                </select>
-                <p class="param-hint">Define α de la carta Shewhart.</p>
-              </div>
-
-              <div class="param-field">
-                <label class="param-label">ATS₁ máximo (h)</label>
-                <input id="inp-max-ats" class="param-input" type="number" min="0.5" step="0.5" value="8" oninput="recalc()">
-                <p class="param-hint">Tiempo máximo tolerable para detectar el cambio.</p>
-              </div>
-
-              <div class="param-field">
-                <label class="param-label">% No conformes (OOC)</label>
-                <input id="inp-pnc" class="param-input" type="number" min="0.01" max="100" step="0.1" value="2.5" oninput="recalc()">
-                <p class="param-hint">% de defectuosos cuando el proceso está fuera de control.</p>
-              </div>
-
-              <div class="param-field">
-                <label class="param-label">Tasa de producción (u/h)</label>
-                <input id="inp-lambda" class="param-input" type="number" min="1" value="100" oninput="recalc()">
-                <p class="param-hint">Unidades producidas por hora.</p>
-              </div>
-
-              <div class="param-field">
-                <label class="param-label">Rango de n a evaluar</label>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <input id="inp-n-min" class="param-input" type="number" min="2" max="9" value="2" style="flex:1" oninput="recalc()">
-                  <span style="color:var(--text-muted);font-weight:600">a</span>
-                  <input id="inp-n-max" class="param-input" type="number" min="3" max="15" value="10" style="flex:1" oninput="recalc()">
-                </div>
-                <p class="param-hint">Tamaños de subgrupo a comparar.</p>
-              </div>
-
-              <div class="param-field" style="grid-column:1/-1">
-                <label class="param-label">Intervalos de muestreo h a evaluar</label>
-                <div class="h-chips" id="h-chips">
-                  <label class="h-chip selected"><input type="checkbox" value="0.5" checked onchange="recalc()">0.5 h</label>
-                  <label class="h-chip selected"><input type="checkbox" value="1"   checked onchange="recalc()">1 h</label>
-                  <label class="h-chip selected"><input type="checkbox" value="2"   checked onchange="recalc()">2 h</label>
-                  <label class="h-chip selected"><input type="checkbox" value="4"   checked onchange="recalc()">4 h</label>
-                  <label class="h-chip selected"><input type="checkbox" value="8"   checked onchange="recalc()">8 h</label>
-                  <label class="h-chip"><input type="checkbox" value="12" onchange="recalc()">12 h</label>
-                  <label class="h-chip"><input type="checkbox" value="24" onchange="recalc()">24 h</label>
-                </div>
-              </div>
-
-            </div>
+            <div class="oc-wrap"><canvas id="oc-chart"></canvas></div>
           </div>
         </div>
 
-        <!-- ── Plan óptimo ─────────────────────────────────────── -->
-        <div id="optimal-banner"></div>
-
-        <!-- ── Matriz de comparación ───────────────────────────── -->
+        <!-- ── Tabla de planes candidatos ─────────────────────── -->
         <div class="card" style="margin-bottom:20px">
           <div class="card-header">
-            <div class="card-title">Matriz de comparación — PPNC por (n, h)</div>
-            <span style="font-size:11px;color:var(--text-muted)" id="matrix-legend">
-              Verde = ATS₁ cumple restricción · Celda resaltada = plan óptimo
-            </span>
-          </div>
-          <div style="padding:0 20px 16px">
-            <div class="matrix-wrap">
-              <table class="matrix-table" id="matrix-table">
-                <thead><tr id="matrix-head"></tr></thead>
-                <tbody id="matrix-body"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Tabla clasificada ───────────────────────────────── -->
-        <div class="card" style="margin-bottom:20px">
-          <div class="card-header">
-            <div class="card-title">Planes clasificados por PPNC</div>
+            <div class="card-title">Planes candidatos para distintos NAC</div>
             <span style="font-size:11px;color:var(--text-muted)">
-              Solo se muestran planes factibles (ATS₁ ≤ máximo definido)
+              Plan seleccionado resaltado — ordenados por n
             </span>
           </div>
           <div style="padding:0 20px 16px;overflow-x:auto">
-            <table class="ranked-table">
+            <table class="cand-table">
               <thead>
                 <tr>
-                  <th style="text-align:center">#</th>
+                  <th style="text-align:center">NAC</th>
+                  <th>NCR</th>
                   <th>n</th>
-                  <th>h (hrs)</th>
-                  <th>k (σ)</th>
-                  <th>α</th>
-                  <th>β</th>
-                  <th>Potencia</th>
-                  <th>ARL₁</th>
-                  <th>ATS₁ (h)</th>
-                  <th>PPNC (u)</th>
-                  <th>ATS₀ (h)</th>
+                  <th>n/N (%)</th>
+                  <th>Pa en AQL (%)</th>
+                  <th>Pa en LTPD (%)</th>
+                  <th>α real (%)</th>
+                  <th>β real (%)</th>
+                  <th>AOQL (%)</th>
+                  <th>ATI en AQL</th>
                 </tr>
               </thead>
-              <tbody id="ranked-body"></tbody>
+              <tbody id="cand-body"></tbody>
             </table>
-            <div id="ranked-empty" style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;display:none">
-              Ningún plan cumple las restricciones actuales. Relaja ATS₁ máximo o evalúa más valores de h y n.
-            </div>
           </div>
         </div>
 
-        <!-- ── Gráfico tradeoff ────────────────────────────────── -->
+        <!-- ── Curva AOQ ───────────────────────────────────────── -->
         <div class="card" style="margin-bottom:20px">
           <div class="card-header">
-            <div class="card-title">Análisis de sensibilidad — ATS₁ vs n</div>
+            <div class="card-title">Curva AOQ — Calidad Saliente Promedio</div>
             <span style="font-size:11px;color:var(--text-muted)">
-              Cada línea representa un intervalo h. La zona gris = ATS₁ &gt; máximo.
+              Asume inspección 100% de lotes rechazados (rectificación)
             </span>
           </div>
           <div style="padding:16px 20px">
-            <div class="tradeoff-wrap"><canvas id="tradeoff-chart"></canvas></div>
+            <div class="aoq-wrap"><canvas id="aoq-chart"></canvas></div>
           </div>
         </div>
 
         <!-- ── Recomendaciones ─────────────────────────────────── -->
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Recomendaciones automáticas</div>
-          </div>
+          <div class="card-header"><div class="card-title">Interpretación del plan</div></div>
           <div style="padding:16px 20px">
             <div class="rec-list" id="rec-list"></div>
           </div>
         </div>
 
-      </div><!-- /main-content -->
+      </div><!-- /result-area -->
+
     </div>
   </div>
 
@@ -374,478 +370,443 @@ initSidebar('sampling-plan');
 initTopBar('Diseño de Planes de Muestreo');
 
 /* ══════════════════════════════════════════════════════════════
-   ESTADO GLOBAL
+   ESTADO
 ══════════════════════════════════════════════════════════════ */
-let chartInfo     = null;
-let tradeoffChart = null;
+let mode     = 'auto';
+let ocChart  = null;
+let aoqChart = null;
 
 /* ══════════════════════════════════════════════════════════════
-   MATH
+   MODO
 ══════════════════════════════════════════════════════════════ */
-function phi(x) {
-  const a = [0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429];
-  const s = x < 0 ? -1 : 1;
-  x = Math.abs(x);
-  const t = 1 / (1 + 0.3275911 * x);
-  const y = 1 - (((((a[4]*t + a[3])*t) + a[2])*t + a[1])*t + a[0])*t*Math.exp(-x*x);
-  return 0.5 * (1 + s * y);
-}
-
-function calcBeta({ k, delta, n, chartType, ucl, lcl, cl }) {
-  const type = chartType || 'xbar_r';
-  if (type === 'xbar_r' || type === 'xbar_s') {
-    const sh = delta * Math.sqrt(n);
-    return phi(k - sh) - phi(-k - sh);
-  }
-  if (ucl == null || cl == null) {
-    const sh = delta * Math.sqrt(n);
-    return phi(k - sh) - phi(-k - sh);
-  }
-  const lclSafe = lcl ?? 0;
-  if (type === 'p') {
-    const pbar = cl; const sigma_p = Math.sqrt(Math.max(pbar*(1-pbar)/n, 1e-9));
-    const p1 = Math.max(1e-9, Math.min(1-1e-9, pbar + delta*sigma_p));
-    const sig1 = Math.sqrt(Math.max(p1*(1-p1)/n, 1e-9));
-    return phi((ucl-p1)/sig1) - phi((lclSafe-p1)/sig1);
-  }
-  if (type === 'np') {
-    const npbar = cl; const pbar = npbar/Math.max(n,1);
-    const sigma = Math.sqrt(Math.max(npbar*(1-pbar),1e-9));
-    const np1 = Math.max(0, npbar+delta*sigma); const p1 = np1/Math.max(n,1);
-    const sig1 = Math.sqrt(Math.max(np1*(1-p1),1e-9));
-    return phi((ucl-np1)/sig1) - phi((lclSafe-np1)/sig1);
-  }
-  if (type === 'c') {
-    const cbar = cl; const sigma = Math.sqrt(Math.max(cbar,1e-9));
-    const c1 = Math.max(0, cbar+delta*sigma); const sig1 = Math.sqrt(Math.max(c1,1e-9));
-    return phi((ucl-c1)/sig1) - phi((lclSafe-c1)/sig1);
-  }
-  if (type === 'u') {
-    const ubar = cl; const sigma = Math.sqrt(Math.max(ubar/n,1e-9));
-    const u1 = Math.max(0, ubar+delta*sigma); const sig1 = Math.sqrt(Math.max(u1/n,1e-9));
-    return phi((ucl-u1)/sig1) - phi((lclSafe-u1)/sig1);
-  }
-  const sh = delta * Math.sqrt(n);
-  return phi(k - sh) - phi(-k - sh);
-}
-
-function evalPlan(n, h, { k, delta, pnc, lambda, chartType, ucl, lcl, cl }) {
-  const alpha  = 2 * (1 - phi(k));
-  const beta   = calcBeta({ k, delta, n, chartType, ucl, lcl, cl });
-  const power  = Math.max(1e-9, 1 - beta);
-  const arl0   = 1 / alpha;
-  const arl1   = 1 / power;
-  const ats0   = arl0 * h;
-  const ats1   = arl1 * h;
-  const ppnc   = ats1 * (pnc / 100) * lambda;
-  return { n, h, k, alpha, beta, power, arl0, arl1, ats0, ats1, ppnc };
+function setMode(m) {
+  mode = m;
+  document.getElementById('tab-auto').classList.toggle('active',   m === 'auto');
+  document.getElementById('tab-manual').classList.toggle('active', m === 'manual');
+  document.getElementById('panel-auto').style.display   = m === 'auto'   ? '' : 'none';
+  document.getElementById('panel-manual').style.display = m === 'manual' ? '' : 'none';
+  document.getElementById('params-sub').textContent = m === 'auto'
+    ? 'Define las restricciones de calidad — el plan óptimo (n, NAC) se calcula automáticamente'
+    : 'Ingresa n y NAC directamente — el sistema calcula la curva CO y métricas';
+  recalc();
 }
 
 /* ══════════════════════════════════════════════════════════════
-   CARGAR PROCESO
+   MATEMÁTICAS — DISTRIBUCIÓN BINOMIAL
 ══════════════════════════════════════════════════════════════ */
-const CHART_LABELS = { xbar_r:'X̄-R', xbar_s:'X̄-S', p:'Carta p', np:'Carta np', c:'Carta c', u:'Carta u' };
-const A2 = { 2:1.880, 3:1.023, 4:0.729, 5:0.577, 6:0.483, 7:0.419, 8:0.373, 9:0.337, 10:0.308 };
-const A3 = { 2:2.659, 3:1.954, 4:1.628, 5:1.427, 6:1.287, 7:1.182, 8:1.099, 9:1.032, 10:0.975 };
+function logFact(n) {
+  let s = 0;
+  for (let i = 2; i <= n; i++) s += Math.log(i);
+  return s;
+}
 
-function inferN(type, main, second) {
-  try {
-    if (!second || !main.ucl || !main.cl || !second.cl || second.cl === 0) return null;
-    const table = type === 'xbar_r' ? A2 : A3;
-    const a = (main.ucl - main.cl) / second.cl;
-    let best = null, bestDiff = Infinity;
-    for (const [k, v] of Object.entries(table)) {
-      const d = Math.abs(v - a);
-      if (d < bestDiff) { bestDiff = d; best = parseInt(k); }
+function logBinom(n, k) {
+  if (k < 0 || k > n) return -Infinity;
+  return logFact(n) - logFact(k) - logFact(n - k);
+}
+
+function binomPMF(n, k, p) {
+  if (p <= 0) return k === 0 ? 1 : 0;
+  if (p >= 1) return k === n ? 1 : 0;
+  const log = logBinom(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p);
+  return Math.exp(log);
+}
+
+// P(X ≤ c) — probabilidad de aceptación
+function Pa(n, c, p) {
+  if (p <= 0) return 1;
+  if (p >= 1) return c >= n ? 1 : 0;
+  let prob = 0;
+  for (let k = 0; k <= Math.min(c, n); k++) prob += binomPMF(n, k, p);
+  return Math.min(1, prob);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DISEÑO AUTOMÁTICO — dado (AQL, α, LTPD, β) → hallar (n, c)
+══════════════════════════════════════════════════════════════ */
+function findConsumerN(c, p2, beta) {
+  // Mínimo n tal que Pa(n,c,p2) ≤ β
+  if (Pa(1, c, p2) <= beta) return 1;
+  let lo = 1, hi = 5000;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    Pa(mid, c, p2) <= beta ? (hi = mid) : (lo = mid + 1);
+  }
+  return lo <= 5000 ? lo : null;
+}
+
+function designPlan(aql, alpha, ltpd, beta) {
+  // alpha, beta como fracción (0–1)
+  const candidates = [];
+  for (let c = 0; c <= 50; c++) {
+    const n = findConsumerN(c, ltpd, beta);
+    if (!n) continue;
+    if (n > 5000) continue;
+    const pa_aql = Pa(n, c, aql);
+    if (pa_aql >= 1 - alpha) {
+      candidates.push({ n, c, pa_aql, pa_ltpd: Pa(n, c, ltpd) });
     }
-    return bestDiff < 0.08 ? best : null;
-  } catch { return null; }
-}
-
-async function init() {
-  const list = await processesApi.list().catch(() => []);
-  const sel  = document.getElementById('proc-sel');
-  list.forEach(p => sel.appendChild(new Option(
-    `${p.name}${p.unit ? ' (' + p.unit + ')' : ''} — ${CHART_LABELS[p.chart_type] || p.chart_type || '?'}`, p.id
-  )));
-  const pid = new URLSearchParams(location.search).get('process_id');
-  if (pid) { sel.value = pid; await loadProcess(); }
-}
-
-async function loadProcess() {
-  const pid = document.getElementById('proc-sel').value;
-  if (!pid) {
-    chartInfo = null;
-    document.getElementById('chart-info-panel').style.display = 'none';
-    document.getElementById('empty-state').style.display      = 'block';
-    document.getElementById('main-content').style.display     = 'none';
-    return;
   }
-  const status = document.getElementById('load-status');
-  status.textContent = 'Cargando…';
-  try {
-    const proc   = await processesApi.get(pid);
-    const type   = proc.chart_type || 'xbar_r';
-    const ccRes  = await analysisApi.controlChart(pid, type);
-    const mainKey= { xbar_r:'xbar', xbar_s:'xbar', p:'p', np:'np', c:'c', u:'u' }[type] || 'xbar';
-    const main   = ccRes.chartData[mainKey];
-    const second = ccRes.chartData.r || ccRes.chartData.s || null;
-
-    let n = ccRes.effectiveN
-         || (['xbar_r','xbar_s'].includes(type) ? inferN(type, main, second) : null)
-         || parseInt(proc.n_size) || 5;
-    let sigmaProcess = null;
-    if (type === 'xbar_r' || type === 'xbar_s') {
-      sigmaProcess = (main.ucl - main.cl) * Math.sqrt(n) / 3;
-    }
-
-    chartInfo = {
-      type, proc, main, second, n, sigmaProcess,
-      unit: proc.unit || '',
-      oocCount: ccRes.outOfControl?.length || 0,
-      totalSG:  ccRes.labels?.length || 0,
-      procName: proc.name
-    };
-
-    renderInfoPanel(chartInfo);
-    updateDeltaHint();
-
-    document.getElementById('chart-info-panel').style.display = 'block';
-    document.getElementById('empty-state').style.display      = 'none';
-    document.getElementById('main-content').style.display     = 'block';
-    document.getElementById('proc-crumb').textContent = `${proc.name} — ${CHART_LABELS[type] || type}`;
-    status.textContent = '';
-
-    syncHChipStyles();
-    recalc();
-  } catch (err) {
-    status.textContent = `Error: ${err.message}`;
-  }
-}
-
-function renderInfoPanel(ci) {
-  const { type, main, second, n, sigmaProcess, unit, oocCount, totalSG } = ci;
-  document.getElementById('ci-title').textContent = `${ci.procName} — ${CHART_LABELS[type] || type}`;
-  const fv = (v, d=4) => v != null ? (+v).toFixed(d) : '—';
-  const stats = [
-    { lbl:'UCL',   val: fv(main.ucl) + (unit?' '+unit:'') },
-    { lbl:'LC',    val: fv(main.cl)  + (unit?' '+unit:'') },
-    { lbl:'LCL',   val: fv(main.lcl) + (unit?' '+unit:'') },
-    { lbl:'n actual', val: n },
-    { lbl:'Estado', val: oocCount===0 ? `${totalSG} SG — estable` : `${oocCount} OOC de ${totalSG}`,
-      cls: oocCount===0?'':'color:#f87171' }
-  ];
-  if (sigmaProcess) stats.splice(4, 0, { lbl:'σ̂ proceso', val: fv(sigmaProcess)+(unit?' '+unit:'') });
-  document.getElementById('ci-grid').innerHTML = stats.map(s =>
-    `<div class="ci-stat"><div class="ci-lbl">${s.lbl}</div>
-     <div class="ci-val" style="${s.cls||''}">${s.val}</div></div>`).join('');
-}
-
-function updateDeltaHint() {
-  if (!chartInfo) return;
-  const delta = parseFloat(document.getElementById('inp-delta').value) || 1;
-  const hint  = document.getElementById('delta-hint');
-  if (chartInfo.sigmaProcess) {
-    hint.innerHTML = `δ=${delta.toFixed(2)} → desplazamiento real de <strong>${(delta*chartInfo.sigmaProcess).toFixed(4)} ${chartInfo.unit}</strong>`;
-  } else {
-    hint.textContent = `δ=${delta.toFixed(2)} σ del proceso.`;
-  }
+  if (candidates.length === 0) return null;
+  // Mínimo n
+  return candidates.sort((a, b) => a.n - b.n)[0];
 }
 
 /* ══════════════════════════════════════════════════════════════
-   CHIP SYNC
+   AOQL Y ATI
 ══════════════════════════════════════════════════════════════ */
-function syncHChipStyles() {
-  document.querySelectorAll('.h-chip').forEach(chip => {
-    const cb = chip.querySelector('input');
-    chip.classList.toggle('selected', cb.checked);
-  });
+function aoq(n, c, N, p) {
+  const pa = Pa(n, c, p);
+  return p * pa * (N - n) / N;
 }
-document.getElementById('h-chips').addEventListener('change', () => syncHChipStyles());
+
+function computeAOQL(n, c, N) {
+  let maxAoq = 0;
+  for (let i = 1; i <= 200; i++) {
+    const p = i / 1000;
+    const a = aoq(n, c, N, p);
+    if (a > maxAoq) maxAoq = a;
+  }
+  return maxAoq;
+}
+
+function ati(n, c, N, p) {
+  const pa = Pa(n, c, p);
+  return n * pa + N * (1 - pa);
+}
 
 /* ══════════════════════════════════════════════════════════════
-   RECÁLCULO PRINCIPAL
+   RECÁLCULO
 ══════════════════════════════════════════════════════════════ */
 function recalc() {
-  if (!chartInfo) return;
-  updateDeltaHint();
+  let n, c, aql, ltpd, N, alpha, beta;
 
-  const k      = parseFloat(document.getElementById('inp-k').value)      || 3;
-  const delta  = parseFloat(document.getElementById('inp-delta').value)   || 1;
-  const maxAts = parseFloat(document.getElementById('inp-max-ats').value) || 8;
-  const pnc    = parseFloat(document.getElementById('inp-pnc').value)     || 2.5;
-  const lambda = parseFloat(document.getElementById('inp-lambda').value)  || 100;
-  const nMin   = Math.max(2, parseInt(document.getElementById('inp-n-min').value) || 2);
-  const nMax   = Math.min(15, parseInt(document.getElementById('inp-n-max').value) || 10);
+  if (mode === 'auto') {
+    N     = parseInt(document.getElementById('inp-N').value)     || 1000;
+    aql   = (parseFloat(document.getElementById('inp-aql').value)   || 1)   / 100;
+    alpha = (parseFloat(document.getElementById('inp-alpha').value) || 5)   / 100;
+    ltpd  = (parseFloat(document.getElementById('inp-ltpd').value)  || 5)   / 100;
+    beta  = (parseFloat(document.getElementById('inp-beta').value)  || 10)  / 100;
 
-  const hVals = [...document.querySelectorAll('#h-chips input:checked')]
-    .map(cb => parseFloat(cb.value)).sort((a,b)=>a-b);
-  if (hVals.length === 0) return;
+    if (aql >= ltpd) {
+      showInfeasible('NCA debe ser menor que NRC (AQL < LTPD).');
+      return;
+    }
 
-  const nVals = [];
-  for (let i = nMin; i <= nMax; i++) nVals.push(i);
+    const plan = designPlan(aql, alpha, ltpd, beta);
+    if (!plan) {
+      showInfeasible(`No se encontró un plan factible con los parámetros dados.
+        Prueba a aumentar α o β, o a ampliar la separación entre NCA y NRC.`);
+      return;
+    }
+    n = plan.n;
+    c = plan.c;
+  } else {
+    N    = parseInt(document.getElementById('inp-N-m').value)    || 1000;
+    n    = parseInt(document.getElementById('inp-n-m').value)    || 80;
+    c    = parseInt(document.getElementById('inp-nac-m').value)  || 2;
+    aql  = (parseFloat(document.getElementById('inp-aql-m').value)  || 1)  / 100;
+    ltpd = (parseFloat(document.getElementById('inp-ltpd-m').value) || 5)  / 100;
+    alpha = 1 - Pa(n, c, aql);
+    beta  = Pa(n, c, ltpd);
+  }
 
-  const ctx = {
-    k, delta, pnc, lambda,
-    chartType: chartInfo.type,
-    ucl: chartInfo.main.ucl,
-    lcl: chartInfo.main.lcl,
-    cl:  chartInfo.main.cl
+  if (n > N) n = N;
+
+  document.getElementById('result-infeasible').style.display = 'none';
+  document.getElementById('result-area').style.display       = 'block';
+
+  renderPlanCards(n, c, N, aql, ltpd, alpha, beta);
+  renderOCCurve(n, c, N, aql, ltpd);
+  renderCandidates(N, aql, alpha, ltpd, beta, c);
+  renderAOQCurve(n, c, N);
+  renderRecommendations(n, c, N, aql, ltpd, alpha, beta);
+}
+
+function showInfeasible(msg) {
+  document.getElementById('result-infeasible').style.display = 'block';
+  document.getElementById('result-area').style.display       = 'none';
+  document.getElementById('infeas-msg').textContent = msg;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TARJETAS PRINCIPALES
+══════════════════════════════════════════════════════════════ */
+function renderPlanCards(n, c, N, aql, ltpd, alpha, beta) {
+  const r      = c + 1;
+  const frac   = (n / N * 100).toFixed(1);
+  const pa_aql = Pa(n, c, aql);
+  const pa_ltpd= Pa(n, c, ltpd);
+  const aoql   = computeAOQL(n, c, N);
+  const atiAql = ati(n, c, N, aql);
+  const alphaReal = 1 - pa_aql;
+  const betaReal  = pa_ltpd;
+
+  document.getElementById('val-n').textContent    = n.toLocaleString('es');
+  document.getElementById('val-nac').textContent  = c;
+  document.getElementById('val-ncr').textContent  = r;
+  document.getElementById('val-frac').textContent = frac + '%';
+  document.getElementById('sub-frac').textContent = `${n} / ${N} unidades`;
+
+  document.getElementById('val-pa-aql').textContent  = (pa_aql*100).toFixed(2)+'%';
+  document.getElementById('val-pa-ltpd').textContent = (pa_ltpd*100).toFixed(2)+'%';
+  document.getElementById('val-aoql').textContent    = (aoql*100).toFixed(3)+'%';
+  document.getElementById('val-ati').textContent     = Math.round(atiAql).toLocaleString('es');
+
+  const setBadge = (id, ok, txt) => {
+    const el = document.getElementById(id);
+    el.textContent  = txt;
+    el.className = `pc-badge ${ok ? 'good' : 'warn'}`;
   };
+  setBadge('badge-pa-aql',  pa_aql  >= 0.90, pa_aql  >= 0.90 ? 'Protección productora OK' : 'Riesgo productor elevado');
+  setBadge('badge-pa-ltpd', pa_ltpd <= 0.15, pa_ltpd <= 0.10 ? 'Protección consumidor OK' : 'Riesgo consumidor elevado');
+  setBadge('badge-aoql',    aoql    <= 0.02, `AOQL = ${(aoql*100).toFixed(3)}%`);
 
-  // Evalúa todos los planes
-  const allPlans = [];
-  nVals.forEach(n => hVals.forEach(h => allPlans.push(evalPlan(n, h, ctx))));
-
-  const feasible = allPlans.filter(p => p.ats1 <= maxAts);
-  const optimal  = feasible.length > 0
-    ? feasible.reduce((best, p) => p.ppnc < best.ppnc ? p : best)
-    : null;
-
-  renderOptimalBanner(optimal, maxAts, chartInfo);
-  renderMatrix(nVals, hVals, allPlans, optimal, maxAts);
-  renderRanked(feasible, optimal);
-  renderTradeoff(nVals, hVals, allPlans, maxAts);
-  renderRecommendations(allPlans, feasible, optimal, { k, delta, maxAts, pnc, lambda });
-}
-
-/* ══════════════════════════════════════════════════════════════
-   RENDER — BANNER ÓPTIMO
-══════════════════════════════════════════════════════════════ */
-const FMT = {
-  num: v => !isFinite(v)||v>1e6 ? '>1M' : v.toLocaleString('es',{maximumFractionDigits:1}),
-  pct: v => (v*100).toFixed(2)+'%',
-  hrs: v => !isFinite(v)||v>1e5 ? '>100k h' : v.toLocaleString('es',{maximumFractionDigits:1})
-};
-
-function renderOptimalBanner(opt, maxAts, ci) {
-  const el = document.getElementById('optimal-banner');
-  if (!opt) {
-    el.innerHTML = `<div class="opt-infeasible">
-      <div style="font-size:24px;margin-bottom:8px">⚠️</div>
-      <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">
-        Ningún plan cumple ATS₁ ≤ ${maxAts} h con los n y h evaluados
+  // Riesgo pills
+  document.getElementById('risk-row').innerHTML = `
+    <div class="risk-pill producer ${alphaReal<=0.06?'good':''}">
+      <div>
+        <div class="risk-lbl">Riesgo del Productor (α real)</div>
+        <div style="font-size:20px;font-weight:900;margin-top:2px">${(alphaReal*100).toFixed(2)}%</div>
+        <div style="font-size:11px;margin-top:2px">P(rechazar lote con p = NCA = ${(aql*100).toFixed(2)}%)</div>
       </div>
-      <div style="font-size:13px">
-        Reduce el ATS₁ máximo, evalúa tamaños de muestra más grandes, o usa intervalos h más cortos.
+    </div>
+    <div class="risk-pill consumer ${betaReal<=0.11?'good':''}">
+      <div>
+        <div class="risk-lbl">Riesgo del Consumidor (β real)</div>
+        <div style="font-size:20px;font-weight:900;margin-top:2px">${(betaReal*100).toFixed(2)}%</div>
+        <div style="font-size:11px;margin-top:2px">P(aceptar lote con p = NRC = ${(ltpd*100).toFixed(2)}%)</div>
       </div>
     </div>`;
-    return;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CURVA CO
+══════════════════════════════════════════════════════════════ */
+function renderOCCurve(n, c, N, aql, ltpd) {
+  const pts = 120;
+  const maxP = Math.min(Math.max(ltpd * 3, 0.25), 1);
+  const labels = [], paVals = [];
+  for (let i = 0; i <= pts; i++) {
+    const p = (i / pts) * maxP;
+    labels.push((p * 100).toFixed(2));
+    paVals.push(+(Pa(n, c, p) * 100).toFixed(4));
   }
-  const sigLabel = ci.sigmaProcess
-    ? ` <span style="font-size:12px;font-weight:400;color:#93c5fd">(${(opt.n* /* noop */1,
-        (parseFloat(document.getElementById('inp-delta').value)||1)*ci.sigmaProcess).toFixed(3)} ${ci.unit})</span>`
-    : '';
-  el.innerHTML = `
-    <div class="optimal-banner">
-      <div class="opt-main">
-        <div class="opt-label">Plan óptimo</div>
-        <div class="opt-value">n = ${opt.n}, h = ${opt.h} h</div>
-      </div>
-      <div class="opt-divider"></div>
-      <div class="opt-stats">
-        <div class="opt-stat">
-          <span class="opt-stat-lbl">Potencia</span>
-          <span class="opt-stat-val">${FMT.pct(opt.power)}</span>
-        </div>
-        <div class="opt-stat">
-          <span class="opt-stat-lbl">ARL₁</span>
-          <span class="opt-stat-val">${FMT.num(opt.arl1)}</span>
-        </div>
-        <div class="opt-stat">
-          <span class="opt-stat-lbl">ATS₁</span>
-          <span class="opt-stat-val">${FMT.hrs(opt.ats1)} h</span>
-        </div>
-        <div class="opt-stat">
-          <span class="opt-stat-lbl">PPNC</span>
-          <span class="opt-stat-val">${FMT.num(opt.ppnc)} u</span>
-        </div>
-        <div class="opt-stat">
-          <span class="opt-stat-lbl">ATS₀</span>
-          <span class="opt-stat-val">${FMT.hrs(opt.ats0)} h</span>
-        </div>
-      </div>
-      <span class="opt-badge">PLAN ÓPTIMO — minimiza PPNC ✓</span>
-    </div>`;
-}
 
-/* ══════════════════════════════════════════════════════════════
-   RENDER — MATRIZ
-══════════════════════════════════════════════════════════════ */
-function planKey(n, h) { return `${n}_${h}`; }
-
-function cellCls(plan, maxAts) {
-  if (!plan) return 'cell-na';
-  if (plan.ats1 > maxAts) return 'cell-bad';
-  if (plan.ppnc < 20)  return 'cell-good';
-  if (plan.ppnc < 100) return 'cell-good';
-  return 'cell-warn';
-}
-
-function renderMatrix(nVals, hVals, allPlans, optimal, maxAts) {
-  const map = {};
-  allPlans.forEach(p => { map[planKey(p.n, p.h)] = p; });
-
-  // Header
-  const headRow = document.getElementById('matrix-head');
-  headRow.innerHTML = `<th style="background:#1e3a5f;color:#93c5fd">n \\ h</th>` +
-    hVals.map(h => `<th>${h} h</th>`).join('');
-
-  // Body
-  document.getElementById('matrix-body').innerHTML = nVals.map(n => {
-    const cells = hVals.map(h => {
-      const p = map[planKey(n, h)];
-      if (!p) return `<td class="cell-na">—</td>`;
-      const isOpt = optimal && p.n === optimal.n && p.h === optimal.h;
-      const cls   = cellCls(p, maxAts) + (isOpt ? ' cell-opt' : '');
-      const feas  = p.ats1 <= maxAts;
-      return `<td class="${cls}">
-        <span class="cell-val" style="color:${feas?'inherit':'#dc2626'}">${FMT.num(p.ppnc)} u</span>
-        <span class="cell-sub">ATS₁: ${FMT.hrs(p.ats1)} h${isOpt?' ★':''}</span>
-      </td>`;
-    }).join('');
-    return `<tr><th>n = ${n}</th>${cells}</tr>`;
-  }).join('');
-}
-
-/* ══════════════════════════════════════════════════════════════
-   RENDER — TABLA CLASIFICADA
-══════════════════════════════════════════════════════════════ */
-function renderRanked(feasible, optimal) {
-  const tbody  = document.getElementById('ranked-body');
-  const empty  = document.getElementById('ranked-empty');
-
-  if (feasible.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-
-  const sorted = [...feasible].sort((a,b) => a.ppnc - b.ppnc).slice(0, 20);
-  tbody.innerHTML = sorted.map((p, i) => {
-    const isOpt = optimal && p.n === optimal.n && p.h === optimal.h;
-    const rankEl = i < 3
-      ? `<span class="rank-badge rank-${i+1}">${i+1}</span>`
-      : `<span style="font-size:12px;color:var(--text-muted)">${i+1}</span>`;
-    return `<tr class="${isOpt ? 'row-opt' : ''}">
-      <td>${rankEl}</td>
-      <td>${p.n}</td>
-      <td>${p.h}</td>
-      <td>${p.k.toFixed(1)}</td>
-      <td>${p.alpha < 0.001 ? p.alpha.toExponential(2) : p.alpha.toFixed(4)}</td>
-      <td>${p.beta.toFixed(4)}</td>
-      <td>${FMT.pct(p.power)}</td>
-      <td>${FMT.num(p.arl1)}</td>
-      <td>${FMT.hrs(p.ats1)}</td>
-      <td style="font-weight:800">${FMT.num(p.ppnc)}</td>
-      <td>${FMT.hrs(p.ats0)}</td>
-    </tr>`;
-  }).join('');
-}
-
-/* ══════════════════════════════════════════════════════════════
-   RENDER — GRÁFICO TRADEOFF
-══════════════════════════════════════════════════════════════ */
-const H_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
-
-function renderTradeoff(nVals, hVals, allPlans, maxAts) {
-  const map = {};
-  allPlans.forEach(p => { map[planKey(p.n, p.h)] = p; });
-
-  const datasets = hVals.map((h, i) => ({
-    label: `h = ${h} h`,
-    data:  nVals.map(n => ({ x: n, y: map[planKey(n, h)]?.ats1 ?? null })),
-    borderColor: H_COLORS[i % H_COLORS.length],
-    backgroundColor: H_COLORS[i % H_COLORS.length] + '22',
-    tension: 0.3, fill: false,
-    pointRadius: 4, borderWidth: 2
-  }));
-
-  const ctx = document.getElementById('tradeoff-chart').getContext('2d');
-  if (tradeoffChart) tradeoffChart.destroy();
-  tradeoffChart = new Chart(ctx, {
+  const ctx = document.getElementById('oc-chart').getContext('2d');
+  if (ocChart) ocChart.destroy();
+  ocChart = new Chart(ctx, {
     type: 'line',
-    data: { labels: nVals, datasets },
+    data: {
+      labels,
+      datasets: [{
+        label: `Pa — Plan n=${n}, NAC=${c}`,
+        data: paVals,
+        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2.5
+      }]
+    },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'top', labels: { font: { size: 11 } } },
+        legend: { display: true, position: 'top' },
         annotation: {
           annotations: {
-            maxLine: {
-              type: 'line', yMin: maxAts, yMax: maxAts,
+            aqlLine: {
+              type: 'line', scaleID: 'x',
+              value: (aql * 100).toFixed(2),
+              borderColor: '#22c55e', borderWidth: 2, borderDash: [6,4],
+              label: { content: `NCA ${(aql*100).toFixed(2)}%`, display: true,
+                       position: 'start', backgroundColor: '#22c55e', font:{size:10} }
+            },
+            ltpdLine: {
+              type: 'line', scaleID: 'x',
+              value: (ltpd * 100).toFixed(2),
               borderColor: '#ef4444', borderWidth: 2, borderDash: [6,4],
-              label: { content: `ATS₁ máx = ${maxAts} h`, enabled: true, position: 'end',
-                       font: { size: 11 }, backgroundColor: '#ef4444' }
+              label: { content: `NRC ${(ltpd*100).toFixed(2)}%`, display: true,
+                       position: 'start', backgroundColor: '#ef4444', font:{size:10} }
+            },
+            paLine: {
+              type: 'line', scaleID: 'y', value: 95,
+              borderColor: '#22c55e', borderWidth: 1.5, borderDash: [4,4],
+              label: { content:'Pa ≥ 95%', display:true, position:'end',
+                       backgroundColor:'#22c55e', font:{size:10} }
+            },
+            pbLine: {
+              type: 'line', scaleID: 'y', value: 10,
+              borderColor: '#ef4444', borderWidth: 1.5, borderDash: [4,4],
+              label: { content:'Pa ≤ 10%', display:true, position:'end',
+                       backgroundColor:'#ef4444', font:{size:10} }
             }
           }
         }
       },
       scales: {
-        x: { title: { display: true, text: 'Tamaño de subgrupo n', font: { size: 11 } }, type: 'linear', min: nVals[0], max: nVals[nVals.length-1] },
-        y: { title: { display: true, text: 'ATS₁ (horas)', font: { size: 11 } }, beginAtZero: true }
+        x: {
+          title: { display: true, text: '% Defectivos en el lote (p)', font:{size:11} },
+          ticks: { maxTicksLimit: 12, callback: v => v + '%' }
+        },
+        y: {
+          title: { display: true, text: 'Pa — Probabilidad de aceptación (%)', font:{size:11} },
+          min: 0, max: 100,
+          ticks: { callback: v => v + '%' }
+        }
       }
     }
   });
 }
 
 /* ══════════════════════════════════════════════════════════════
-   RENDER — RECOMENDACIONES
+   TABLA CANDIDATOS
 ══════════════════════════════════════════════════════════════ */
-function renderRecommendations(allPlans, feasible, optimal, { k, delta, maxAts, pnc, lambda }) {
-  const recs = [];
+function renderCandidates(N, aql, alpha, ltpd, beta, selC) {
+  const rows = [];
+  for (let c = 0; c <= 15; c++) {
+    const n = findConsumerN(c, ltpd, beta);
+    if (!n || n > N) continue;
+    const pa_aql  = Pa(n, c, aql);
+    const pa_ltpd = Pa(n, c, ltpd);
+    const alphaR  = 1 - pa_aql;
+    const betaR   = pa_ltpd;
+    const aoql    = computeAOQL(n, c, N);
+    const atiAql  = Math.round(ati(n, c, N, aql));
+    rows.push({ c, n, pa_aql, pa_ltpd, alphaR, betaR, aoql, atiAql });
+  }
 
-  if (!optimal) {
-    recs.push({ cls:'danger', txt:`Ningún plan cumple ATS₁ ≤ ${maxAts} h. Considera ampliar el rango de n, reducir h, o relajar el tiempo de respuesta máximo.` });
-  } else {
-    recs.push({ cls:'good', txt:`Plan óptimo: n=${optimal.n}, h=${optimal.h} h detecta el cambio de δ=${delta}σ en ${FMT.hrs(optimal.ats1)} h con ${FMT.pct(optimal.power)} de potencia, produciendo en promedio ${FMT.num(optimal.ppnc)} unidades no conformes antes de la señal.` });
+  document.getElementById('cand-body').innerHTML = rows.map(r => {
+    const isSel = r.c === selC;
+    const alphaOk = r.alphaR <= alpha + 0.001;
+    const betaOk  = r.betaR  <= beta  + 0.001;
+    return `<tr class="${isSel ? 'row-sel' : ''}">
+      <td>${r.c}${isSel ? ' ★' : ''}</td>
+      <td>${r.c + 1}</td>
+      <td>${r.n.toLocaleString('es')}</td>
+      <td>${(r.n/N*100).toFixed(1)}%</td>
+      <td class="${r.pa_aql>=0.90?'ok':'warn'}">${(r.pa_aql*100).toFixed(2)}%</td>
+      <td class="${r.pa_ltpd<=0.15?'ok':'bad'}">${(r.pa_ltpd*100).toFixed(2)}%</td>
+      <td class="${alphaOk?'ok':'warn'}">${(r.alphaR*100).toFixed(2)}%</td>
+      <td class="${betaOk?'ok':'bad'}">${(r.betaR*100).toFixed(2)}%</td>
+      <td>${(r.aoql*100).toFixed(3)}%</td>
+      <td>${r.atiAql.toLocaleString('es')}</td>
+    </tr>`;
+  }).join('');
+}
 
-    if (optimal.power < 0.6) {
-      recs.push({ cls:'warn', txt:`La potencia del plan óptimo (${FMT.pct(optimal.power)}) es baja. Incrementar n mejora la detección a costa de mayor esfuerzo de muestreo.` });
-    } else if (optimal.power >= 0.9) {
-      recs.push({ cls:'good', txt:`Alta potencia de detección (${FMT.pct(optimal.power)}): el plan detecta el cambio de δ=${delta}σ con alta probabilidad en cada subgrupo.` });
-    }
+/* ══════════════════════════════════════════════════════════════
+   CURVA AOQ
+══════════════════════════════════════════════════════════════ */
+function renderAOQCurve(n, c, N) {
+  const pts = 100;
+  const labels = [], aoqVals = [];
+  let aoql = 0;
+  for (let i = 1; i <= pts; i++) {
+    const p = i / 500;
+    const a = aoq(n, c, N, p);
+    labels.push((p * 100).toFixed(2));
+    aoqVals.push(+(a * 100).toFixed(5));
+    if (a > aoql) aoql = a;
+  }
 
-    if (optimal.ats0 < 24) {
-      recs.push({ cls:'info', txt:`ATS₀ = ${FMT.hrs(optimal.ats0)} h — se espera una falsa alarma cada ${FMT.hrs(optimal.ats0)} horas de operación normal. Evalúa si el costo operativo es aceptable.` });
-    } else {
-      recs.push({ cls:'good', txt:`ATS₀ = ${FMT.hrs(optimal.ats0)} h: bajo riesgo de falsas alarmas bajo operación normal.` });
-    }
-
-    // Comparar con plan actual (n actual de la carta)
-    if (chartInfo?.n && chartInfo.n !== optimal.n) {
-      const hRef = optimal.h;
-      const current = allPlans.find(p => p.n === chartInfo.n && p.h === hRef);
-      if (current) {
-        const improvement = ((current.ppnc - optimal.ppnc) / current.ppnc * 100);
-        if (improvement > 5) {
-          recs.push({ cls:'info', txt:`El plan actual usa n=${chartInfo.n}. Cambiar a n=${optimal.n} (manteniendo h=${hRef}h) reduce el PPNC en ~${improvement.toFixed(0)}%: de ${FMT.num(current.ppnc)} a ${FMT.num(optimal.ppnc)} unidades.` });
+  const ctx = document.getElementById('aoq-chart').getContext('2d');
+  if (aoqChart) aoqChart.destroy();
+  aoqChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'AOQ (%)',
+        data: aoqVals,
+        borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,.1)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => `AOQ = ${ctx.parsed.y.toFixed(4)}%`
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '% Defectivos entrantes (p)', font:{size:11} },
+          ticks: { maxTicksLimit: 10, callback: v => v + '%' }
+        },
+        y: {
+          title: { display: true, text: 'AOQ — Calidad saliente (%)', font:{size:11} },
+          ticks: { callback: v => v.toFixed(3) + '%' }
         }
       }
     }
+  });
+}
 
-    if (feasible.length >= 3) {
-      const best3 = [...feasible].sort((a,b)=>a.ppnc-b.ppnc).slice(0,3);
-      const spread = best3[2].ppnc / best3[0].ppnc;
-      if (spread < 1.15) {
-        recs.push({ cls:'info', txt:`Los tres mejores planes tienen PPNC similares (${FMT.num(best3[0].ppnc)}–${FMT.num(best3[2].ppnc)} u). Tienes flexibilidad para elegir el más económico en términos de costo de muestreo.` });
-      }
-    }
+/* ══════════════════════════════════════════════════════════════
+   RECOMENDACIONES
+══════════════════════════════════════════════════════════════ */
+function renderRecommendations(n, c, N, aql, ltpd, alpha, beta) {
+  const pa_aql  = Pa(n, c, aql);
+  const pa_ltpd = Pa(n, c, ltpd);
+  const alphaR  = 1 - pa_aql;
+  const betaR   = pa_ltpd;
+  const aoql    = computeAOQL(n, c, N);
+  const r       = c + 1;
+  const recs    = [];
+
+  recs.push({ cls:'info', txt:
+    `Plan: inspecciona <strong>${n}</strong> unidades del lote de <strong>${N}</strong> (${(n/N*100).toFixed(1)}%).
+     Acepta el lote si el número de defectivos es ≤ ${c} (NAC). Rechaza si ≥ ${r} (NCR).` });
+
+  if (alphaR <= (mode==='auto'?alpha+0.001:0.06)) {
+    recs.push({ cls:'good', txt:
+      `Riesgo del productor α = ${(alphaR*100).toFixed(2)}%: lotes con calidad NCA (${(aql*100).toFixed(2)}%)
+       se aceptan el ${(pa_aql*100).toFixed(1)}% de las veces. Protección al productor adecuada.` });
+  } else {
+    recs.push({ cls:'warn', txt:
+      `Riesgo del productor elevado: α = ${(alphaR*100).toFixed(2)}%.
+       Lotes buenos (p = NCA) se rechazan con frecuencia. Considera aumentar NAC.` });
   }
 
-  if (k < 3) {
-    recs.push({ cls:'warn', txt:`k=${k}σ genera más falsas alarmas (α=${(2*(1-phi(k))*100).toFixed(2)}%). El estándar industrial es k=3σ (α≈0.27%).` });
+  if (betaR <= (mode==='auto'?beta+0.001:0.12)) {
+    recs.push({ cls:'good', txt:
+      `Riesgo del consumidor β = ${(betaR*100).toFixed(2)}%: lotes con defectividad NRC (${(ltpd*100).toFixed(2)}%)
+       se rechazan el ${((1-betaR)*100).toFixed(1)}% de las veces. Protección al consumidor adecuada.` });
+  } else {
+    recs.push({ cls:'warn', txt:
+      `Riesgo del consumidor elevado: β = ${(betaR*100).toFixed(2)}%.
+       Lotes malos (p = NRC) pasan con demasiada frecuencia. Reduce NAC o aumenta n.` });
+  }
+
+  if (n / N > 0.20) {
+    recs.push({ cls:'warn', txt:
+      `El plan requiere inspeccionar el ${(n/N*100).toFixed(1)}% del lote, lo cual puede ser costoso.
+       Evalúa aumentar NAC para reducir n, o usa un plan de doble muestreo.` });
+  } else {
+    recs.push({ cls:'good', txt:
+      `Fracción inspeccionada: ${(n/N*100).toFixed(1)}% — eficiencia de muestreo aceptable.` });
+  }
+
+  recs.push({ cls:'info', txt:
+    `AOQL = ${(aoql*100).toFixed(3)}%: con inspección rectificante (100% en lotes rechazados),
+     la calidad saliente promedio nunca superará este porcentaje, independientemente de la calidad entrante.` });
+
+  if (c === 0) {
+    recs.push({ cls:'warn', txt:
+      `NAC = 0 (plan de cero defectos): cualquier unidad defectiva encontrada rechaza el lote.
+       Es muy protector para el consumidor pero puede generar un riesgo productor elevado.` });
   }
 
   document.getElementById('rec-list').innerHTML = recs.map(r =>
-    `<div class="rec-item ${r.cls}"><span>${r.txt}</span></div>`).join('');
+    `<div class="rec-item ${r.cls}">${r.txt}</div>`).join('');
 }
 
 /* ══════════════════════════════════════════════════════════════
    ARRANQUE
 ══════════════════════════════════════════════════════════════ */
-init();
+recalc();
 </script>
 </body>
 </html>

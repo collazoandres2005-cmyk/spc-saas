@@ -92,6 +92,28 @@
     .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
     @media (max-width: 480px) { .mon-stats { grid-template-columns: 1fr; } }
 
+    /* ── Live mean preview ────────────────────────────────────── */
+    .live-mean-box {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 12px; margin: 10px 0 8px;
+      border-radius: var(--radius);
+    }
+    .live-mean-box .lm-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .3px; color: var(--text-muted);
+    }
+    .live-mean-box .lm-value {
+      font-size: 20px; font-weight: 800; color: var(--primary);
+      font-family: 'Courier New', monospace;
+    }
+    .live-mean-box .lm-delta {
+      font-size: 11px; font-weight: 600; margin-left: auto;
+      padding: 2px 8px; border-radius: 99px;
+    }
+    .lm-delta.up   { background: rgba(239,68,68,.15); color: #f87171; }
+    .lm-delta.down { background: rgba(52,211,153,.15); color: #34d399; }
+    .lm-delta.flat { background: rgba(148,163,184,.15); color: #94a3b8; }
+
     /* ── Límites ─────────────────────────────────────────────── */
     .limits-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
     .lim-chip { flex: 1; min-width: 80px; text-align: center; padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--glass-card); }
@@ -331,6 +353,13 @@
                   <div class="attr-inp-row" style="margin-top:6px" id="attr-inputs"></div>
                 </div>
 
+                <!-- Live mean preview -->
+                <div id="live-mean-box" class="live-mean-box" style="display:none">
+                  <span class="lm-label">X̄ actual</span>
+                  <span class="lm-value" id="live-mean-val">—</span>
+                  <span class="lm-delta" id="live-mean-delta"></span>
+                </div>
+
                 <button class="btn btn-primary btn-add-big" id="btn-add" onclick="addEntry()">+ Agregar</button>
                 <button class="btn btn-secondary btn-add-big" id="btn-undo"
                         onclick="undoLast()" disabled style="margin-top:8px;opacity:.5">
@@ -355,7 +384,7 @@
                 <div class="mon-stats">
                   <div class="mon-stat"><div class="mon-stat-lbl">Subgrupos</div><div class="mon-stat-val" id="stat-total">—</div></div>
                   <div class="mon-stat"><div class="mon-stat-lbl">Esta sesión</div><div class="mon-stat-val" id="stat-session">0</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl">Último ingreso</div><div class="mon-stat-val" id="stat-last" style="font-size:14px">—</div></div>
+                  <div class="mon-stat"><div class="mon-stat-lbl" id="stat-mean-lbl">Media acum.</div><div class="mon-stat-val" id="stat-mean" style="font-size:16px">—</div></div>
                   <div class="mon-stat"><div class="mon-stat-lbl">Carta</div><div class="mon-stat-val" id="stat-status" style="font-size:12px;font-weight:700">—</div></div>
                 </div>
               </div>
@@ -701,6 +730,7 @@
         nextSgId,
         sessionCount,
         sessionLog,
+        sessionMeans,
         chartType,
         savedAt: new Date().toISOString()
       }));
@@ -772,7 +802,7 @@
     processId = pid;
 
     // Resetear estado
-    sessionCount = 0; sessionLog = []; undoStack = []; sessionSubgroups = [];
+    sessionCount = 0; sessionLog = []; undoStack = []; sessionSubgroups = []; sessionMeans = [];
     phase1Limits = null; phase1Data = null; nextSgId = 1;
 
     // UI reset
@@ -867,6 +897,7 @@
           : ATTR_TYPES.includes(chartType) ? `${sg.defectives ?? sg.count}` : '—';
         return { displayVal: label, sgId: sortedKeys[i], isOoc: false, time: '(guardado)', n: i + 1 };
       }).reverse();
+      recomputeSessionMeans();
       setUndoEnabled(true);
       renderLog();
       updateStats();
@@ -893,6 +924,8 @@
         nextSgId         = cached.nextSgId    || 1;
         sessionCount     = cached.sessionCount || 0;
         sessionLog       = cached.sessionLog  || [];
+        sessionMeans     = cached.sessionMeans || [];
+        if (!cached.sessionMeans) recomputeSessionMeans();
         document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
         document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
         setUndoEnabled(undoStack.length > 0);
@@ -942,6 +975,24 @@
       ? `Subgrupo n = ${sgSize}`
       : attrFormLabel();
 
+    const lmBox = document.getElementById('live-mean-box');
+    const lmLabel = document.querySelector('#live-mean-box .lm-label');
+    if (isXbar && sgSize > 0) {
+      lmBox.style.display = 'flex';
+      lmLabel.textContent = 'X̄ actual';
+    } else if (isAttr) {
+      lmBox.style.display = 'flex';
+      const labels = { p:'p̂ actual', np:'np actual', c:'c actual', u:'û actual' };
+      lmLabel.textContent = labels[chartType] || 'Valor actual';
+      // Show live mean for attrs even before first entry
+      updateLiveMean();
+      // Remove delta for attrs
+      document.getElementById('live-mean-delta').textContent = '';
+      document.getElementById('live-mean-delta').className = 'lm-delta';
+    } else {
+      lmBox.style.display = 'none';
+    }
+
     if (isXbar) buildSgInputs();
     if (isAttr) buildAttrInputs();
   }
@@ -949,6 +1000,87 @@
   function attrFormLabel() {
     const labels = { p:'Ingreso p (defectuosos)', np:'Ingreso np (defectuosos)', c:'Ingreso c (defectos)', u:'Ingreso u (defectos/unidad)' };
     return labels[chartType] || 'Ingreso';
+  }
+
+  // ── Live mean ──────────────────────────────────────────────────
+  let sessionMeans = [];
+
+  function updateLiveMean() {
+    const isVar = XBAR_TYPES.includes(chartType);
+    const box = document.getElementById('live-mean-box');
+    const val = document.getElementById('live-mean-val');
+    const delta = document.getElementById('live-mean-delta');
+    if (isVar) {
+      let sum = 0, count = 0;
+      for (let i = 0; i < sgSize; i++) {
+        const inp = document.getElementById(`sg-v-${i}`);
+        if (!inp) continue;
+        const v = parseDecimal(inp.value);
+        if (v !== null && !isNaN(v)) { sum += v; count++; }
+      }
+      if (count > 0) {
+        const mean = sum / count;
+        box.style.display = 'flex';
+        val.textContent = mean.toFixed(4);
+        if (sessionMeans.length > 0) {
+          const overallAvg = sessionMeans.reduce((a,b)=>a+b,0) / sessionMeans.length;
+          const diff = mean - overallAvg;
+          if (Math.abs(diff) < 0.0001) { delta.textContent = '—'; delta.className = 'lm-delta flat'; }
+          else if (mean > overallAvg)  { delta.textContent = `↑ ${diff.toFixed(4)}`; delta.className = 'lm-delta up'; }
+          else                         { delta.textContent = `↓ ${Math.abs(diff).toFixed(4)}`; delta.className = 'lm-delta down'; }
+        } else { delta.textContent = ''; delta.className = 'lm-delta'; }
+      } else { val.textContent = '—'; delta.textContent = ''; delta.className = 'lm-delta'; }
+    } else if (ATTR_TYPES.includes(chartType)) {
+      const elDef = document.getElementById('attr-def');
+      const elCnt = document.getElementById('attr-count');
+      const elN   = document.getElementById('attr-n');
+      if (chartType === 'p' && elDef && elN) {
+        const def = parseDecimal(elDef.value);
+        const n   = parseDecimal(elN.value);
+        if (def !== null && !isNaN(def) && n !== null && !isNaN(n) && n > 0) {
+          box.style.display = 'flex'; val.textContent = (def / n).toFixed(4);
+        } else { box.style.display = 'none'; }
+      } else if (chartType === 'np' && elDef) {
+        const def = parseDecimal(elDef.value);
+        if (def !== null && !isNaN(def)) { box.style.display = 'flex'; val.textContent = def.toFixed(0); }
+        else { box.style.display = 'none'; }
+      } else if (chartType === 'c' && elCnt) {
+        const cnt = parseDecimal(elCnt.value);
+        if (cnt !== null && !isNaN(cnt)) { box.style.display = 'flex'; val.textContent = cnt.toFixed(0); }
+        else { box.style.display = 'none'; }
+      } else if (chartType === 'u' && elCnt && elN) {
+        const cnt = parseDecimal(elCnt.value);
+        const n   = parseDecimal(elN.value);
+        if (cnt !== null && !isNaN(cnt) && n !== null && !isNaN(n) && n > 0) {
+          box.style.display = 'flex'; val.textContent = (cnt / n).toFixed(4);
+        } else { box.style.display = 'none'; }
+      } else { box.style.display = 'none'; }
+      delta.textContent = ''; delta.className = 'lm-delta';
+    }
+  }
+
+  function recomputeSessionMeans() {
+    sessionMeans = [];
+    for (const sg of sessionSubgroups) {
+      if (Array.isArray(sg)) {
+        sessionMeans.push(sg.reduce((a,b)=>a+b,0) / sg.length);
+      } else if (sg && typeof sg === 'object') {
+        if (sg.defectives != null && sg.n)   sessionMeans.push(sg.defectives / sg.n);
+        else if (sg.count != null && sg.n)   sessionMeans.push(sg.count / sg.n);
+        else if (sg.defectives != null)      sessionMeans.push(sg.defectives);
+        else if (sg.count != null)           sessionMeans.push(sg.count);
+      }
+    }
+  }
+
+  function updateSessionMean() {
+    const el = document.getElementById('stat-mean');
+    const lbl = document.getElementById('stat-mean-lbl');
+    const prefix = XBAR_TYPES.includes(chartType) ? 'X̄' : chartType.toUpperCase();
+    lbl.textContent = `${prefix} acumulada`;
+    if (sessionMeans.length === 0) { el.textContent = '—'; return; }
+    const avg = sessionMeans.reduce((a,b) => a + b, 0) / sessionMeans.length;
+    el.textContent = avg.toFixed(4);
   }
 
   function buildSgInputs() {
@@ -961,7 +1093,8 @@
         <span class="sg-cell-lbl">X<sub>${i+1}</sub></span>
         <input class="sg-cell-inp" type="text" inputmode="decimal"
                id="sg-v-${i}" autocomplete="off" placeholder="0"
-               onkeydown="sgKeyNav(event,${i})">`;
+               onkeydown="sgKeyNav(event,${i})"
+               oninput="updateLiveMean()">`;
       container.appendChild(cell);
     }
   }
@@ -970,14 +1103,14 @@
     const container = document.getElementById('attr-inputs');
     let html = '';
     if (chartType === 'p' || chartType === 'np') {
-      html += `<div class="attr-inp-col"><label>Defectuosos</label><input class="big-input attr-inp" id="attr-def" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)"></div>`;
+      html += `<div class="attr-inp-col"><label>Defectuosos</label><input class="big-input attr-inp" id="attr-def" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)" oninput="updateLiveMean()"></div>`;
       if (chartType === 'p')
-        html += `<div class="attr-inp-col"><label>Tamaño n</label><input class="big-input attr-inp" id="attr-n" type="text" inputmode="numeric" placeholder="${sgSize}" onkeydown="attrKey(event)"></div>`;
+        html += `<div class="attr-inp-col"><label>Tamaño n</label><input class="big-input attr-inp" id="attr-n" type="text" inputmode="numeric" placeholder="${sgSize}" onkeydown="attrKey(event)" oninput="updateLiveMean()"></div>`;
     } else if (chartType === 'c') {
-      html += `<div class="attr-inp-col"><label>Defectos</label><input class="big-input attr-inp" id="attr-count" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)"></div>`;
+      html += `<div class="attr-inp-col"><label>Defectos</label><input class="big-input attr-inp" id="attr-count" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)" oninput="updateLiveMean()"></div>`;
     } else if (chartType === 'u') {
-      html += `<div class="attr-inp-col"><label>Defectos</label><input class="big-input attr-inp" id="attr-count" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)"></div>`;
-      html += `<div class="attr-inp-col"><label>Unidades (n)</label><input class="big-input attr-inp" id="attr-n" type="text" inputmode="numeric" placeholder="1" onkeydown="attrKey(event)"></div>`;
+      html += `<div class="attr-inp-col"><label>Defectos</label><input class="big-input attr-inp" id="attr-count" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)" oninput="updateLiveMean()"></div>`;
+      html += `<div class="attr-inp-col"><label>Unidades (n)</label><input class="big-input attr-inp" id="attr-n" type="text" inputmode="numeric" placeholder="1" onkeydown="attrKey(event)" oninput="updateLiveMean()"></div>`;
     }
     container.innerHTML = html;
   }
@@ -1011,6 +1144,7 @@
       }
       if (hasError) return showAlert(entryMsg, 'Completa todos los valores del subgrupo.', 'error');
       const xbar = vals.reduce((a,b)=>a+b,0) / vals.length;
+      sessionMeans.push(xbar);
       payload = {
         items:      vals.map(v => ({ process_id: processId, value: v, subgroup_id: nextSgId, phase: 2 })),
         displayVal: `X̄=${xbar.toFixed(3)}`,
@@ -1027,6 +1161,7 @@
         const def = parseFloat(document.getElementById('attr-def')?.value);
         const n   = getN();
         if (isNaN(def) || def < 0) return showAlert(entryMsg, 'Ingresa un número válido de defectuosos.', 'error');
+        sessionMeans.push(def / n);
         payload = {
           items:      [{ process_id: processId, value: def, subgroup_id: nextSgId, phase: 2, sample_size: n }],
           displayVal: `p=${(def/n).toFixed(4)} (${def}/${n})`,
@@ -1036,6 +1171,7 @@
         const def = parseFloat(document.getElementById('attr-def')?.value);
         if (isNaN(def) || def < 0) return showAlert(entryMsg, 'Ingresa un número válido de defectuosos.', 'error');
         const n = phase1Limits?.main?.n || sgSize;
+        sessionMeans.push(def);
         payload = {
           items:      [{ process_id: processId, value: def, subgroup_id: nextSgId, phase: 2, sample_size: n }],
           displayVal: `np=${def}`,
@@ -1044,6 +1180,7 @@
       } else if (chartType === 'c') {
         const cnt = parseFloat(document.getElementById('attr-count')?.value);
         if (isNaN(cnt) || cnt < 0) return showAlert(entryMsg, 'Ingresa un conteo válido de defectos.', 'error');
+        sessionMeans.push(cnt);
         payload = {
           items:      [{ process_id: processId, value: cnt, subgroup_id: nextSgId, phase: 2 }],
           displayVal: `c=${cnt}`,
@@ -1053,6 +1190,7 @@
         const cnt = parseFloat(document.getElementById('attr-count')?.value);
         const n   = getN();
         if (isNaN(cnt) || cnt < 0) return showAlert(entryMsg, 'Ingresa un conteo válido de defectos.', 'error');
+        sessionMeans.push(cnt / n);
         payload = {
           items:      [{ process_id: processId, value: cnt, subgroup_id: nextSgId, phase: 2, sample_size: n }],
           displayVal: `u=${(cnt/n).toFixed(4)} (${cnt}/${n})`,
@@ -1100,7 +1238,7 @@
     btn.disabled = true; btn.textContent = 'Deshaciendo...';
     try {
       await Promise.all(entry.ids.map(id => measurementsApi.delete(id)));
-      undoStack.pop(); sessionSubgroups.pop();
+      undoStack.pop(); sessionSubgroups.pop(); sessionMeans.pop();
       nextSgId = entry.sgId;
       document.getElementById('sg-id-lbl').textContent      = `#${nextSgId}`;
       document.getElementById('attr-sg-id-lbl').textContent = `#${nextSgId}`;
@@ -1241,8 +1379,9 @@
   }
 
   function updateStats() {
-    document.getElementById('stat-total').textContent   = sessionSubgroups.length || '—';
+    document.getElementById('stat-total').textContent  = totalSubgroups ?? '—';
     document.getElementById('stat-session').textContent = sessionCount;
+    updateSessionMean();
   }
 
   // ── Status bar ────────────────────────────────────────────────

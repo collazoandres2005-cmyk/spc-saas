@@ -246,8 +246,8 @@
               </div>
 
               <div class="cfg-field">
-                <label class="cfg-label">Intervalo de muestreo (h) <span style="font-weight:400;text-transform:none">horas</span></label>
-                <input id="inp-h" class="cfg-input" type="number" min="0.25" step="0.25"
+                <label class="cfg-label">Intervalo de muestreo (t) <span style="font-weight:400;text-transform:none">horas</span></label>
+                <input id="inp-t" class="cfg-input" type="number" min="0.25" step="0.25"
                        value="4" oninput="recalc()">
                 <p class="cfg-hint">Tiempo entre cada subgrupo inspeccionado.</p>
               </div>
@@ -349,13 +349,13 @@
             <div class="pc-status" id="sta-arl1"></div>
           </div>
           <div class="perf-card neutral" id="card-ats0">
-            <div class="pc-label">ATS₀ = ARL₀ × h</div>
+            <div class="pc-label">ATS₀ = ARL₀ × t</div>
             <div class="pc-value" id="val-ats0">—</div>
             <div class="pc-unit">horas entre falsas alarmas</div>
             <div class="pc-status" id="sta-ats0"></div>
           </div>
           <div class="perf-card neutral" id="card-ats1">
-            <div class="pc-label">ATS₁ = ARL₁ × h</div>
+            <div class="pc-label">ATS₁ = ARL₁ × t</div>
             <div class="pc-value" id="val-ats1">—</div>
             <div class="pc-unit">horas hasta detectar el cambio</div>
             <div class="pc-status" id="sta-ats1"></div>
@@ -405,6 +405,79 @@
                 <tbody id="sens-tbody"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- ── Carga Muestral ─────────────────────────────────── -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title">Análisis de Carga Muestral — CM = n / t</div>
+            <span style="font-size:11px;color:var(--text-muted)">
+              Compara combinaciones (n, t) para encontrar el menor ATS₁ que detecta el cambio δ
+            </span>
+          </div>
+          <div style="padding:14px 20px 0">
+
+            <!-- CM actual -->
+            <div id="cm-current-banner" style="
+              display:inline-flex;align-items:center;gap:16px;
+              background:#1e3a5f;border-radius:var(--radius);padding:10px 18px;
+              color:#e2e8f0;margin-bottom:14px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#7dd3fc">
+                Carga Muestral actual
+              </span>
+              <span id="cm-current-val" style="font-size:22px;font-weight:900;letter-spacing:-.5px">—</span>
+              <span style="font-size:12px;color:#94a3b8">unidades / hora</span>
+            </div>
+
+            <!-- Controles -->
+            <div class="cfg-grid" style="margin-bottom:14px">
+              <div class="cfg-field">
+                <label class="cfg-label">n mín a evaluar</label>
+                <input id="cm-n-min" class="cfg-input" type="number" min="1" max="20" value="2" oninput="recalc()">
+              </div>
+              <div class="cfg-field">
+                <label class="cfg-label">n máx a evaluar</label>
+                <input id="cm-n-max" class="cfg-input" type="number" min="2" max="25" value="10" oninput="recalc()">
+              </div>
+              <div class="cfg-field" style="grid-column:span 2">
+                <label class="cfg-label">Valores de t a evaluar (horas)</label>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="cm-t-chips">
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-05">
+                    <input type="checkbox" value="0.5" style="display:none" onchange="syncCmChips();recalc()"> 0.5 h
+                  </label>
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-1">
+                    <input type="checkbox" value="1" checked style="display:none" onchange="syncCmChips();recalc()"> 1 h
+                  </label>
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-2">
+                    <input type="checkbox" value="2" checked style="display:none" onchange="syncCmChips();recalc()"> 2 h
+                  </label>
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-4">
+                    <input type="checkbox" value="4" checked style="display:none" onchange="syncCmChips();recalc()"> 4 h
+                  </label>
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-8">
+                    <input type="checkbox" value="8" checked style="display:none" onchange="syncCmChips();recalc()"> 8 h
+                  </label>
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-12">
+                    <input type="checkbox" value="12" style="display:none" onchange="syncCmChips();recalc()"> 12 h
+                  </label>
+                  <label class="cfg-input" style="padding:4px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border-radius:99px;font-size:12px;font-weight:600" id="chip-t-24">
+                    <input type="checkbox" value="24" style="display:none" onchange="syncCmChips();recalc()"> 24 h
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Matriz CM×ATS₁ -->
+          <div style="padding:0 20px 16px">
+            <div class="sens-table-wrap">
+              <table class="sens-table" id="cm-table">
+                <thead><tr id="cm-thead-row"></tr></thead>
+                <tbody id="cm-tbody"></tbody>
+              </table>
+            </div>
+            <div id="cm-optimal-row" style="margin-top:10px;font-size:12px;color:var(--text-sec)"></div>
           </div>
         </div>
 
@@ -719,7 +792,7 @@ function toggleManualMode() {
 function recalc() {
   const k     = parseFloat(document.getElementById('inp-k').value) || 3;
   const n     = Math.max(1, parseInt(document.getElementById('inp-n').value) || 5);
-  const h     = Math.max(0.01, parseFloat(document.getElementById('inp-h').value) || 4);
+  const h     = Math.max(0.01, parseFloat(document.getElementById('inp-t').value) || 4);
   const delta = Math.max(0.01, parseFloat(document.getElementById('inp-delta').value) || 1);
   const pnc   = Math.max(0, Math.min(100, parseFloat(document.getElementById('inp-pnc').value) || 2.5)) / 100;
   const prod  = Math.max(0, parseFloat(document.getElementById('inp-prod').value) || 100);
@@ -754,6 +827,7 @@ function recalc() {
   renderCards({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, pnc, prod });
   renderInterpretation({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, delta, n });
   renderSensitivity({ k, n, h, delta, pnc, prod, betaParams });
+  renderCM({ k, delta, pnc, prod, betaParams });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -837,7 +911,7 @@ function renderCards(d) {
   const ppncCls = ppnc < 10 ? 'good' : ppnc < 100 ? 'warn' : 'danger';
   setCard('card-ppnc', ppncCls, ppncCls === 'good'
     ? 'Impacto mínimo' : ppncCls === 'warn'
-    ? 'Impacto moderado — revisa h o n'
+    ? 'Impacto moderado — revisa t o n'
     : 'Impacto alto — reduce ATS₁');
 }
 
@@ -995,12 +1069,12 @@ function renderFormulaRef(type) {
     </div>
     <div class="formula-item">
       <div class="formula-name">ATS₀</div>
-      <div class="formula-eq">ATS₀ = ARL₀ × h</div>
+      <div class="formula-eq">ATS₀ = ARL₀ × t</div>
       <div class="formula-note">Tiempo medio entre falsas alarmas (horas).</div>
     </div>
     <div class="formula-item">
       <div class="formula-name">ATS₁</div>
-      <div class="formula-eq">ATS₁ = ARL₁ × h</div>
+      <div class="formula-eq">ATS₁ = ARL₁ × t</div>
       <div class="formula-note">Tiempo medio hasta detectar el cambio (horas).</div>
     </div>
     <div class="formula-item">
@@ -1017,8 +1091,116 @@ function renderFormulaRef(type) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   CARGA MUESTRAL — CM = n / t
+══════════════════════════════════════════════════════════════ */
+function syncCmChips() {
+  document.querySelectorAll('#cm-t-chips label').forEach(lbl => {
+    const inp = lbl.querySelector('input');
+    if (inp.checked) {
+      lbl.style.borderColor = 'var(--primary)';
+      lbl.style.background  = '#dbeafe';
+      lbl.style.color       = '#1e40af';
+    } else {
+      lbl.style.borderColor = 'var(--border)';
+      lbl.style.background  = 'var(--card)';
+      lbl.style.color       = 'var(--text)';
+    }
+  });
+}
+
+function renderCM({ k, delta, pnc, prod, betaParams }) {
+  const currentN = Math.max(1, parseInt(document.getElementById('inp-n').value) || 5);
+  const currentT = Math.max(0.01, parseFloat(document.getElementById('inp-t').value) || 4);
+
+  // CM actual
+  document.getElementById('cm-current-val').textContent = (currentN / currentT).toFixed(2);
+
+  // Rango de n
+  const nMin = Math.max(1, parseInt(document.getElementById('cm-n-min').value) || 2);
+  const nMax = Math.min(25, Math.max(nMin + 1, parseInt(document.getElementById('cm-n-max').value) || 10));
+  const nVals = [];
+  for (let ni = nMin; ni <= nMax; ni++) nVals.push(ni);
+
+  // Valores de t seleccionados
+  const tVals = Array.from(document.querySelectorAll('#cm-t-chips input:checked'))
+    .map(inp => parseFloat(inp.value))
+    .filter(v => v > 0)
+    .sort((a, b) => a - b);
+
+  if (tVals.length === 0) {
+    document.getElementById('cm-thead-row').innerHTML = '';
+    document.getElementById('cm-tbody').innerHTML =
+      `<tr><td colspan="2" style="text-align:center;padding:14px;color:var(--text-muted)">Selecciona al menos un valor de t</td></tr>`;
+    document.getElementById('cm-optimal-row').innerHTML = '';
+    return;
+  }
+
+  // Calcular todas las celdas
+  const cells = [];
+  let minAts1 = Infinity;
+
+  for (const ni of nVals) {
+    for (const ti of tVals) {
+      const bp    = { ...betaParams, n: ni };
+      const b     = Math.max(1e-9, Math.min(1 - 1e-9, calcBeta(bp)));
+      const power = Math.max(1e-9, 1 - b);
+      const arl1  = 1 / power;
+      const ats1  = arl1 * ti;
+      const cm    = ni / ti;
+      cells.push({ n: ni, t: ti, cm, ats1, b, power });
+      if (ats1 < minAts1) minAts1 = ats1;
+    }
+  }
+
+  // Encabezado (columnas = t)
+  document.getElementById('cm-thead-row').innerHTML =
+    `<th style="text-align:center">n \\ t (h)</th>` +
+    tVals.map(ti => `<th>t = ${ti} h</th>`).join('');
+
+  // Filas (filas = n)
+  document.getElementById('cm-tbody').innerHTML = nVals.map(ni => {
+    const isCurN = ni === currentN;
+    const rowCells = tVals.map(ti => {
+      const cell  = cells.find(c => c.n === ni && c.t === ti);
+      const isMin = cell.ats1 - minAts1 < 0.001;
+      const isCurCell = ni === currentN && Math.abs(ti - currentT) < 0.001;
+
+      const ats1Cls = cell.ats1 <= 8 ? 'cell-good' : cell.ats1 <= 24 ? 'cell-warn' : 'cell-danger';
+      const bg = isMin ? 'background:#dcfce7;' : isCurCell ? 'background:#eff6ff;' : '';
+
+      const ats1Fmt = !isFinite(cell.ats1) || cell.ats1 > 1e5
+        ? '> 100 k h'
+        : cell.ats1.toLocaleString('es', { maximumFractionDigits: 1 }) + ' h';
+
+      return `<td style="${bg}">
+        <span style="font-size:10px;color:#94a3b8;display:block">CM ${cell.cm.toFixed(2)}</span>
+        <span class="${ats1Cls}">${ats1Fmt}</span>
+        ${isMin ? `<span style="font-size:9px;display:block;color:#15803d;font-weight:800">★ mín</span>` : ''}
+      </td>`;
+    }).join('');
+
+    return `<tr class="${isCurN ? 'row-current' : ''}">
+      <td style="text-align:center;font-weight:${isCurN ? '800' : '600'}">n = ${ni}${isCurN ? ' ←' : ''}</td>
+      ${rowCells}
+    </tr>`;
+  }).join('');
+
+  // Fila óptima
+  const opt = cells.reduce((best, c) => c.ats1 < best.ats1 ? c : best, cells[0]);
+  document.getElementById('cm-optimal-row').innerHTML = opt
+    ? `<div style="display:inline-flex;align-items:center;gap:12px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius);padding:10px 16px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#15803d">★ Plan óptimo</span>
+        <span style="font-size:14px;font-weight:700;color:#166534">n = ${opt.n} &nbsp;·&nbsp; t = ${opt.t} h</span>
+        <span style="font-size:12px;color:#166534">CM = ${opt.cm.toFixed(2)} u/h</span>
+        <span style="font-size:12px;color:#166534">ATS₁ = ${opt.ats1.toFixed(1)} h</span>
+        <span style="font-size:12px;color:#166534">Potencia = ${(opt.power * 100).toFixed(1)}%</span>
+      </div>` : '';
+}
+
+/* ══════════════════════════════════════════════════════════════
    ARRANQUE
 ══════════════════════════════════════════════════════════════ */
+syncCmChips();
 init();
 </script>
 </body>

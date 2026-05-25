@@ -41,7 +41,7 @@ const CHART_DEFAULTS = {
       intersect: false,
       backgroundColor: '#ffffff',
       titleColor: '#1e293b',
-      bodyColor: '#475569',
+      bodyColor: '#0f172a',
       borderColor: '#e2e8f0',
       borderWidth: 1,
       padding: 10,
@@ -148,7 +148,7 @@ function renderControlChart(canvasId, chartData, outOfControl = [], labels = [])
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#0f172a' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -225,7 +225,7 @@ function renderSecondaryChart(canvasId, chartData, labels = []) {
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#0f172a' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -335,7 +335,7 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#0f172a' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -368,7 +368,7 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
           max: yMaxCurve,
           grid: { color: '#e4e7ec' },
           ticks: { color: '#667085', font: { family: _FONT_DATA, size: 10 } },
-          title: { display: true, text: 'Densidad de probabilidad', color: '#475569', font: { family: _FONT_UI, size: 11 } }
+          title: { display: true, text: 'Densidad de probabilidad', color: '#0f172a', font: { family: _FONT_UI, size: 11 } }
         }
       }
     }
@@ -636,7 +636,7 @@ function renderAttributeChart(canvasId, chartKey, chartSeries, outOfControl = []
         ...CHART_DEFAULTS.plugins,
         legend: {
           display: true, position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#0f172a' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,

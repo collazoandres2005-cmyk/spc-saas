@@ -132,14 +132,14 @@
     }
     .modal-overlay.open { display: flex; }
     .modal-box {
-      background: #fff; border-radius: 14px; width: min(700px, 96vw);
+      background: var(--glass-card); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-radius: 14px; width: min(700px, 96vw);
       max-height: 88vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.22);
       display: flex; flex-direction: column;
     }
     .modal-hdr {
       display: flex; align-items: center; justify-content: space-between;
       padding: 20px 24px 14px; border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; background: #fff; z-index: 1;
+      position: sticky; top: 0; background: rgba(15,23,42,.88); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); z-index: 1;
     }
     .modal-hdr-title { font-size: 17px; font-weight: 800; color: var(--text); }
     .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 4px; }

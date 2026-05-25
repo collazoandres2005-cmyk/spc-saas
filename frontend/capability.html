@@ -12,7 +12,7 @@
     .spec-hdr {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 20px; cursor: pointer; user-select: none;
-      background: #faf5ff; border-radius: var(--radius);
+      background: rgba(167,139,250,.08); border-radius: var(--radius);
     }
     .spec-hdr.open {
       border-radius: var(--radius) var(--radius) 0 0;
@@ -34,7 +34,7 @@
     .data-hdr {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 20px; cursor: pointer; user-select: none;
-      background: #faf5ff; border-radius: var(--radius);
+      background: rgba(167,139,250,.08); border-radius: var(--radius);
     }
     .data-hdr.open {
       border-radius: var(--radius) var(--radius) 0 0;
@@ -85,7 +85,7 @@
     @media (max-width: 480px) { .chart-cap  { height: 180px; } }
     #pnc-grid { display: none; }
     @media (max-width: 480px) { #pnc-grid { grid-template-columns: 1fr 1fr !important; } }
-    .rec-item { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+    .rec-item { background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
     .rec-item.good { border-left: 3px solid var(--success); }
     .rec-item.warn { border-left: 3px solid var(--warning); }
     .rec-item.bad  { border-left: 3px solid var(--danger);  }

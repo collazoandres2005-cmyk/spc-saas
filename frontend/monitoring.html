@@ -27,7 +27,7 @@
     .process-status {
       display: flex; align-items: center; gap: 12px;
       padding: 12px 18px; border-radius: var(--radius);
-      border: 1px solid var(--border); background: #f8fafc; margin-bottom: 16px;
+      border: 1px solid var(--border); background: var(--glass-card); margin-bottom: 16px;
     }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .status-dot.stable   { background: var(--success); box-shadow: 0 0 0 3px rgba(21,128,61,.18); }
@@ -87,14 +87,14 @@
     @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
 
     .mon-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .mon-stat { padding: 8px 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); }
+    .mon-stat { padding: 8px 12px; background: var(--glass-card); border: 1px solid var(--border); border-radius: var(--radius); }
     .mon-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
     .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
     @media (max-width: 480px) { .mon-stats { grid-template-columns: 1fr; } }
 
     /* ── Límites ─────────────────────────────────────────────── */
     .limits-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-    .lim-chip { flex: 1; min-width: 80px; text-align: center; padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: #f8fafc; }
+    .lim-chip { flex: 1; min-width: 80px; text-align: center; padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--glass-card); }
     .lim-chip .lv { font-size: 17px; font-weight: 800; }
     .lim-chip .ll { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin-top: 2px; }
     .lim-chip.ucl .lv { color: #dc2626; }
@@ -119,9 +119,9 @@
 
     /* ── Log ─────────────────────────────────────────────────── */
     .session-log { max-height: 260px; overflow-y: auto; }
-    .log-row { display: flex; align-items: center; gap: 8px; padding: 5px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+    .log-row { display: flex; align-items: center; gap: 8px; padding: 5px 14px;       border-bottom: 1px solid var(--glass-border); font-size: 12px; }
     .log-row:last-child { border-bottom: 0; }
-    .log-row.ooc { background: #fff5f5; }
+    .log-row.ooc { background: rgba(239,68,68,.08); }
     .log-idx  { font-size: 10px; color: var(--text-muted); min-width: 22px; }
     .log-val  { font-weight: 700; font-family: monospace; color: var(--text); flex: 1; }
     .log-sg   { font-size: 10px; color: var(--text-muted); }
@@ -131,18 +131,18 @@
     /* ── History table ──────────────────────────────────────── */
     .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .history-table thead th {
-      background: #f8fafc; padding: 8px 14px; text-align: left;
+      background: var(--glass-card); padding: 8px 14px; text-align: left;
       font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
       color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap;
     }
     .history-table tbody td {
-      padding: 7px 14px; border-bottom: 1px solid #f1f5f9;
+      padding: 7px 14px; border-bottom: 1px solid var(--glass-border);
       font-size: 12px; color: var(--text); vertical-align: middle;
     }
     .history-table tbody tr:last-child td { border-bottom: 0; }
-    .history-table tbody tr:hover { background: #f8fafc; }
-    .history-table tbody tr.ooc-row { background: #fff5f5; }
-    .history-table tbody tr.ooc-row:hover { background: #fee2e2; }
+    .history-table tbody tr:hover { background: var(--glass-card); }
+    .history-table tbody tr.ooc-row { background: rgba(239,68,68,.08); }
+    .history-table tbody tr.ooc-row:hover { background: rgba(239,68,68,.14); }
     .hist-ooc-badge {
       display: inline-block; font-size: 10px; font-weight: 700; color: var(--danger);
       background: var(--danger-bg); border-radius: 99px; padding: 1px 7px; white-space: nowrap;
@@ -153,7 +153,7 @@
     .session-card {
       display: flex; align-items: flex-start; gap: 12px;
       padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
-      background: #f8fafc; margin-bottom: 8px; transition: border-color .15s;
+      background: var(--glass-card); margin-bottom: 8px; transition: border-color .15s;
     }
     .session-card:hover { border-color: var(--primary); }
     .session-card-info { flex: 1; min-width: 0; }
@@ -194,9 +194,9 @@
     .modal-section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--primary); margin-bottom: 10px; border-bottom: 2px solid #e0e7ef; padding-bottom: 6px; }
     .modal-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.6; }
     .excel-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
-    .excel-table th { background: #f1f5f9; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 6px 10px; text-align: left; border: 1px solid #e2e8f0; color: var(--text-muted); }
-    .excel-table td { padding: 5px 10px; border: 1px solid #e2e8f0; font-family: monospace; color: var(--text); background: #fff; }
-    .excel-table tr:nth-child(even) td { background: #f8fafc; }
+    .excel-table th { background: var(--glass-card); font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 6px 10px; text-align: left; border: 1px solid var(--glass-border); color: var(--text-muted); }
+    .excel-table td { padding: 5px 10px; border: 1px solid var(--glass-border); font-family: monospace; color: var(--text); background: var(--glass-card); }
+    .excel-table tr:nth-child(even) td { background: var(--glass-card); }
     .col-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1e40af; margin-right: 4px; }
     .col-tag.opt { background: #dcfce7; color: #15803d; }
     .tip-box { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-top: 10px; }

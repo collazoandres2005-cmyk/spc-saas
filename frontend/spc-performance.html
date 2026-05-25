@@ -52,8 +52,8 @@
       outline: none; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(37,99,235,.12);
     }
-    .cfg-input:disabled { background: #f1f5f9; color: var(--text-muted); cursor: not-allowed; }
-    .cfg-input.from-chart { border-color: #93c5fd; background: #eff6ff; }
+    .cfg-input:disabled { background: var(--glass-card); color: var(--text-muted); cursor: not-allowed; }
+    .cfg-input.from-chart { border-color: #93c5fd; background: rgba(147,197,253,.12); }
     .cfg-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
     .cfg-divider { grid-column: 1/-1; border: none; border-top: 1px solid var(--border); margin: 4px 0; }
 
@@ -122,7 +122,7 @@
     .sens-table thead th { padding: 9px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #cbd5e1; text-align: right; white-space: nowrap; border: 1px solid #2d4a6e; }
     .sens-table thead th:first-child { text-align: center; }
     .sens-table tbody tr { transition: background .08s; }
-    .sens-table tbody tr:hover { background: #f8fafc; }
+    .sens-table tbody tr:hover { background: var(--glass-card); }
     .sens-table tbody tr.row-current { background: #eff6ff; font-weight: 700; }
     .sens-table tbody td { padding: 7px 14px; border: 1px solid #e2e8f0; text-align: right; font-variant-numeric: tabular-nums; }
     .sens-table tbody td:first-child { text-align: center; }
@@ -132,7 +132,7 @@
 
     /* ── Fórmulas ─────────────────────────────────────────────── */
     .formula-ref { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-    .formula-item { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+    .formula-item { background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 10px 14px; }
     .formula-name { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--primary); margin-bottom: 4px; }
     .formula-eq { font-size: 13px; font-family: 'Courier New', monospace; color: var(--text); margin-bottom: 3px; }
     .formula-note { font-size: 11px; color: var(--text-muted); }

@@ -165,9 +165,6 @@
         <button class="mode-tab active" id="tab-auto" onclick="setMode('auto')">
           Diseño automático
         </button>
-        <button class="mode-tab" id="tab-power" onclick="setMode('power')">
-          Basado en potencia
-        </button>
         <button class="mode-tab" id="tab-manual" onclick="setMode('manual')">
           Ingresar n y NAC manualmente
         </button>
@@ -210,37 +207,6 @@
                 <label class="param-label">β — Riesgo del consumidor (%)</label>
                 <input id="inp-beta" class="param-input" type="number" min="0.1" max="20" step="0.1" value="10" oninput="recalc()">
                 <p class="param-hint">P(aceptar lote malo). Típicamente 10%.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Modo basado en potencia -->
-          <div id="panel-power" style="display:none">
-            <div class="param-grid">
-              <div class="param-field">
-                <label class="param-label">N — Tamaño del lote</label>
-                <input id="inp-N-p" class="param-input" type="number" min="2" value="1000" oninput="recalc()">
-                <p class="param-hint">Número de unidades en el lote a inspeccionar.</p>
-              </div>
-              <div class="param-field">
-                <label class="param-label">NCA / AQL (%)</label>
-                <input id="inp-aql-p" class="param-input" type="number" min="0.01" max="15" step="0.01" value="1.0" oninput="recalc()">
-                <p class="param-hint">Nivel de Calidad Aceptable — % defectivos que el productor quiere proteger.</p>
-              </div>
-              <div class="param-field">
-                <label class="param-label">α — Riesgo del productor (%)</label>
-                <input id="inp-alpha-p" class="param-input" type="number" min="0.1" max="20" step="0.1" value="5" oninput="recalc()">
-                <p class="param-hint">P(rechazar lote bueno). Típicamente 5%.</p>
-              </div>
-              <div class="param-field">
-                <label class="param-label">NRC / LTPD (%)</label>
-                <input id="inp-ltpd-p" class="param-input" type="number" min="0.1" max="50" step="0.1" value="5.0" oninput="recalc()">
-                <p class="param-hint">Nivel de Calidad Rechazable — % defectivos que el consumidor no acepta.</p>
-              </div>
-              <div class="param-field">
-                <label class="param-label">Potencia 1−β (%)</label>
-                <input id="inp-power" class="param-input" type="number" min="50" max="99.9" step="0.1" value="90" oninput="recalc()">
-                <p class="param-hint">P(rechazar lote malo) = 1 − β. Típicamente 90%.</p>
               </div>
             </div>
           </div>
@@ -428,17 +394,12 @@ let aoqChart = null;
 function setMode(m) {
   mode = m;
   document.getElementById('tab-auto').classList.toggle('active',   m === 'auto');
-  document.getElementById('tab-power').classList.toggle('active',  m === 'power');
   document.getElementById('tab-manual').classList.toggle('active', m === 'manual');
   document.getElementById('panel-auto').style.display   = m === 'auto'   ? '' : 'none';
-  document.getElementById('panel-power').style.display  = m === 'power'  ? '' : 'none';
   document.getElementById('panel-manual').style.display = m === 'manual' ? '' : 'none';
-  const subs = {
-    auto:   'Define las restricciones de calidad — el plan óptimo (n, NAC) se calcula automáticamente',
-    power:  'Define AQL, LTPD y la potencia deseada — el sistema halla el plan que cumple ambos riesgos',
-    manual: 'Ingresa n y NAC directamente — el sistema calcula la curva CO y métricas'
-  };
-  document.getElementById('params-sub').textContent = subs[m] || '';
+  document.getElementById('params-sub').textContent = m === 'auto'
+    ? 'Define las restricciones de calidad — el plan óptimo (n, NAC) se calcula automáticamente'
+    : 'Ingresa n y NAC directamente — el sistema calcula la curva CO y métricas';
   recalc();
 }
 
@@ -548,26 +509,6 @@ function recalc() {
     if (!plan) {
       showInfeasible(`No se encontró un plan factible con los parámetros dados.
         Prueba a aumentar α o β, o a ampliar la separación entre NCA y NRC.`);
-      return;
-    }
-    n = plan.n;
-    c = plan.c;
-  } else if (mode === 'power') {
-    N     = parseInt(document.getElementById('inp-N-p').value)     || 1000;
-    aql   = (parseFloat(document.getElementById('inp-aql-p').value)   || 1)   / 100;
-    alpha = (parseFloat(document.getElementById('inp-alpha-p').value) || 5)   / 100;
-    ltpd  = (parseFloat(document.getElementById('inp-ltpd-p').value)  || 5)   / 100;
-    beta  = 1 - (parseFloat(document.getElementById('inp-power').value) || 90) / 100;
-
-    if (aql >= ltpd) {
-      showInfeasible('NCA debe ser menor que NRC (AQL < LTPD).');
-      return;
-    }
-
-    const plan = designPlan(aql, alpha, ltpd, beta);
-    if (!plan) {
-      showInfeasible(`No se encontró un plan factible con los parámetros dados.
-        Prueba a aumentar α o la potencia, o a ampliar la separación entre NCA y NRC.`);
       return;
     }
     n = plan.n;

@@ -88,8 +88,9 @@
     .perf-card.info   { --card-accent: #3b82f6; }
     .perf-card.neutral{ --card-accent: #94a3b8; }
 
-    .pc-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 6px; }
-    .pc-value { font-size: 26px; font-weight: 900; color: var(--text); letter-spacing: -.5px; line-height: 1.1; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+    .pc-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 4px; }
+    .pc-value { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing: -.3px; line-height: 1.1; margin-bottom: 3px; font-variant-numeric: tabular-nums; word-break: break-all; }
+    @media (max-width: 480px) { .pc-value { font-size: 18px; } }
     .pc-unit  { font-size: 12px; font-weight: 500; color: var(--text-muted); }
     .pc-status { font-size: 11px; font-weight: 700; margin-top: 6px; }
     .pc-status.good   { color: #16a34a; }

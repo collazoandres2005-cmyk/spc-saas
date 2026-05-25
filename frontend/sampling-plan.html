@@ -12,13 +12,14 @@
     .plan-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 14px; margin-bottom: 20px;
+      gap: 10px; margin-bottom: 14px;
     }
-    @media (max-width: 900px) { .plan-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 1100px) { .plan-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 480px)  { .plan-grid { grid-template-columns: 1fr 1fr; gap: 6px; } }
 
     .plan-card {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 18px 20px; text-align: center;
+      border-radius: var(--radius); padding: 14px 16px; text-align: center;
       position: relative; overflow: hidden;
     }
     .plan-card::before {
@@ -33,22 +34,26 @@
     .plan-card.purple { --card-accent: #8b5cf6; }
     .plan-card.teal   { --card-accent: #14b8a6; }
 
-    .pc-lbl   { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 6px; }
-    .pc-val   { font-size: 38px; font-weight: 900; line-height: 1.1; color: var(--text); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
-    .pc-sub   { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
-    .pc-badge { font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .pc-lbl   { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 4px; }
+    .pc-val   { font-size: 30px; font-weight: 900; line-height: 1.1; color: var(--text); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+    .pc-sub   { font-size: 11px; color: var(--text-sec); margin-top: 3px; }
+    .pc-badge { font-size: 10px; font-weight: 700; margin-top: 4px; }
+    @media (max-width: 480px) {
+      .pc-val { font-size: 22px; }
+      .pc-sub { font-size: 10px; }
+    }
     .pc-badge.good   { color: #16a34a; }
     .pc-badge.warn   { color: #d97706; }
     .pc-badge.danger { color: #dc2626; }
 
     /* ── Riesgo pills ─────────────────────────────────────────── */
     .risk-row {
-      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
     }
     .risk-pill {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 18px; border-radius: var(--radius);
-      font-size: 13px; font-weight: 600; flex: 1; min-width: 200px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: var(--radius);
+      font-size: 12px; font-weight: 600; flex: 1; min-width: 160px;
     }
     .risk-pill.producer { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
     .risk-pill.consumer { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
@@ -58,16 +63,19 @@
 
     /* ── Params ───────────────────────────────────────────────── */
     .param-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 16px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 10px;
     }
-    .param-field { display: flex; flex-direction: column; gap: 5px; }
-    .param-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
+    @media (max-width: 480px) {
+      .param-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    }
+    .param-field { display: flex; flex-direction: column; gap: 3px; }
+    .param-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); }
     .param-input {
-      padding: 7px 10px; border: 1px solid var(--border);
-      border-radius: var(--radius); font-size: 14px; font-weight: 600; color: var(--text); background: var(--card);
+      padding: 6px 8px; border: 1px solid var(--border);
+      border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--text); background: var(--card);
     }
     .param-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-    .param-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+    .param-hint { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
 
     /* ── Mode toggle ──────────────────────────────────────────── */
     .mode-tabs {
@@ -81,7 +89,9 @@
     .mode-tab.active { background: var(--primary); color: #fff; }
 
     /* ── CO Curve chart ───────────────────────────────────────── */
-    .oc-wrap { height: 360px; }
+    .oc-wrap { height: 300px; }
+    @media (max-width: 768px) { .oc-wrap { height: 220px; } }
+    @media (max-width: 480px) { .oc-wrap { height: 180px; } }
 
     /* ── Candidate table ──────────────────────────────────────── */
     .cand-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -105,7 +115,9 @@
     .bad  { color: #dc2626; font-weight: 700; }
 
     /* ── AOQ chart ────────────────────────────────────────────── */
-    .aoq-wrap { height: 260px; }
+    .aoq-wrap { height: 220px; }
+    @media (max-width: 768px) { .aoq-wrap { height: 180px; } }
+    @media (max-width: 480px) { .aoq-wrap { height: 150px; } }
 
     /* ── Infeasible / empty ───────────────────────────────────── */
     .infeasible-box {
@@ -121,8 +133,8 @@
     /* ── Rec ──────────────────────────────────────────────────── */
     .rec-list { display: flex; flex-direction: column; gap: 8px; }
     .rec-item {
-      padding: 10px 14px; border-radius: var(--radius);
-      font-size: 13px; border-left: 3px solid; line-height: 1.55;
+      padding: 8px 12px; border-radius: var(--radius);
+      font-size: 12px; border-left: 3px solid; line-height: 1.45;
     }
     .rec-item.good   { background: #f0fdf4; border-color: #22c55e; color: #15803d; }
     .rec-item.warn   { background: #fefce8; border-color: #f59e0b; color: #92400e; }
@@ -161,12 +173,12 @@
       <!-- ══ PARÁMETROS ══════════════════════════════════════════ -->
       <div class="card" style="margin-bottom:20px">
         <div class="card-header">
-          <div class="card-title" id="params-title">Parámetros del plan</div>
-          <span style="font-size:11px;color:var(--text-muted)" id="params-sub">
-            Define las restricciones de calidad — el plan óptimo (n, NAC) se calcula automáticamente
+            <div class="card-title" id="params-title">Parámetros del plan</div>
+          <span style="font-size:10px;color:var(--text-muted)" id="params-sub">
+            Define las restricciones de calidad
           </span>
         </div>
-        <div style="padding:16px 20px">
+        <div style="padding:14px 16px">
 
           <!-- Modo automático -->
           <div id="panel-auto">
@@ -268,7 +280,7 @@
         <div class="risk-row" id="risk-row"></div>
 
         <!-- Métricas adicionales -->
-        <div class="plan-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+        <div class="plan-grid">
           <div class="plan-card blue">
             <div class="pc-lbl">Pa en NCA (AQL)</div>
             <div class="pc-val" id="val-pa-aql" style="font-size:26px">—</div>
@@ -298,24 +310,24 @@
         <div class="card" style="margin-bottom:20px">
           <div class="card-header">
             <div class="card-title">Curva Característica de Operación (CO)</div>
-            <span style="font-size:11px;color:var(--text-muted)">
-              Pa = P(aceptar el lote) vs % defectivos en el lote — Aproximación binomial
+            <span style="font-size:10px;color:var(--text-muted)">
+              Pa = P(aceptar el lote) vs % defectivos
             </span>
           </div>
-          <div style="padding:16px 20px">
+          <div style="padding:14px 16px">
             <div class="oc-wrap"><canvas id="oc-chart"></canvas></div>
           </div>
         </div>
 
         <!-- ── Tabla de planes candidatos ─────────────────────── -->
-        <div class="card" style="margin-bottom:20px">
+        <div class="card" style="margin-bottom:14px">
           <div class="card-header">
             <div class="card-title">Planes candidatos para distintos NAC</div>
-            <span style="font-size:11px;color:var(--text-muted)">
+            <span style="font-size:10px;color:var(--text-muted)">
               Plan seleccionado resaltado — ordenados por n
             </span>
           </div>
-          <div style="padding:0 20px 16px;overflow-x:auto">
+          <div style="padding:0 16px 12px;overflow-x:auto">
             <table class="cand-table">
               <thead>
                 <tr>
@@ -337,14 +349,14 @@
         </div>
 
         <!-- ── Curva AOQ ───────────────────────────────────────── -->
-        <div class="card" style="margin-bottom:20px">
+        <div class="card" style="margin-bottom:14px">
           <div class="card-header">
             <div class="card-title">Curva AOQ — Calidad Saliente Promedio</div>
-            <span style="font-size:11px;color:var(--text-muted)">
-              Asume inspección 100% de lotes rechazados (rectificación)
+            <span style="font-size:10px;color:var(--text-muted)">
+              Asume inspección 100% de lotes rechazados
             </span>
           </div>
-          <div style="padding:16px 20px">
+          <div style="padding:14px 16px">
             <div class="aoq-wrap"><canvas id="aoq-chart"></canvas></div>
           </div>
         </div>
@@ -352,7 +364,7 @@
         <!-- ── Recomendaciones ─────────────────────────────────── -->
         <div class="card">
           <div class="card-header"><div class="card-title">Interpretación del plan</div></div>
-          <div style="padding:16px 20px">
+          <div style="padding:14px 16px">
             <div class="rec-list" id="rec-list"></div>
           </div>
         </div>

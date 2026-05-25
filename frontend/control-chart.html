@@ -8,8 +8,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
-    .chart-panel    { height: 280px; }
-    .chart-panel-sm { height: 180px; }
+    .chart-panel    { height: 260px; }
+    .chart-panel-sm { height: 160px; }
+    @media (max-width: 768px) { .chart-panel { height: 200px; } .chart-panel-sm { height: 130px; } }
+    @media (max-width: 480px) { .chart-panel { height: 170px; } .chart-panel-sm { height: 110px; } }
     .sim-panel {
       margin-top: 12px; padding: 10px 14px;
       background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius);

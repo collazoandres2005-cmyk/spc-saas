@@ -202,14 +202,18 @@
     .tip-box { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-top: 10px; }
 
     /* ── Chart ───────────────────────────────────────────────── */
-    .chart-main-h { height: 260px; }
-    .chart-sec-h  { height: 155px; }
+    .chart-main-h { height: 240px; }
+    .chart-sec-h  { height: 140px; }
     @media (max-width: 768px) {
-      .chart-main-h { height: 200px; }
-      .chart-sec-h  { height: 130px; }
+      .chart-main-h { height: 180px; }
+      .chart-sec-h  { height: 115px; }
       .lim-chip .lv { font-size: 14px; }
       .btn-add-big { font-size: 13px; padding: 11px; }
       .big-input { font-size: 18px; padding: 8px 10px; }
+    }
+    @media (max-width: 480px) {
+      .chart-main-h { height: 150px; }
+      .chart-sec-h  { height: 100px; }
     }
   </style>
 </head>

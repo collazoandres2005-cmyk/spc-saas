@@ -35,7 +35,8 @@
       text-transform: uppercase; letter-spacing: .5px;
       color: var(--text-muted); margin-bottom: 4px;
     }
-    .s-val { display: block; font-size: 20px; font-weight: 800; color: var(--text); }
+    .s-val { display: block; font-size: 18px; font-weight: 800; color: var(--text); }
+    @media (max-width: 480px) { .s-val { font-size: 15px; } }
     .s-stat.hi .s-val, .s-stat.lo .s-val { color: #dc2626; }
     .s-stat.cl .s-val { color: #2563eb; }
     .s-stat.ok .s-val { color: var(--success); }

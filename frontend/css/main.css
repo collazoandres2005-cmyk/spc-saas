@@ -248,7 +248,7 @@ a:hover { text-decoration: underline; }
 .sub-badge.inactive { background: var(--danger-bg);  color: var(--danger);  }
 .sub-badge.past_due { background: var(--warning-bg); color: var(--warning); }
 
-.page-content { flex: 1; padding: 20px 22px; }
+.page-content { flex: 1; padding: 20px 22px; overflow-x: hidden; max-width: 100%; }
 
 /* ── Cards ────────────────────────────────────────────────────── */
 .card {
@@ -645,12 +645,21 @@ input:focus, select:focus, textarea:focus {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 
+/* ── Responsive — Tablet (≤ 1100px) ──────────────────────────── */
+@media (max-width: 1100px) {
+  .page-content { padding: 16px 18px; }
+  .card-body   { padding: 14px; }
+}
+
 /* ── Responsive — Tablet (≤ 900px) ───────────────────────────── */
 @media (max-width: 900px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .metrics-grid   { grid-template-columns: 1fr 1fr; gap: 8px; }
   .process-grid   { grid-template-columns: 1fr 1fr; }
   .modal { max-height: 92vh; }
+  .page-content { padding: 14px 16px; }
+  .card-body   { padding: 12px; }
+  .top-bar { padding: 0 16px; }
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
@@ -907,8 +916,25 @@ input:focus, select:focus, textarea:focus {
   .modal-footer .btn { width: 100%; justify-content: center; }
 }
 
-/* ── Very small screens (≤ 380px) ────────────────────────────── */
+/* ── Very small screens (≤ 480px) ────────────────────────────── */
+@media (max-width: 480px) {
+  .page-content { padding: 10px; }
+  .card-body   { padding: 10px; }
+  .metrics-grid   { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric-card { padding: 10px 12px; }
+  .metric-value { font-size: 18px; }
+  .top-bar { padding: 0 10px; }
+  .top-bar-title { font-size: 11px; }
+  .card-title { font-size: 10px; }
+  .card-header { padding: 9px 12px; }
+  .chart-panel { height: 210px; }
+  .chart-panel-sm { height: 140px; }
+}
+
 @media (max-width: 380px) {
   .top-bar .sub-badge { display: none; }
   .page-content { padding: 8px; }
+  .metrics-grid { grid-template-columns: 1fr; }
+  .metric-value { font-size: 16px; }
+  .card-body   { padding: 8px; }
 }

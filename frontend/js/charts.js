@@ -6,17 +6,30 @@ const COLORS = {
   green:   '#15803d',
   amber:   '#b45309',
   gray:    '#667085',
-  navy:    '#e2e8f0',
-  cl:      '#1761b0',
+  navy:    '#1e40af',
+  cl:      '#2563eb',
   ucl:     '#b91c1c',
   lcl:     '#b91c1c',
-  point:   '#a78bfa',
-  outCtrl: '#f87171',
+  point:   '#2563eb',
+  outCtrl: '#b91c1c',
   normal:  'rgba(167,139,250,0.18)'
 };
 
 const _FONT_DATA = "'JetBrains Mono', 'Consolas', 'Courier New', monospace";
 const _FONT_UI   = "'Inter', 'Segoe UI', system-ui, sans-serif";
+
+/* ── Fondo blanco global para todos los gráficos ── */
+Chart.register({
+  id: 'white-bg',
+  beforeDraw: (chart) => {
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+    ctx.restore();
+  }
+});
 
 const CHART_DEFAULTS = {
   responsive: true,
@@ -26,10 +39,10 @@ const CHART_DEFAULTS = {
     tooltip: {
       mode: 'index',
       intersect: false,
-      backgroundColor: '#1a1040',
-      titleColor: '#e2e8f0',
-      bodyColor: '#cbd5e1',
-      borderColor: 'rgba(255,255,255,.10)',
+      backgroundColor: '#ffffff',
+      titleColor: '#1e293b',
+      bodyColor: '#475569',
+      borderColor: '#e2e8f0',
       borderWidth: 1,
       padding: 10,
       titleFont: { family: _FONT_UI, size: 11 },
@@ -38,12 +51,12 @@ const CHART_DEFAULTS = {
   },
   scales: {
     x: {
-      grid: { color: 'rgba(255,255,255,.06)' },
-      ticks: { color: '#94a3b8', font: { family: _FONT_UI, size: 11 }, maxTicksLimit: 20 }
+      grid: { color: '#e4e7ec' },
+      ticks: { color: '#667085', font: { family: _FONT_UI, size: 11 }, maxTicksLimit: 20 }
     },
     y: {
-      grid: { color: 'rgba(255,255,255,.06)' },
-      ticks: { color: '#94a3b8', font: { family: _FONT_DATA, size: 11 } }
+      grid: { color: '#e4e7ec' },
+      ticks: { color: '#667085', font: { family: _FONT_DATA, size: 11 } }
     }
   },
   elements: {
@@ -97,7 +110,7 @@ function renderControlChart(canvasId, chartData, outOfControl = [], labels = [])
   const pointColors   = mainData.points.map((_, i) =>
     outOfControl.includes(i) ? COLORS.outCtrl : COLORS.point);
   const pointBgColors = mainData.points.map((_, i) =>
-    outOfControl.includes(i) ? 'rgba(248,113,113,0.2)' : 'rgba(167,139,250,0.2)');
+    outOfControl.includes(i) ? '#fecaca' : '#dbeafe');
   const pointRadii    = mainData.points.map((_, i) =>
     outOfControl.includes(i) ? 8 : 4);
   const pointBorderW  = mainData.points.map((_, i) =>
@@ -135,7 +148,7 @@ function renderControlChart(canvasId, chartData, outOfControl = [], labels = [])
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#e2e8f0' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -212,7 +225,7 @@ function renderSecondaryChart(canvasId, chartData, labels = []) {
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#e2e8f0' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -295,7 +308,7 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
     label: 'Distribución Normal teórica',
     data: pts,
     parsing: false,
-    borderColor: '#a78bfa',
+    borderColor: '#1e40af',
     borderWidth: 2.5,
     fill: 'origin',
     pointRadius: 0,
@@ -322,7 +335,7 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
         legend: {
           display: true,
           position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#e2e8f0' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,
@@ -342,9 +355,9 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
           type: 'linear',
           min: xMin,
           max: xMax,
-          grid: { color: 'rgba(255,255,255,.06)' },
+          grid: { color: '#e4e7ec' },
           ticks: {
-            color: '#94a3b8',
+            color: '#667085',
             font: { family: _FONT_DATA, size: 10 },
             maxTicksLimit: 10,
             callback: v => Number(v).toFixed(2)
@@ -353,9 +366,9 @@ function renderCapabilityChart(canvasId, usl, lsl, nominal, xbar, sigma, histogr
         y: {
           min: 0,
           max: yMaxCurve,
-          grid: { color: 'rgba(255,255,255,.06)' },
-          ticks: { color: '#94a3b8', font: { family: _FONT_DATA, size: 10 } },
-          title: { display: true, text: 'Densidad de probabilidad', color: '#94a3b8', font: { family: _FONT_UI, size: 11 } }
+          grid: { color: '#e4e7ec' },
+          ticks: { color: '#667085', font: { family: _FONT_DATA, size: 10 } },
+          title: { display: true, text: 'Densidad de probabilidad', color: '#475569', font: { family: _FONT_UI, size: 11 } }
         }
       }
     }
@@ -623,7 +636,7 @@ function renderAttributeChart(canvasId, chartKey, chartSeries, outOfControl = []
         ...CHART_DEFAULTS.plugins,
         legend: {
           display: true, position: 'top',
-          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#e2e8f0' }
+          labels: { usePointStyle: true, boxWidth: 8, font: { family: _FONT_UI, size: 11 }, color: '#475569' }
         },
         tooltip: {
           ...CHART_DEFAULTS.plugins.tooltip,

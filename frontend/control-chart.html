@@ -340,32 +340,29 @@
     const ruleTrend  = document.getElementById('rule-trend').checked ? '1' : '0';
     const ruleShift  = document.getElementById('rule-shift').checked ? '1' : '0';
 
-    document.getElementById('tests-body').innerHTML =
-      '<div class="loading"><span class="spinner"></span> Calculando pruebas...</div>';
-
     try {
-      const [chartResult, capResult] = await Promise.all([
-        analysisApi.controlChart(pid, type, simN, { rule_ooc: ruleOoc, rule_trend: ruleTrend, rule_shift: ruleShift }),
-        analysisApi.capability(pid, simN)
-      ]);
-      renderChart(chartResult);
+      const result = await analysisApi.controlChart(pid, type, simN, { rule_ooc: ruleOoc, rule_trend: ruleTrend, rule_shift: ruleShift });
+      renderChart(result);
       loadRawData(pid, type);
-      document.getElementById('process-crumb').textContent = `· ${chartResult.process.name}`;
+      document.getElementById('process-crumb').textContent = `· ${result.process.name}`;
       document.getElementById('chart-area').classList.remove('hidden');
-
-      if (capResult.statisticalTests) {
-        renderStatisticalTests(capResult.statisticalTests);
-      } else {
-        document.getElementById('tests-body').innerHTML =
-          '<div style="color:var(--text-muted);font-size:13px;padding:20px">Se necesitan al menos 7 mediciones.</div>';
-      }
     } catch (err) {
       let errMsg = err.message;
       if (!simEnabled && XBAR_TYPES.includes(type) && err.message.toLowerCase().includes('subgrupo'))
         errMsg += ' — Activa "Simular subgrupos" para agrupar los datos automáticamente.';
       showAlert(msg, errMsg, 'error');
       document.getElementById('chart-area').classList.add('hidden');
-      document.getElementById('tests-body').innerHTML = '';
+    }
+
+    // Pruebas estadísticas por separado (no bloquea la carta)
+    document.getElementById('tests-body').innerHTML =
+      '<div class="loading"><span class="spinner"></span> Calculando pruebas...</div>';
+    try {
+      const capResult = await analysisApi.statisticalTests(pid);
+      renderStatisticalTests(capResult);
+    } catch {
+      document.getElementById('tests-body').innerHTML =
+        '<div style="color:var(--text-muted);font-size:13px;padding:20px">Se necesitan al menos 7 mediciones.</div>';
     }
   }
 

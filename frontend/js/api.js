@@ -320,10 +320,10 @@ function initSidebar(activePage) {
     { id: 'processes',     href: '/processes.html',      label: 'Procesos'              },
     { id: 'data-entry',    href: '/data-entry.html',     label: 'Entrada de Datos'      },
     { id: 'control-chart', href: '/control-chart.html',  label: 'Cartas de Control'     },
-    { id: 'capability',    href: '/capability.html',     label: 'Capacidad del Proceso' },
   ];
 
   const fase2Pages = [
+    { id: 'capability',      href: '/capability.html',      label: 'Capacidad del Proceso' },
     { id: 'monitoring',      href: '/monitoring.html',      label: 'Monitoreo SPC'           },
     { id: 'spc-performance', href: '/spc-performance.html', label: 'Evaluación del Desempeño'},
   ];

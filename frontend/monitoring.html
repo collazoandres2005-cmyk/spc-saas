@@ -86,7 +86,9 @@
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: live-pulse 1.6s ease-in-out infinite; }
     @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-    .mon-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mon-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    @media (max-width: 600px) { .mon-stats { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 400px) { .mon-stats { grid-template-columns: 1fr; } }
     .mon-stat { padding: 8px 12px; background: var(--glass-card); border: 1px solid var(--border); border-radius: var(--radius); }
     .mon-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
     .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
@@ -384,7 +386,8 @@
                 <div class="mon-stats">
                   <div class="mon-stat"><div class="mon-stat-lbl">Subgrupos</div><div class="mon-stat-val" id="stat-total">—</div></div>
                   <div class="mon-stat"><div class="mon-stat-lbl">Esta sesión</div><div class="mon-stat-val" id="stat-session">0</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl" id="stat-mean-lbl">Media acum.</div><div class="mon-stat-val" id="stat-mean" style="font-size:16px">—</div></div>
+                  <div class="mon-stat"><div class="mon-stat-lbl" id="stat-mean-lbl">Media acum.</div><div class="mon-stat-val" id="stat-mean" style="font-size:15px">—</div></div>
+                  <div class="mon-stat"><div class="mon-stat-lbl">Último ingreso</div><div class="mon-stat-val" id="stat-last" style="font-size:14px">—</div></div>
                   <div class="mon-stat"><div class="mon-stat-lbl">Carta</div><div class="mon-stat-val" id="stat-status" style="font-size:12px;font-weight:700">—</div></div>
                 </div>
               </div>

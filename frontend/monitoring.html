@@ -1382,7 +1382,7 @@
   }
 
   function updateStats() {
-    document.getElementById('stat-total').textContent  = totalSubgroups ?? '—';
+    document.getElementById('stat-total').textContent  = sessionSubgroups.length || '—';
     document.getElementById('stat-session').textContent = sessionCount;
     updateSessionMean();
   }

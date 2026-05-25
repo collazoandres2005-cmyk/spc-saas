@@ -680,28 +680,29 @@ function renderCandidates(N, aql, alpha, ltpd, beta, selC) {
     const pa_ltpd = Pa(n, c, ltpd);
     const alphaR  = 1 - pa_aql;
     const betaR   = pa_ltpd;
+    if (alphaR > alpha + 0.001 || betaR > beta + 0.001) continue;
     const aoql    = computeAOQL(n, c, N);
     const atiAql  = Math.round(ati(n, c, N, aql));
     rows.push({ c, n, pa_aql, pa_ltpd, alphaR, betaR, aoql, atiAql });
   }
 
-  document.getElementById('cand-body').innerHTML = rows.map(r => {
-    const isSel = r.c === selC;
-    const alphaOk = r.alphaR <= alpha + 0.001;
-    const betaOk  = r.betaR  <= beta  + 0.001;
-    return `<tr class="${isSel ? 'row-sel' : ''}">
-      <td>${r.c}${isSel ? ' ★' : ''}</td>
-      <td>${r.c + 1}</td>
-      <td>${r.n.toLocaleString('es')}</td>
-      <td>${(r.n/N*100).toFixed(1)}%</td>
-      <td class="${r.pa_aql>=0.90?'ok':'warn'}">${(r.pa_aql*100).toFixed(2)}%</td>
-      <td class="${r.pa_ltpd<=0.15?'ok':'bad'}">${(r.pa_ltpd*100).toFixed(2)}%</td>
-      <td class="${alphaOk?'ok':'warn'}">${(r.alphaR*100).toFixed(2)}%</td>
-      <td class="${betaOk?'ok':'bad'}">${(r.betaR*100).toFixed(2)}%</td>
-      <td>${(r.aoql*100).toFixed(3)}%</td>
-      <td>${r.atiAql.toLocaleString('es')}</td>
-    </tr>`;
-  }).join('');
+  document.getElementById('cand-body').innerHTML = rows.length
+    ? rows.map(r => {
+        const isSel = r.c === selC;
+        return `<tr class="${isSel ? 'row-sel' : ''}">
+          <td>${r.c}${isSel ? ' ★' : ''}</td>
+          <td>${r.c + 1}</td>
+          <td>${r.n.toLocaleString('es')}</td>
+          <td>${(r.n/N*100).toFixed(1)}%</td>
+          <td class="${r.pa_aql>=0.90?'ok':'warn'}">${(r.pa_aql*100).toFixed(2)}%</td>
+          <td class="${r.pa_ltpd<=0.15?'ok':'bad'}">${(r.pa_ltpd*100).toFixed(2)}%</td>
+          <td class="ok">${(r.alphaR*100).toFixed(2)}%</td>
+          <td class="ok">${(r.betaR*100).toFixed(2)}%</td>
+          <td>${(r.aoql*100).toFixed(3)}%</td>
+          <td>${r.atiAql.toLocaleString('es')}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:20px">Ningún plan candidato cumple ambos riesgos.</td></tr>';
 }
 
 /* ══════════════════════════════════════════════════════════════

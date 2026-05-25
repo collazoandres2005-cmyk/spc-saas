@@ -368,7 +368,7 @@ function initSidebar(activePage) {
       ${fase1Html}
       <div class="nav-section">Fase II — Monitoreo y Desempeño</div>
       ${fase2Html}
-      <div class="nav-section">Módulo 3 — Planes de Muestreo</div>
+      <div class="nav-section">Planes de Muestreo</div>
       ${mod3Html}
       ${adminHtml}
     </nav>

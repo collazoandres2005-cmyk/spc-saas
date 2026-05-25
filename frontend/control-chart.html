@@ -76,6 +76,24 @@
     .raw-table-wrap table td { font-size: 12px; }
     .raw-vals { color: var(--text-sec); max-width: 320px; word-break: break-word; }
     @media (max-width: 768px) { .raw-vals { max-width: 160px; } }
+
+    .tests-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 16px; }
+    .test-card  { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; border-left:4px solid var(--border); }
+    .test-card.pass { border-left-color: var(--success); }
+    .test-card.fail { border-left-color: var(--danger);  }
+    .test-card.na   { background: #f8fafc; }
+    .test-name  { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
+    .test-h0    { font-size:11px; color:var(--text-muted); margin-bottom:12px; }
+    .test-stats { display:flex; gap:20px; margin-bottom:10px; align-items:flex-end; }
+    .test-stat  { display:flex; flex-direction:column; }
+    .test-stat-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:var(--text-muted); }
+    .test-stat-val { font-size:22px; font-weight:900; line-height:1.1; }
+    .test-result-badge { margin-left:auto; padding:4px 12px; border-radius:99px; font-size:11px; font-weight:700; white-space:nowrap; align-self:center; }
+    .test-result-badge.pass { background:var(--success-bg); color:var(--success); }
+    .test-result-badge.fail { background:var(--danger-bg);  color:var(--danger);  }
+    .test-interp { font-size:12px; color:var(--text-sec); line-height:1.5; }
+    .test-na-msg { font-size:12px; color:var(--text-muted); padding:8px 0; }
+    .alpha-note  { font-size:11px; color:var(--text-muted); font-style:italic; }
   </style>
 </head>
 <body class="app-layout">
@@ -218,6 +236,19 @@
           </div>
         </div>
 
+        <!-- Pruebas estadísticas -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-header">
+            <div class="card-title">Pruebas estadísticas</div>
+            <span class="alpha-note" style="margin-left:auto">α = 0.05</span>
+          </div>
+          <div class="card-body" id="tests-body">
+            <div class="empty-state" style="padding:20px">
+              <div class="empty-sub">Selecciona un proceso para ver las pruebas.</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Tabla de datos Fase 1 -->
         <div id="raw-data-panel" style="display:none">
           <div class="raw-toggle" id="raw-toggle" onclick="toggleRawData()">
@@ -307,18 +338,32 @@
     const ruleTrend  = document.getElementById('rule-trend').checked ? '1' : '0';
     const ruleShift  = document.getElementById('rule-shift').checked ? '1' : '0';
 
+    document.getElementById('tests-body').innerHTML =
+      '<div class="loading"><span class="spinner"></span> Calculando pruebas...</div>';
+
     try {
-      const result = await analysisApi.controlChart(pid, type, simN, { rule_ooc: ruleOoc, rule_trend: ruleTrend, rule_shift: ruleShift });
-      renderChart(result);
+      const [chartResult, capResult] = await Promise.all([
+        analysisApi.controlChart(pid, type, simN, { rule_ooc: ruleOoc, rule_trend: ruleTrend, rule_shift: ruleShift }),
+        analysisApi.capability(pid, simN)
+      ]);
+      renderChart(chartResult);
       loadRawData(pid, type);
-      document.getElementById('process-crumb').textContent = `· ${result.process.name}`;
+      document.getElementById('process-crumb').textContent = `· ${chartResult.process.name}`;
       document.getElementById('chart-area').classList.remove('hidden');
+
+      if (capResult.statisticalTests) {
+        renderStatisticalTests(capResult.statisticalTests);
+      } else {
+        document.getElementById('tests-body').innerHTML =
+          '<div style="color:var(--text-muted);font-size:13px;padding:20px">Se necesitan al menos 7 mediciones.</div>';
+      }
     } catch (err) {
       let errMsg = err.message;
       if (!simEnabled && XBAR_TYPES.includes(type) && err.message.toLowerCase().includes('subgrupo'))
         errMsg += ' — Activa "Simular subgrupos" para agrupar los datos automáticamente.';
       showAlert(msg, errMsg, 'error');
       document.getElementById('chart-area').classList.add('hidden');
+      document.getElementById('tests-body').innerHTML = '';
     }
   }
 
@@ -484,6 +529,67 @@
     } catch (err) {
       console.warn('loadRawData:', err.message);
     }
+  }
+
+  // ── Pruebas estadísticas ───────────────────────────────────
+  function renderStatisticalTests({ normality, homoscedasticity, homogeneity, n_total, n_subgroups }) {
+    const body = document.getElementById('tests-body');
+    const tests = [
+      { label:'Normalidad',            subLabel:'Anderson-Darling',         data:normality,        passKey:'normal',        passText:'Normal',        failText:'No normal'      },
+      { label:'Homocedasticidad',      subLabel:'Levene (Brown-Forsythe)',   data:homoscedasticity, passKey:'homoscedastic', passText:'Homocedástico', failText:'Heterocedástico'},
+      { label:'Homogeneidad de medias',subLabel:'Kruskal-Wallis',           data:homogeneity,      passKey:'homogeneous',   passText:'Homogéneo',     failText:'No homogéneo'   }
+    ];
+
+    const groupNote = n_subgroups < 2
+      ? ' · <span style="color:var(--warning)">Sin subgrupos — Levene y K-W no aplican</span>'
+      : '';
+
+    const summary = `<p style="font-size:12px;color:var(--text-sec);margin-bottom:16px">
+      <strong>${n_total}</strong> obs. · <strong>${n_subgroups}</strong> subgrupos${groupNote}</p>`;
+
+    const cards = tests.map(t => {
+      const d = t.data;
+      if (!d.available) return `
+        <div class="test-card na">
+          <div class="test-name">${t.label}</div>
+          <div class="test-h0">${t.subLabel}</div>
+          <div class="test-na-msg"><span style="opacity:.5;font-size:16px">—</span><br>${escHtml(d.reason)}</div>
+        </div>`;
+
+      const passed   = d[t.passKey];
+      const cls      = passed ? 'pass' : 'fail';
+      const pColor   = d.p_value <= 0.05 ? 'var(--danger)' : 'var(--success)';
+      const glLine   = 'df' in d
+        ? `<div class="test-stat"><span class="test-stat-lbl">G.L.</span><span class="test-stat-val" style="font-size:16px;color:var(--text-sec)">${d.df}</span></div>`
+        : d.df1 != null
+          ? `<div class="test-stat"><span class="test-stat-lbl">G.L.</span><span class="test-stat-val" style="font-size:16px;color:var(--text-sec)">${d.df1}, ${d.df2}</span></div>`
+          : '';
+
+      return `
+        <div class="test-card ${cls}">
+          <div class="test-name">${t.label}</div>
+          <div class="test-h0">${t.subLabel} · H₀: ${escHtml(d.h0)}</div>
+          <div class="test-stats">
+            <div class="test-stat">
+              <span class="test-stat-lbl">Estadístico</span>
+              <span class="test-stat-val" style="color:var(--text)">${d.statistic}</span>
+            </div>
+            <div class="test-stat">
+              <span class="test-stat-lbl">p-valor</span>
+              <span class="test-stat-val" style="color:${pColor}">${d.p_value}</span>
+            </div>
+            ${glLine}
+            <span class="test-result-badge ${cls}">${passed ? t.passText : t.failText}</span>
+          </div>
+          <div class="test-interp">${escHtml(d.interpretation)}</div>
+        </div>`;
+    }).join('');
+
+    const note = `<div style="margin-top:14px;padding:12px 14px;background:#f8fafc;border-radius:var(--radius);font-size:11px;color:var(--text-muted);border:1px solid var(--border)">
+      <strong>Nota metodológica:</strong> Anderson-Darling (Stephens 1974) · Levene Brown-Forsythe · Kruskal-Wallis con corrección por empates. α = 0.05.
+    </div>`;
+
+    body.innerHTML = summary + `<div class="tests-grid">${cards}</div>` + note;
   }
 
   init();

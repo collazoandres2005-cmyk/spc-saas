@@ -54,6 +54,35 @@
     .rep-stat.warn { border-left: 3px solid var(--warning); }
     .rep-stat.danger { border-left: 3px solid var(--danger); }
 
+    .rep-analysis {
+      background: rgba(255,255,255,.04); border-radius: 8px; padding: 14px 16px;
+      margin: 12px 0 4px; font-size: 13px; line-height: 1.7; color: var(--text-sec);
+      border-left: 3px solid var(--primary);
+    }
+    .rep-analysis strong { color: var(--text); }
+    .rep-analysis .tag {
+      display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 8px;
+      border-radius: 4px; margin-right: 6px; text-transform: uppercase; letter-spacing: .3px;
+    }
+    .rep-analysis .tag.good  { background: rgba(74,222,128,.15); color: #4ade80; }
+    .rep-analysis .tag.warn  { background: rgba(251,146,60,.15); color: #fb923c; }
+    .rep-analysis .tag.danger{ background: rgba(248,113,113,.15); color: #f87171; }
+    .rep-analysis .tag.info  { background: rgba(56,189,248,.15); color: #7dd3fc; }
+
+    .rep-rec-box {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 8px; padding: 12px 16px; margin-top: 10px;
+    }
+    .rep-rec-box-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin-bottom: 6px; }
+    .rep-rec-item { display: flex; gap: 8px; padding: 6px 0; font-size: 13px; line-height: 1.5; color: var(--text-sec); border-bottom: 1px solid rgba(255,255,255,.04); }
+    .rep-rec-item:last-child { border-bottom: none; }
+    .rep-rec-item .prio { flex-shrink: 0; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 4px; height: fit-content; margin-top: 2px; }
+    .rep-rec-item .prio.high { background: rgba(248,113,113,.15); color: #f87171; }
+    .rep-rec-item .prio.med  { background: rgba(251,146,60,.15); color: #fb923c; }
+    .rep-rec-item .prio.low  { background: rgba(74,222,128,.15); color: #4ade80; }
+    .rep-rec-item .desc { flex: 1; }
+    .rep-rec-item .desc strong { color: var(--text); }
+
     .rep-table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--glass-border); margin-top: 12px; }
     .rep-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .rep-table thead tr { background: rgba(255,255,255,.06); }
@@ -317,6 +346,78 @@ async function loadProcess() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ANÁLISIS — FUNCIONES AUXILIARES
+══════════════════════════════════════════════════════════════ */
+function stabilityAnalysis(cc) {
+  if (!cc) return { level: 'unknown', label: 'Sin datos', color: 'info', text: '' };
+  if (cc.oocCount === 0 && cc.totalSubgroups >= 20)
+    return { level: 'stable', label: 'Estable', color: 'good', text: 'El proceso opera dentro de los límites de control sin señales especiales. La variabilidad es atribuible a causas comunes únicamente.' };
+  if (cc.oocCount === 0 && cc.totalSubgroups >= 2)
+    return { level: 'incipient', label: 'Preliminar', color: 'info', text: 'No se detectan puntos fuera de control, pero el número de subgrupos es aún limitado para confirmar estabilidad definitiva.' };
+  if (cc.oocCount <= 3)
+    return { level: 'marginal', label: 'Marginalmente estable', color: 'warn', text: `Se detectaron ${cc.oocCount} punto${cc.oocCount>1?'s':''} fuera de control (${cc.summary.oocRate}%). Aunque la mayoría de los puntos están dentro de límites, las señales especiales requieren investigación.` };
+  return { level: 'unstable', label: 'Inestable', color: 'danger', text: `Se detectaron ${cc.oocCount} puntos fuera de control (${cc.summary.oocRate}%). El proceso presenta causas asignables que deben identificarse y eliminarse antes de establecer límites definitivos.` };
+}
+
+function violationSummary(violations) {
+  if (!violations || !violations.length) return [];
+  const seen = new Set();
+  return violations.reduce((acc, v) => {
+    if (seen.has(v.rule)) return acc;
+    seen.add(v.rule);
+    const map = { ooc: { label: 'Puntos fuera de límites', detail: 'Uno o más puntos superan las bandas de ±3σ (Regla 1 de Nelson).' }, trend: { label: 'Tendencia', detail: '6+ puntos consecutivos en tendencia monótona (Regla 3 de Nelson).' }, shift: { label: 'Desplazamiento', detail: '8+ puntos consecutivos al mismo lado de la línea central (Regla 2 de Nelson).' } };
+    const info = map[v.rule] || { label: v.rule, detail: v.description };
+    acc.push(info);
+    return acc;
+  }, []);
+}
+
+function cpkInterpretation(v) {
+  if (v == null) return { level: 'unknown', label: 'Sin datos' };
+  if (v >= 2.0) return { level: 'excelente', label: 'Excelente', color: 'good' };
+  if (v >= 1.67) return { level: 'bueno', label: 'Bueno', color: 'good' };
+  if (v >= 1.33) return { level: 'aceptable', label: 'Aceptable', color: 'good' };
+  if (v >= 1.0) return { level: 'marginal', label: 'Marginal', color: 'warn' };
+  if (v >= 0.67) return { level: 'pobre', label: 'Pobre', color: 'danger' };
+  return { level: 'inaceptable', label: 'Inaceptable', color: 'danger' };
+}
+
+function riskLevel(cap) {
+  if (!cap) return { label: 'Sin datos', color: 'info', text: 'No hay datos de capacidad para evaluar el riesgo.' };
+  const ppm = cap.ppmTotal || 0;
+  if (ppm <= 66) return { label: 'Muy bajo', color: 'good', text: `Riesgo mínimo: ~${fmt(ppm)} ppm esperados fuera de especificación.` };
+  if (ppm <= 2700) return { label: 'Bajo', color: 'good', text: `Riesgo bajo: ~${fmt(ppm)} ppm esperados fuera de especificación.` };
+  if (ppm <= 66800) return { label: 'Moderado', color: 'warn', text: `Riesgo moderado: ~${fmt(ppm)} ppm esperados fuera de especificación. Se recomienda monitoreo continuo.` };
+  if (ppm <= 300000) return { label: 'Alto', color: 'danger', text: `Riesgo alto: ~${fmt(ppm)} ppm esperados fuera de especificación. Se requieren acciones correctivas.` };
+  return { label: 'Crítico', color: 'danger', text: `Riesgo crítico: ~${fmt(ppm)} ppm esperados fuera de especificación. El proceso no es aceptable para producción.` };
+}
+
+function crossAnalysis(d) {
+  const recs = [];
+  const cap = d.capability;
+  const cc = d.controlChart;
+  const st = d.statisticalTests;
+  const isNormal = st?.normality?.normal;
+  const isStable = cc && cc.oocCount === 0;
+  const isCapable = cap && cap.cpk >= 1.33;
+  const isMarginal = cap && cap.cpk >= 1.0 && cap.cpk < 1.33;
+
+  if (isStable && isCapable) recs.push({ prio: 'low', text: 'El proceso es estable y capaz. Mantener monitoreo de rutina y considerar reducir frecuencia de muestreo.' });
+  if (isStable && isMarginal) recs.push({ prio: 'med', text: 'Proceso estable pero marginalmente capaz. Reducir variabilidad común (menor σ) o centrar la media hacia el nominal.' });
+  if (isStable && cap && cap.cpk < 1.0) recs.push({ prio: 'high', text: 'Proceso estable pero no capaz. Urgente: reducir variabilidad o ajustar media. Evaluar tolerancias de especificación.' });
+  if (!isStable && cap) recs.push({ prio: 'high', text: 'Proceso inestable — los índices de capacidad no son fiables. Primero estabilizar el proceso eliminando causas asignables, luego recalcular capacidad.' });
+  if (isNormal === false) recs.push({ prio: 'med', text: 'Los datos no son normales. Los índices Cp/Cpk asumen normalidad — considerar transformación Box-Cox o usar índices no paramétricos. Verificar histograma para identificar asimetría o valores atípicos.' });
+  if (cap && cap.cpk < cap.cp - 0.1) recs.push({ prio: 'high', text: `Diferencia significativa entre Cp (${fmt(cap.cp)}) y Cpk (${fmt(cap.cpk)}). El proceso está descentrado: ajustar la media hacia el nominal para mejorar capacidad real.` });
+  if (cc && cc.totalSubgroups < 20 && cc.oocCount === 0) recs.push({ prio: 'low', text: `Solo ${cc.totalSubgroups} subgrupos disponibles. Para una validación robusta de estabilidad se recomiendan ≥ 20 subgrupos.` });
+  if (cap && cap.ppmTotal > 66800) recs.push({ prio: 'high', text: `La tasa de defectos predicha (~${fmt(cap.ppmTotal)} ppm) es elevada. Implementar mejora continua (DMAIC, Kaizen) para reducir variabilidad.` });
+  if (cap && cap.distToNominal != null && cap.distToNominal > cap.tolerance * 0.15) recs.push({ prio: 'med', text: `La media está a ${fmt(cap.distToNominal)} del nominal (tolerancia: ${fmt(cap.tolerance)}). Centrar el proceso para maximizar Cpk.` });
+  if (cap && cap.ppmUpper > cap.ppmLower * 3) recs.push({ prio: 'med', text: 'La mayoría de defectos se concentran en el límite superior. Revisar causa de sesgo hacia LSE.' });
+  if (cap && cap.ppmLower > cap.ppmUpper * 3) recs.push({ prio: 'med', text: 'La mayoría de defectos se concentran en el límite inferior. Revisar causa de sesgo hacia LSI.' });
+
+  return recs;
+}
+
+/* ══════════════════════════════════════════════════════════════
    RENDERIZAR INFORME
 ══════════════════════════════════════════════════════════════ */
 function renderReport() {
@@ -378,38 +479,80 @@ function renderReport() {
     if (d.controlChart?.summary) {
       const cc = d.controlChart;
       const s  = cc.summary;
+      const stbl = stabilityAnalysis(cc);
+      const violTypes = violationSummary(cc.violations);
       const oocCls = cc.oocCount === 0 ? 'rep-ooc-ok' : 'rep-ooc-bad';
       const oocTxt = cc.oocCount === 0 ? 'Proceso en control estadístico' : `${cc.oocCount} punto${cc.oocCount>1?'s':''} fuera de control (${s.oocRate}%)`;
       sections.push(`
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:16px 0 8px">Carta de Control — ${chartLabel(d.process.chartType)}</div>
         <div class="rep-grid">
           <div class="rep-stat"><div class="rep-stat-lbl">LCS — Límite Superior</div>
-            <div class="rep-stat-val">${fmt(s.ucl)}</div></div>
+            <div class="rep-stat-val">${fmt(s.ucl)}</div><div class="rep-stat-sub">+3σ sobre la línea central</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">LC — Línea Central</div>
-            <div class="rep-stat-val">${fmt(s.cl)}</div></div>
+            <div class="rep-stat-val">${fmt(s.cl)}</div><div class="rep-stat-sub">media de los subgrupos</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">LCI — Límite Inferior</div>
-            <div class="rep-stat-val">${fmt(s.lcl)}</div></div>
+            <div class="rep-stat-val">${fmt(s.lcl)}</div><div class="rep-stat-sub">−3σ bajo la línea central</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Subgrupos</div>
             <div class="rep-stat-val">${cc.totalSubgroups}</div><div class="rep-stat-sub">totales analizados</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Media de puntos</div>
+            <div class="rep-stat-val">${fmt(s.mean)}</div><div class="rep-stat-sub">promedio de los subgrupos</div></div>
           <div class="rep-stat ${oocCls}"><div class="rep-stat-lbl">Estado</div>
             <div class="rep-stat-val" style="font-size:16px">${oocTxt}</div></div>
-        </div>`);
+        </div>
+        <div class="rep-analysis">
+          <span class="tag ${stbl.color}">${stbl.label}</span>
+          <strong>Análisis de estabilidad:</strong> ${stbl.text}
+          ${cc.totalSubgroups < 10 ? ' El número reducido de subgrupos limita la potencia de las pruebas de estabilidad.' : ''}
+          ${cc.totalSubgroups >= 25 ? ' Con ≥25 subgrupos, la estimación de los límites de control es robusta.' : ''}
+        </div>
+        ${violTypes.length ? `<div class="rep-rec-box">
+          <div class="rep-rec-box-title">⚠ Reglas de control violadas</div>
+          ${violTypes.map(v => `<div class="rep-rec-item"><span class="prio warn">Activa</span><span class="desc"><strong>${v.label}:</strong> ${v.detail}</span></div>`).join('')}
+        </div>` : ''}`);
     }
 
     // ── Capability ──
     if (d.capability) {
       const cap = d.capability;
+      const risk = riskLevel(cap);
+      const cpkInfo = cpkInterpretation(cap.cpk);
+      const isOffCenter = cap.cpk < cap.cp - 0.05;
       sections.push(`
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:16px 0 8px">Análisis de Capacidad</div>
         <div class="rep-grid">
-          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Cp</div>
-            <div class="rep-stat-val">${fmt(cap.cp)}</div><div class="rep-stat-sub">capacidad potencial</div></div>
-          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Cpk</div>
-            <div class="rep-stat-val">${fmt(cap.cpk)}</div><div class="rep-stat-sub">capacidad real</div></div>
+          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Cp — Potencial</div>
+            <div class="rep-stat-val">${fmt(cap.cp)}</div><div class="rep-stat-sub">capacidad si el proceso estuviera centrado</div></div>
+          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Cpk — Real</div>
+            <div class="rep-stat-val">${fmt(cap.cpk)}</div><div class="rep-stat-sub">capacidad real (${cpkInfo.label})</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Cpu / Cpl</div>
+            <div class="rep-stat-val">${fmt(cap.cpu)} / ${fmt(cap.cpl)}</div><div class="rep-stat-sub">índices unilateral superior / inferior</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Pp / Ppk</div>
+            <div class="rep-stat-val">${fmt(cap.pp)} / ${fmt(cap.ppk)}</div><div class="rep-stat-sub">rendimiento global del proceso</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">σ — Variabilidad</div>
+            <div class="rep-stat-val">${fmt(cap.sigma)}</div><div class="rep-stat-sub">desviación estándar estimada</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Tolerancia</div>
+            <div class="rep-stat-val">${fmt(cap.tolerance)}</div><div class="rep-stat-sub">LSE − LSI (${d.process.usl}, ${d.process.lsl})</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">PPM total</div>
+            <div class="rep-stat-val">${cap.ppmTotal != null ? fmt(cap.ppmTotal) : '—'}</div><div class="rep-stat-sub">partes por millón fuera de especificación</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">PPM superior</div>
+            <div class="rep-stat-val">${fmt(cap.ppmUpper)}</div><div class="rep-stat-sub">por encima de LSE</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">PPM inferior</div>
+            <div class="rep-stat-val">${fmt(cap.ppmLower)}</div><div class="rep-stat-sub">por debajo de LSI</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Distancia a LSE</div>
+            <div class="rep-stat-val">${fmt(cap.distToUsl)}</div><div class="rep-stat-sub">media − LSE</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Distancia a LSI</div>
+            <div class="rep-stat-val">${fmt(cap.distToLsl)}</div><div class="rep-stat-sub">media − LSI</div></div>
+          ${cap.distToNominal != null ? `<div class="rep-stat"><div class="rep-stat-lbl">Descentrado</div>
+            <div class="rep-stat-val">${fmt(cap.distToNominal)}</div><div class="rep-stat-sub">|media − nominal|</div></div>` : ''}
           <div class="rep-stat"><div class="rep-stat-lbl">Estado</div>
             <div class="rep-stat-val" style="font-size:16px">${cpkLbl}</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">% Fuera de especificación</div>
-            <div class="rep-stat-val">${cap.ppmTotal != null ? (cap.ppmTotal / 10000).toFixed(2) + '%' : '—'}</div></div>
+        </div>
+        <div class="rep-analysis">
+          <span class="tag ${risk.color}">Riesgo ${risk.label}</span>
+          <strong>Interpretación:</strong> Cp = ${fmt(cap.cp)} indica la capacidad potencial si el proceso estuviera centrado. Cpk = ${fmt(cap.cpk)} es la capacidad real considerando la ubicación actual de la media.
+          ${isOffCenter ? `Hay una diferencia de ${fmt(cap.cp - cap.cpk)} entre Cp y Cpk, lo que sugiere que el proceso está descentrado. ` : 'El proceso está razonablemente centrado. '}
+          ${risk.text}
+          ${d.statisticalTests?.normality?.available && !d.statisticalTests.normality.normal ? '<br><br>⚠ <strong>Nota:</strong> Los índices de capacidad asumen normalidad. Como los datos no son normales, estos valores deben interpretarse con precaución.' : ''}
         </div>`);
     }
 
@@ -428,18 +571,27 @@ function renderReport() {
           <div class="rep-stat ${st.normality?.normal ? 'good' : 'warn'}">
             <div class="rep-stat-lbl">Anderson-Darling (Normalidad)</div>
             <div class="rep-stat-val" style="font-size:16px">${st.normality?.normal ? '✅ Normal' : '⚠ No normal'}</div>
-            <div class="rep-stat-sub">p-valor = ${st.normality?.p_value != null ? st.normality.p_value.toFixed(4) : '—'}</div>
+            <div class="rep-stat-sub">A² = ${st.normality?.statistic != null ? st.normality.statistic.toFixed(4) : '—'} · p = ${st.normality?.p_value != null ? st.normality.p_value.toFixed(4) : '—'}</div>
           </div>
           <div class="rep-stat ${st.homoscedasticity?.homoscedastic ? 'good' : 'warn'}">
-            <div class="rep-stat-lbl">Levene (Homogeneidad)</div>
+            <div class="rep-stat-lbl">Levene — Homogeneidad de varianzas</div>
             <div class="rep-stat-val" style="font-size:16px">${st.homoscedasticity?.homoscedastic ? '✅ Varianzas homogéneas' : '⚠ Varianzas heterogéneas'}</div>
-            <div class="rep-stat-sub">p-valor = ${st.homoscedasticity?.p_value != null ? st.homoscedasticity.p_value.toFixed(4) : '—'}</div>
+            <div class="rep-stat-sub">W = ${st.homoscedasticity?.statistic != null ? st.homoscedasticity.statistic.toFixed(4) : '—'} · p = ${st.homoscedasticity?.p_value != null ? st.homoscedasticity.p_value.toFixed(4) : '—'}</div>
           </div>
           <div class="rep-stat ${st.homogeneity?.homogeneous ? 'good' : 'warn'}">
-            <div class="rep-stat-lbl">Kruskal-Wallis (Grupos)</div>
+            <div class="rep-stat-lbl">Kruskal-Wallis — Comparación de grupos</div>
             <div class="rep-stat-val" style="font-size:16px">${st.homogeneity?.homogeneous ? '✅ Grupos homogéneos' : '⚠ Diferencias significativas'}</div>
-            <div class="rep-stat-sub">p-valor = ${st.homogeneity?.p_value != null ? st.homogeneity.p_value.toFixed(4) : '—'}</div>
+            <div class="rep-stat-sub">H = ${st.homogeneity?.statistic != null ? st.homogeneity.statistic.toFixed(4) : '—'} · p = ${st.homogeneity?.p_value != null ? st.homogeneity.p_value.toFixed(4) : '—'}</div>
           </div>
+        </div>
+
+        <div class="rep-analysis">
+          <strong>Interpretación de pruebas:</strong>
+          ${st.normality?.available ? `<br>• <strong>Normalidad:</strong> ${st.normality.interpretation}` : '<br>• <strong>Normalidad:</strong> Prueba no disponible.'}
+          ${st.homoscedasticity?.available ? `<br>• <strong>Homogeneidad:</strong> ${st.homoscedasticity.interpretation}` : '<br>• <strong>Homogeneidad:</strong> Prueba no disponible (se requieren ≥2 subgrupos con ≥2 obs. cada uno).'}
+          ${st.homogeneity?.available ? `<br>• <strong>Grupos:</strong> ${st.homogeneity.interpretation}` : '<br>• <strong>Grupos:</strong> Prueba no disponible (se requieren ≥2 subgrupos).'}
+          ${st.normality?.available && !st.normality.normal ? '<br><br>⚠ <strong>Implicación:</strong> La no-normalidad afecta la interpretación de los índices Cp/Cpk (asumen normalidad) y la probabilidad de falsas alarmas en la carta de control. Considere transformar los datos o usar límites de control no paramétricos.' : ''}
+          ${st.homoscedasticity?.available && !st.homoscedasticity.homoscedastic ? '<br>⚠ <strong>Implicación:</strong> Varianzas heterogéneas entre subgrupos sugieren que la variabilidad del proceso no es constante. Los límites de control calculados con σ global pueden no ser apropiados para todos los subgrupos.' : ''}
         </div>
 
       </div></div>`);
@@ -449,9 +601,15 @@ function renderReport() {
   if (showFase1 && d.histogram) {
     const h = d.histogram;
     if (h.labels && h.midpoints) {
+      const freqs = h.frequencies;
+      const total = freqs.reduce((a, b) => a + b, 0);
+      const maxFreqIdx = freqs.indexOf(Math.max(...freqs));
+      const asymmetry = maxFreqIdx < freqs.length / 2 - 1 ? 'Los datos se concentran hacia el límite inferior (sesgo izquierdo).' : maxFreqIdx > freqs.length / 2 + 1 ? 'Los datos se concentran hacia el límite superior (sesgo derecho).' : 'Los datos presentan una distribución relativamente simétrica.';
+      const hasGaps = freqs.filter(f => f === 0).length > freqs.length * 0.3;
+      const totalPct = total > 0 ? 100 : 0;
       sections.push(`<div class="rep-section">
         <div class="rep-shead"><span class="ico">📊</span><span class="rep-stitle">Fase I — Histograma</span>
-        <span class="rep-ssub">${h.labels.length} intervalos de clase</span></div>
+        <span class="rep-ssub">${h.labels.length} intervalos · rango [${fmt(h.min)}, ${fmt(h.max)}]</span></div>
         <div class="rep-body">
 
           <div class="rep-table-wrap">
@@ -462,16 +620,83 @@ function renderReport() {
                   const binW = h.binWidth || 0;
                   const lo = (m - binW/2).toFixed(3);
                   const hi = (m + binW/2).toFixed(3);
-                  const freq = h.frequencies[i] || 0;
-                  const pct = (freq / h.frequencies.reduce((a,b)=>a+b,0) * 100).toFixed(1);
-                  return `<tr><td>${lo} — ${hi}</td><td>${freq}</td><td>${pct}%</td></tr>`;
+                  const freq = freqs[i] || 0;
+                  const pct = total > 0 ? (freq / total * 100).toFixed(1) : '0.0';
+                  const pctBar = total > 0 ? Math.round(freq / total * 20) : 0;
+                  return `<tr><td>${lo} — ${hi}</td><td>${freq}</td><td>${pct}% <span style="display:inline-block;width:${pctBar*2}px;height:8px;background:var(--primary);border-radius:4px;vertical-align:middle;margin-left:4px"></span></td></tr>`;
                 }).join('')}
               </tbody>
             </table>
           </div>
 
+          <div class="rep-analysis">
+            <strong>Análisis de distribución:</strong><br>
+            • ${asymmetry}
+            ${hasGaps ? '<br>• Se observan intervalos con frecuencia cero — posible estratificación o datos faltantes entre ciertos rangos.' : ''}
+            ${h.binWidth > 0 ? `<br>• Ancho de intervalo: ${fmt(h.binWidth)}. ${freqs.length < 8 ? 'El número reducido de intervalos puede ocultar detalles de la distribución.' : freqs.length > 20 ? 'El número elevado de intervalos puede generar ruido visual.' : 'El número de intervalos es adecuado para visualizar la distribución.'}` : ''}
+            ${d.process.usl != null && d.process.lsl != null ? `<br>• Límites de especificación: LSI=${fmt(d.process.lsl)}, LSE=${fmt(d.process.usl)}. ${h.max > d.process.usl ? '⚠ Hay datos que superan el LSE.' : ''} ${h.min < d.process.lsl ? '⚠ Hay datos por debajo del LSI.' : ''}` : ''}
+          </div>
+
         </div></div>`);
     }
+  }
+
+  // ══ FASE I — EVALUACIÓN INTEGRAL Y RECOMENDACIONES ═══════
+  if (showFase1 && (d.capability || d.controlChart || d.statisticalTests)) {
+    const cap = d.capability;
+    const cc = d.controlChart;
+    const st = d.statisticalTests;
+    const stab = stabilityAnalysis(cc);
+    const isStable = cc && cc.oocCount === 0;
+    const isCapable = cap && cap.cpk >= 1.33;
+    const isMarginal = cap && cap.cpk >= 1.0 && cap.cpk < 1.33;
+    const isNormal = st?.normality?.available ? st.normality.normal : null;
+    const recs = crossAnalysis(d);
+    const risk = riskLevel(cap);
+
+    let matrixCls, matrixLbl, matrixDetail;
+    if (isStable && isCapable) { matrixCls = 'good'; matrixLbl = '✅ ESTABLE Y CAPAZ'; matrixDetail = 'El proceso cumple con los requisitos de estabilidad y capacidad. Ideal para producción sostenible.'; }
+    else if (isStable && isMarginal) { matrixCls = 'warn'; matrixLbl = '⚠ ESTABLE PERO MARGINAL'; matrixDetail = 'El proceso es estable pero la capacidad es marginal. Requiere monitoreo continuo y acciones de mejora para alcanzar Cpk ≥ 1.33.'; }
+    else if (isStable && cap && cap.cpk < 1.0) { matrixCls = 'danger'; matrixLbl = '❌ ESTABLE PERO NO CAPAZ'; matrixDetail = 'Proceso estable pero incapaz de producir dentro de especificaciones. Urgente reducir variabilidad o ajustar tolerancias.'; }
+    else if (!isStable && cap && isCapable) { matrixCls = 'warn'; matrixLbl = '⚠ INESTABLE PERO CAPAZ'; matrixDetail = 'Aunque los índices de capacidad son buenos, la inestabilidad invalida su interpretación. Primero estabilizar el proceso.'; }
+    else if (!isStable && cap && isMarginal) { matrixCls = 'danger'; matrixLbl = '❌ INESTABLE Y MARGINAL'; matrixDetail = 'El proceso es inestable y marginalmente capaz. Abordar causas asignables y luego mejorar capacidad.'; }
+    else if (!isStable && cap) { matrixCls = 'danger'; matrixLbl = '❌ INESTABLE Y NO CAPAZ'; matrixDetail = 'Situación crítica: inestable e incapaz. Detener producción si es posible, identificar causas asignables, reducir variabilidad.'; }
+    else if (!cc && cap) { matrixCls = 'info'; matrixLbl = 'ℹ SIN CARTA DE CONTROL'; matrixDetail = 'No hay datos de carta de control para evaluar estabilidad. La capacidad se calculó sobre datos agrupados.'; }
+    else { matrixCls = 'info'; matrixLbl = 'ℹ DATOS INSUFICIENTES'; matrixDetail = 'No hay suficientes datos de Fase I para una evaluación integral.'; }
+
+    sections.push(`<div class="rep-section">
+      <div class="rep-shead"><span class="ico">🎯</span><span class="rep-stitle">Evaluación Integral</span>
+      <span class="rep-ssub">Diagnóstico cruzado de estabilidad, capacidad y pruebas estadísticas</span></div>
+      <div class="rep-body">
+
+        <div class="rep-grid">
+          <div class="rep-stat ${stab.color}"><div class="rep-stat-lbl">Estabilidad</div>
+            <div class="rep-stat-val" style="font-size:16px">${stab.label}</div>
+            <div class="rep-stat-sub">${cc ? cc.totalSubgroups + ' subgrupos analizados' : 'No evaluado'}</div></div>
+          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Capacidad (Cpk)</div>
+            <div class="rep-stat-val" style="font-size:16px">${cap ? fmt(cap.cpk) : '—'}</div>
+            <div class="rep-stat-sub">${cpkLbl}</div></div>
+          <div class="rep-stat ${isNormal === true ? 'good' : isNormal === false ? 'warn' : 'info'}"><div class="rep-stat-lbl">Normalidad</div>
+            <div class="rep-stat-val" style="font-size:16px">${isNormal === true ? '✅ Normal' : isNormal === false ? '⚠ No normal' : '—'}</div>
+            <div class="rep-stat-sub">Anderson-Darling</div></div>
+          <div class="rep-stat ${risk.color}"><div class="rep-stat-lbl">Riesgo de defectos</div>
+            <div class="rep-stat-val" style="font-size:16px">${risk.label}</div>
+            <div class="rep-stat-sub">${cap ? fmt(cap.ppmTotal) + ' ppm' : '—'}</div></div>
+        </div>
+
+        <div class="rep-analysis" style="border-left-color: ${matrixCls === 'good' ? 'var(--success)' : matrixCls === 'warn' ? 'var(--warning)' : matrixCls === 'danger' ? 'var(--danger)' : 'var(--primary)'}">
+          <span class="tag ${matrixCls}">${matrixLbl}</span>
+          <strong>Diagnóstico integral:</strong> ${matrixDetail}
+          ${isNormal === false ? ' La no-normalidad añade incertidumbre a los índices de capacidad.' : ''}
+          ${cap && cap.cp > 1.67 ? ' La capacidad potencial (Cp) es excelente, lo que indica que hay oportunidad de mejorar la capacidad real centrando el proceso.' : ''}
+        </div>
+
+        ${recs.length ? `<div class="rep-rec-box">
+          <div class="rep-rec-box-title">📋 Recomendaciones priorizadas</div>
+          ${recs.map(r => `<div class="rep-rec-item"><span class="prio ${r.prio}">${r.prio === 'high' ? 'Alta' : r.prio === 'med' ? 'Media' : 'Baja'}</span><span class="desc">${r.text}</span></div>`).join('')}
+        </div>` : ''}
+
+      </div></div>`);
   }
 
   // ══ FASE II — MONITOREO ═══════════════════════════════════
@@ -559,28 +784,63 @@ function renderReport() {
 
   // ══ CONCLUSIONES ══════════════════════════════════════════
   if (showFase1) {
-    let conclusion = '';
-    if (d.capability) {
-      const cap = d.capability;
-      if (cap.cpk >= 1.33) {
-        conclusion = 'El proceso es <strong>estadísticamente capaz</strong> (Cpk ≥ 1.33). Satisface las especificaciones con margen.';
-      } else if (cap.cpk >= 1.0) {
-        conclusion = 'El proceso es <strong>marginalmente capaz</strong> (1.0 ≤ Cpk < 1.33). Se requiere monitoreo estrecho.';
-      } else {
-        conclusion = 'El proceso <strong>no es capaz</strong> (Cpk < 1.0). Se requieren acciones correctivas para reducir variabilidad o ajustar la media.';
+    const cap = d.capability;
+    const cc = d.controlChart;
+    const st = d.statisticalTests;
+    const isNormal = st?.normality?.available ? st.normality.normal : null;
+    const recs = crossAnalysis(d);
+    const highPrio = recs.filter(r => r.prio === 'high');
+    const hasHigh = highPrio.length > 0;
+
+    let par1 = '', par2 = '', par3 = '';
+
+    // Párrafo 1: Verdicto general
+    if (cap && cc && cc.oocCount === 0 && cap.cpk >= 1.33) {
+      par1 = 'El proceso se encuentra en <strong>control estadístico</strong> y es <strong>capaz</strong> (Cpk = ' + fmt(cap.cpk) + '). Está operando dentro de los límites de control y cumple las especificaciones con margen.';
+      if (cap.cpk >= 1.67) par1 += ' La capacidad es excelente (Cpk ≥ 1.67), lo que indica un proceso de alta calidad.';
+    } else if (cap && cc && cc.oocCount === 0 && cap.cpk >= 1.0) {
+      par1 = 'El proceso es <strong>estable</strong> pero su capacidad es <strong>marginal</strong> (Cpk = ' + fmt(cap.cpk) + '). Aunque no hay causas asignables, la variabilidad común es excesiva para las especificaciones actuales.';
+    } else if (cap && cc && cc.oocCount === 0 && cap.cpk < 1.0) {
+      par1 = 'El proceso es <strong>estable</strong> pero <strong>no es capaz</strong> (Cpk = ' + fmt(cap.cpk) + '). Produce un ' + (cap.ppmTotal / 10000).toFixed(2) + '% de piezas fuera de especificación (~' + fmt(cap.ppmTotal) + ' ppm).';
+    } else if (cap && cc && cc.oocCount > 0) {
+      par1 = 'El proceso presenta <strong>inestabilidad</strong> (' + cc.oocCount + ' punto' + (cc.oocCount > 1 ? 's' : '') + ' fuera de control) y una capacidad ' + (cap.cpk >= 1.33 ? 'aparentemente buena' : cap.cpk >= 1.0 ? 'marginal' : 'insuficiente') + ' (Cpk = ' + fmt(cap.cpk) + '). Los índices de capacidad no son fiables hasta estabilizar el proceso.';
+    } else if (cap) {
+      par1 = 'No se pudo evaluar la estabilidad por falta de datos de carta de control. La capacidad calculada (Cpk = ' + fmt(cap.cpk) + ') asume que el proceso está estable, lo cual debe verificarse.';
+    } else if (cc) {
+      par1 = 'No hay límites de especificación definidos, por lo que no se puede calcular la capacidad del proceso. La carta de control muestra un proceso ' + (cc.oocCount === 0 ? 'estable' : 'con señales OOC') + '.';
+    } else {
+      par1 = 'No hay suficientes datos de Fase I para generar una conclusión sustancial.';
+    }
+
+    // Párrafo 2: Análisis de pruebas estadísticas
+    if (st) {
+      if (isNormal === true) {
+        par2 = 'Los datos siguen una distribución normal (Anderson-Darling, p > 0.05), lo que valida el uso de índices Cp/Cpk y la interpretación de la carta de control basada en ±3σ.';
+      } else if (isNormal === false) {
+        par2 = 'Los datos <strong>no son normales</strong> (Anderson-Darling, p = ' + st.normality.p_value.toFixed(4) + '). Los índices de capacidad deben interpretarse con precaución. Se recomienda transformación Box-Cox o usar técnicas no paramétricas.';
+      }
+      if (st.homoscedasticity?.available && !st.homoscedasticity?.homoscedastic) {
+        par2 += ' Además, las varianzas no son homogéneas entre subgrupos (Levene, p = ' + st.homoscedasticity.p_value.toFixed(4) + '), lo que sugiere que la variabilidad no es constante.';
       }
     }
-    if (d.controlChart?.oocCount > 0) {
-      conclusion += ' Se detectaron puntos fuera de control estadístico en Fase I — revisar causas asignables antes de establecer límites definitivos.';
+
+    // Párrafo 3: Recomendaciones principales y cierre
+    if (hasHigh) {
+      par3 = '<strong>Acciones prioritarias requeridas:</strong><ul style="margin:6px 0 0 16px;padding:0">';
+      highPrio.forEach(r => { par3 += '<li>' + r.text + '</li>'; });
+      par3 += '</ul>';
+    } else if (cap && cap.cpk >= 1.33 && cc && cc.oocCount === 0) {
+      par3 = 'Se recomienda mantener el monitoreo de rutina y proceder a Fase II para vigilancia continua. Considere reducir la frecuencia de muestreo si el proceso se mantiene estable y capaz.';
+    } else if (cap && cap.cpk >= 1.0) {
+      par3 = 'Se recomienda implementar un plan de mejora enfocado en reducir la variabilidad y/o centrar la media hacia el nominal para alcanzar Cpk ≥ 1.33.';
     }
-    if (d.controlChart?.oocCount === 0 && d.controlChart?.totalSubgroups >= 20) {
-      conclusion += ' La carta de control no muestra señales OOC — el proceso parece estable y apto para Fase II.';
-    }
-    if (!conclusion) conclusion = 'No hay suficientes datos de Fase I para generar una conclusión sustancial.';
+
+    const fullConclusion = [par1, par2, par3].filter(Boolean).join('</p><p style="margin-top:8px">');
 
     sections.push(`
       <div class="rep-conclusion">
-        <strong>📌 Conclusión:</strong> ${conclusion}
+        <strong>📌 Conclusión general</strong>
+        <p style="margin:6px 0 0">${fullConclusion}</p>
       </div>`);
   }
 

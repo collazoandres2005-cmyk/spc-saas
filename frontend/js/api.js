@@ -314,6 +314,7 @@ function initSidebar(activePage) {
   const topPages = [
     { id: 'dashboard',    href: '/dashboard.html',    label: 'Panel de Control'   },
     { id: 'measurements', href: '/measurements.html', label: 'Historial de datos' },
+    { id: 'report',       href: '/report.html',       label: 'Informes'           },
   ];
 
   const fase1Pages = [

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informe de Análisis — SPC</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* ── Layout de informe ──────────────────────────────────── */
+    .report-sections { display: flex; flex-direction: column; gap: 20px; }
+
+    .rep-header {
+      text-align: center; padding: 28px 20px 18px;
+      background: var(--glass-card); border: 1px solid var(--glass-border);
+      backdrop-filter: var(--glass-blur); border-radius: var(--radius);
+      position: relative; overflow: hidden;
+    }
+    .rep-header::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #38bdf8, #a78bfa, #4ade80);
+    }
+    .rep-h1 { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -.5px; }
+    .rep-h1-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .rep-meta { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--text-sec); }
+    .rep-meta span { display: inline-flex; align-items: center; gap: 4px; }
+
+    .rep-section {
+      background: var(--glass-card); border: 1px solid var(--glass-border);
+      backdrop-filter: var(--glass-blur); border-radius: var(--radius); overflow: hidden;
+    }
+    .rep-shead {
+      padding: 14px 20px; border-bottom: 1px solid var(--glass-border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .rep-shead .ico { font-size: 18px; }
+    .rep-stitle { font-size: 15px; font-weight: 800; color: var(--text); }
+    .rep-ssub  { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+    .rep-body { padding: 16px 20px; }
+
+    .rep-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;
+    }
+    .rep-grid.wide { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .rep-stat {
+      background: rgba(255,255,255,.04); border-radius: 6px; padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .rep-stat-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin-bottom: 2px; }
+    .rep-stat-val { font-size: 20px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+    .rep-stat-sub { font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+
+    .rep-stat.good { border-left: 3px solid var(--success); }
+    .rep-stat.warn { border-left: 3px solid var(--warning); }
+    .rep-stat.danger { border-left: 3px solid var(--danger); }
+
+    .rep-table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--glass-border); margin-top: 12px; }
+    .rep-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .rep-table thead tr { background: rgba(255,255,255,.06); }
+    .rep-table thead th {
+      padding: 7px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .3px; color: var(--text-sec); text-align: right; white-space: nowrap;
+      border: 1px solid var(--glass-border);
+    }
+    .rep-table thead th:first-child { text-align: left; }
+    .rep-table tbody td {
+      padding: 6px 12px; border: 1px solid var(--glass-border);
+      text-align: right; font-variant-numeric: tabular-nums; color: var(--text);
+    }
+    .rep-table tbody td:first-child { text-align: left; font-weight: 600; }
+
+    .rep-rec { padding: 10px 14px; border-radius: 6px; font-size: 12px; line-height: 1.5; margin-bottom: 8px; border-left: 3px solid; }
+    .rep-rec.good   { background: rgba(74,222,128,.10); border-color: var(--success); color: var(--success); }
+    .rep-rec.warn   { background: rgba(251,146,60,.10); border-color: var(--warning); color: var(--warning); }
+    .rep-rec.info   { background: rgba(56,189,248,.10); border-color: var(--primary); color: #7dd3fc; }
+    .rep-rec.danger { background: rgba(248,113,113,.10); border-color: var(--danger); color: var(--danger); }
+
+    .rep-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+    .rep-empty-icon { font-size: 32px; margin-bottom: 8px; }
+    .rep-empty-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+
+    .rep-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .rep-proc-sel { min-width: 300px; }
+    .btn-print { display: inline-flex; align-items: center; gap: 6px; }
+
+    .rep-ooc-bad { color: var(--danger); }
+    .rep-ooc-ok  { color: var(--success); }
+
+    .cfg-input {
+      padding: 7px 10px; border: 1px solid var(--glass-border);
+      border-radius: var(--radius); font-size: 14px; font-weight: 600;
+      color: var(--text); background: rgba(255,255,255,.05);
+      backdrop-filter: var(--glass-blur);
+    }
+    .cfg-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56,189,248,.15); }
+
+    .rep-conclusion {
+      background: linear-gradient(135deg, rgba(56,189,248,.08), rgba(167,139,250,.08));
+      border: 1px solid rgba(56,189,248,.2); padding: 16px 20px; border-radius: var(--radius);
+      font-size: 13px; line-height: 1.7; color: var(--text-sec);
+    }
+    .rep-conclusion strong { color: var(--text); }
+
+    /* ── Barra de carga ─────────────────────────────────────── */
+    .loading-dots::after {
+      content: ''; animation: dots 1.3s steps(4) infinite;
+    }
+    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+
+    /* ── Selector de fase ───────────────────────────────────── */
+    .phase-tabs { display: flex; gap: 4px; }
+    .phase-tab {
+      padding: 6px 16px; font-size: 12px; font-weight: 700; cursor: pointer;
+      background: rgba(255,255,255,.04); color: var(--text-muted); border: none;
+      border-radius: 6px; transition: background .12s, color .12s;
+    }
+    .phase-tab.active { background: var(--primary); color: #0f172a; }
+    .phase-tab:not(.active):hover { background: rgba(255,255,255,.08); color: var(--text); }
+
+    /* ── Print ──────────────────────────────────────────────── */
+    @media print {
+      body { background: #fff !important; }
+      .sidebar, .top-bar, .rep-controls, .btn-print, .sidebar-backdrop { display: none !important; }
+      .main-content { margin-left: 0 !important; padding: 0 !important; }
+      .rep-header { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; }
+      .rep-header::before { background: linear-gradient(90deg, #2563eb, #7c3aed, #16a34a) !important; }
+      .rep-h1 { color: #0f172a !important; }
+      .rep-h1-sub, .rep-meta, .rep-ssub { color: #475569 !important; }
+      .rep-section { background: #fff !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; break-inside: avoid; }
+      .rep-shead { border-bottom: 1px solid #e2e8f0 !important; }
+      .rep-stitle { color: #0f172a !important; }
+      .rep-stat { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; }
+      .rep-stat-lbl { color: #64748b !important; }
+      .rep-stat-val { color: #0f172a !important; }
+      .rep-stat-sub { color: #475569 !important; }
+      .rep-table thead tr { background: #f1f5f9 !important; }
+      .rep-table thead th { color: #475569 !important; border-color: #e2e8f0 !important; }
+      .rep-table tbody td { color: #0f172a !important; border-color: #e2e8f0 !important; }
+      .rep-rec { background: #f8fafc !important; }
+      .rep-rec.good { border-color: #16a34a !important; color: #15803d !important; }
+      .rep-rec.warn { border-color: #d97706 !important; color: #92400e !important; }
+      .rep-rec.info { border-color: #2563eb !important; color: #1e40af !important; }
+      .rep-rec.danger { border-color: #dc2626 !important; color: #991b1b !important; }
+      .rep-conclusion { background: #f0f9ff !important; border-color: #93c5fd !important; color: #334155 !important; }
+      .rep-conclusion strong { color: #0f172a !important; }
+      .rep-empty { color: #64748b !important; }
+      .rep-empty-title { color: #0f172a !important; }
+      .rep-stat.good { border-left-color: #16a34a !important; }
+      .rep-stat.warn { border-left-color: #d97706 !important; }
+      .rep-stat.danger { border-left-color: #dc2626 !important; }
+      .rep-ooc-bad { color: #dc2626 !important; }
+      .rep-ooc-ok  { color: #16a34a !important; }
+    }
+  </style>
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">Informes de Análisis</div>
+        <span class="top-bar-breadcrumb">
+          Reportes sustanciales — Fase I, Fase II y Planes de Muestreo
+        </span>
+      </div>
+      <div class="top-bar-right">
+        <span class="sub-badge" id="sub-status-badge">...</span>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- ══ CONTROLES ══════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">Generar Informe</div>
+          <span style="font-size:11px;color:var(--text-muted)">
+            Selecciona un proceso y las secciones a incluir
+          </span>
+        </div>
+        <div style="padding:14px 20px">
+          <div class="rep-controls">
+            <select id="proc-sel" class="cfg-input rep-proc-sel" onchange="loadProcess()">
+              <option value="">— Selecciona un proceso —</option>
+            </select>
+            <div class="phase-tabs">
+              <button class="phase-tab active" data-phase="all" onclick="setPhase('all')">Completo</button>
+              <button class="phase-tab" data-phase="fase1" onclick="setPhase('fase1')">Fase I</button>
+              <button class="phase-tab" data-phase="fase2" onclick="setPhase('fase2')">Fase II</button>
+              <button class="phase-tab" data-phase="muestreo" onclick="setPhase('muestreo')">Muestreo</button>
+            </div>
+            <button class="btn btn-primary btn-print" onclick="window.print()" id="btn-print" disabled>
+              📄 Guardar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CONTENIDO DEL INFORME ══════════════════════════════ -->
+      <div id="report-content">
+
+        <div class="rep-empty">
+          <div class="rep-empty-icon">📊</div>
+          <div class="rep-empty-title">Selecciona un proceso</div>
+          <div class="rep-empty-sub">Elige un proceso arriba para generar un informe sustancial con análisis completo.</div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+<script src="/js/config.js?v=2"></script>
+<script src="/js/api.js?v=2"></script>
+<script>
+if (!requireLogin()) {}
+initSidebar('report');
+initTopBar('Informes de Análisis');
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO
+══════════════════════════════════════════════════════════════ */
+let phase        = 'all';
+let reportData   = null;
+let processName  = '';
+let companyName  = '';
+
+/* ══════════════════════════════════════════════════════════════
+   INICIALIZACIÓN
+══════════════════════════════════════════════════════════════ */
+async function init() {
+  const list = await processesApi.list().catch(() => []);
+  const sel  = document.getElementById('proc-sel');
+  list.forEach(p => sel.appendChild(new Option(
+    `${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`, p.id
+  )));
+  const comp = Auth.getCompany();
+  companyName = comp?.name || 'SPC SaaS';
+
+  const pid = new URLSearchParams(location.search).get('process_id');
+  if (pid) { sel.value = pid; await loadProcess(); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CAMBIAR FASE
+══════════════════════════════════════════════════════════════ */
+function setPhase(p) {
+  phase = p;
+  document.querySelectorAll('.phase-tab').forEach(el => el.classList.toggle('active', el.dataset.phase === p));
+  if (reportData) renderReport();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CARGAR PROCESO
+══════════════════════════════════════════════════════════════ */
+async function loadProcess() {
+  const pid = document.getElementById('proc-sel').value;
+  if (!pid) {
+    document.getElementById('report-content').innerHTML = `
+      <div class="rep-empty">
+        <div class="rep-empty-icon">📊</div>
+        <div class="rep-empty-title">Selecciona un proceso</div>
+        <div class="rep-empty-sub">Elige un proceso arriba para generar un informe sustancial.</div>
+      </div>`;
+    document.getElementById('btn-print').disabled = true;
+    return;
+  }
+
+  document.getElementById('report-content').innerHTML = `
+    <div class="rep-empty">
+      <div class="rep-empty-icon">⏳</div>
+      <div class="rep-empty-title">Generando informe...</div>
+      <div class="rep-empty-sub">Consultando datos de análisis de Fase I, Fase II y muestreo.</div>
+    </div>`;
+
+  try {
+    // Fetch process info first
+    const proc = await processesApi.get(pid);
+    processName = proc.name;
+
+    // Fetch all analysis data in parallel
+    const [reportRes, monitoringData] = await Promise.all([
+      apiFetch(`/analysis/report?process_id=${pid}`).catch(() => null),
+      // Try loading Phase 2 cache from localStorage
+      Promise.resolve().then(() => {
+        try {
+          const raw = localStorage.getItem(`spc_p2_${pid}_xbar_r`);
+          return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+      })
+    ]);
+
+    if (!reportRes) {
+      document.getElementById('report-content').innerHTML = `
+        <div class="rep-empty">
+          <div class="rep-empty-icon">⚠️</div>
+          <div class="rep-empty-title">Sin datos disponibles</div>
+          <div class="rep-empty-sub">El proceso no tiene datos de Fase I. Ingresa mediciones en Cartas de Control primero.</div>
+        </div>`;
+      document.getElementById('btn-print').disabled = true;
+      return;
+    }
+
+    reportData = { process: reportRes, monitoring: monitoringData };
+    document.getElementById('btn-print').disabled = false;
+    renderReport();
+
+  } catch (err) {
+    document.getElementById('report-content').innerHTML = `
+      <div class="rep-empty">
+        <div class="rep-empty-icon">❌</div>
+        <div class="rep-empty-title">Error al generar informe</div>
+        <div class="rep-empty-sub">${escHtml(err.message)}</div>
+      </div>`;
+    document.getElementById('btn-print').disabled = true;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDERIZAR INFORME
+══════════════════════════════════════════════════════════════ */
+function renderReport() {
+  const d = reportData.process;
+  if (!d) return;
+
+  const now = new Date().toLocaleDateString('es-MX', {
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const showFase1   = phase === 'all' || phase === 'fase1';
+  const showFase2   = phase === 'all' || phase === 'fase2';
+  const showMuestreo = phase === 'all' || phase === 'muestreo';
+
+  const sections = [];
+
+  // ══ ENCABEZADO ══════════════════════════════════════════════
+  sections.push(`
+    <div class="rep-header">
+      <div class="rep-h1">Informe de Análisis Estadístico</div>
+      <div class="rep-h1-sub">${escHtml(companyName)} — ${escHtml(d.process.name)}</div>
+      <div class="rep-meta">
+        <span>📅 ${now}</span>
+        <span>📋 ${d.process.chartType ? chartLabel(d.process.chartType) : '—'}</span>
+        <span>📏 ${d.dataSummary.n} mediciones</span>
+        ${d.process.unit ? `<span>📐 ${escHtml(d.process.unit)}</span>` : ''}
+      </div>
+    </div>`);
+
+  // ══ FASE I — RESUMEN DE DATOS ═══════════════════════════════
+  if (showFase1 && d.dataSummary) {
+    const ds = d.dataSummary;
+    const capable = d.capability;
+    const hasSpecs = d.process.usl != null && d.process.lsl != null;
+    const cpkCls = capable?.cpk >= 1.33 ? 'good' : capable?.cpk >= 1.0 ? 'warn' : 'danger';
+    const cpkLbl = capable?.cpk >= 1.33 ? 'Capaz' : capable?.cpk >= 1.0 ? 'Marginal' : 'No capaz';
+
+    sections.push(`<div class="rep-section">
+      <div class="rep-shead"><span class="ico">📈</span><span class="rep-stitle">Fase I — Estabilización</span>
+      <span class="rep-ssub">${ds.n} mediciones · ${hasSpecs ? 'LSE='+fmt(d.process.usl)+' LSI='+fmt(d.process.lsl) : 'Sin especificaciones'}</span></div>
+      <div class="rep-body">
+
+        <div class="rep-grid wide" style="margin-bottom:12px">
+          <div class="rep-stat"><div class="rep-stat-lbl">n — Mediciones</div>
+            <div class="rep-stat-val">${ds.n}</div><div class="rep-stat-sub">tamaño de muestra</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Media (X̄)</div>
+            <div class="rep-stat-val">${fmt(ds.mean)}</div><div class="rep-stat-sub">promedio general</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Desv. Estándar (σ)</div>
+            <div class="rep-stat-val">${fmt(ds.stdDev)}</div><div class="rep-stat-sub">variabilidad estimada</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Mínimo</div>
+            <div class="rep-stat-val">${fmt(ds.min)}</div><div class="rep-stat-sub">valor mínimo</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Máximo</div>
+            <div class="rep-stat-val">${fmt(ds.max)}</div><div class="rep-stat-sub">valor máximo</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Rango</div>
+            <div class="rep-stat-val">${fmt(ds.range)}</div><div class="rep-stat-sub">amplitud total</div></div>
+        </div>`;
+
+    // ── Control Chart Summary ──
+    if (d.controlChart?.summary) {
+      const cc = d.controlChart;
+      const s  = cc.summary;
+      const oocCls = cc.oocCount === 0 ? 'rep-ooc-ok' : 'rep-ooc-bad';
+      const oocTxt = cc.oocCount === 0 ? 'Proceso en control estadístico' : `${cc.oocCount} punto${cc.oocCount>1?'s':''} fuera de control (${s.oocRate}%)`;
+      sections.push(`
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:16px 0 8px">Carta de Control — ${chartLabel(d.process.chartType)}</div>
+        <div class="rep-grid">
+          <div class="rep-stat"><div class="rep-stat-lbl">LCS — Límite Superior</div>
+            <div class="rep-stat-val">${fmt(s.ucl)}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">LC — Línea Central</div>
+            <div class="rep-stat-val">${fmt(s.cl)}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">LCI — Límite Inferior</div>
+            <div class="rep-stat-val">${fmt(s.lcl)}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Subgrupos</div>
+            <div class="rep-stat-val">${cc.totalSubgroups}</div><div class="rep-stat-sub">totales analizados</div></div>
+          <div class="rep-stat ${oocCls}"><div class="rep-stat-lbl">Estado</div>
+            <div class="rep-stat-val" style="font-size:16px">${oocTxt}</div></div>
+        </div>`);
+    }
+
+    // ── Capability ──
+    if (d.capability) {
+      const cap = d.capability;
+      sections.push(`
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:16px 0 8px">Análisis de Capacidad</div>
+        <div class="rep-grid">
+          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Cp</div>
+            <div class="rep-stat-val">${fmt(cap.cp)}</div><div class="rep-stat-sub">capacidad potencial</div></div>
+          <div class="rep-stat ${cpkCls}"><div class="rep-stat-lbl">Cpk</div>
+            <div class="rep-stat-val">${fmt(cap.cpk)}</div><div class="rep-stat-sub">capacidad real</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Estado</div>
+            <div class="rep-stat-val" style="font-size:16px">${cpkLbl}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">% Fuera de especificación</div>
+            <div class="rep-stat-val">${cap.pctOutOfSpec != null ? cap.pctOutOfSpec.toFixed(2) + '%' : '—'}</div></div>
+        </div>`);
+    }
+
+    sections.push(`</div></div>`);
+  }
+
+  // ══ FASE I — PRUEBAS ESTADÍSTICAS ══════════════════════════
+  if (showFase1 && d.statisticalTests) {
+    const st = d.statisticalTests;
+    sections.push(`<div class="rep-section">
+      <div class="rep-shead"><span class="ico">🔬</span><span class="rep-stitle">Fase I — Pruebas Estadísticas</span>
+      <span class="rep-ssub">Normalidad, homogeneidad de varianzas y comparación de grupos</span></div>
+      <div class="rep-body">
+
+        <div class="rep-grid">
+          <div class="rep-stat ${st.andersonDarling?.normal ? 'good' : 'warn'}">
+            <div class="rep-stat-lbl">Anderson-Darling (Normalidad)</div>
+            <div class="rep-stat-val" style="font-size:16px">${st.andersonDarling?.normal ? '✅ Normal' : '⚠ No normal'}</div>
+            <div class="rep-stat-sub">p-valor = ${st.andersonDarling?.pValue != null ? st.andersonDarling.pValue.toFixed(4) : '—'}</div>
+          </div>
+          <div class="rep-stat ${st.levene?.homogeneous ? 'good' : 'warn'}">
+            <div class="rep-stat-lbl">Levene (Homogeneidad)</div>
+            <div class="rep-stat-val" style="font-size:16px">${st.levene?.homogeneous ? '✅ Varianzas homogéneas' : '⚠ Varianzas heterogéneas'}</div>
+            <div class="rep-stat-sub">p-valor = ${st.levene?.pValue != null ? st.levene.pValue.toFixed(4) : '—'}</div>
+          </div>
+          <div class="rep-stat ${st.kruskalWallis?.different ? 'warn' : 'good'}">
+            <div class="rep-stat-lbl">Kruskal-Wallis (Grupos)</div>
+            <div class="rep-stat-val" style="font-size:16px">${st.kruskalWallis?.different ? '⚠ Diferencias significativas' : '✅ Grupos homogéneos'}</div>
+            <div class="rep-stat-sub">p-valor = ${st.kruskalWallis?.pValue != null ? st.kruskalWallis.pValue.toFixed(4) : '—'}</div>
+          </div>
+        </div>
+
+      </div></div>`);
+  }
+
+  // ══ FASE I — HISTOGRAMA ════════════════════════════════════
+  if (showFase1 && d.histogram) {
+    const h = d.histogram;
+    if (h.bins && h.midpoints) {
+      sections.push(`<div class="rep-section">
+        <div class="rep-shead"><span class="ico">📊</span><span class="rep-stitle">Fase I — Histograma</span>
+        <span class="rep-ssub">${h.bins.length} intervalos de clase</span></div>
+        <div class="rep-body">
+
+          <div class="rep-table-wrap">
+            <table class="rep-table">
+              <thead><tr><th>Intervalo</th><th>Frecuencia</th><th>%</th></tr></thead>
+              <tbody>
+                ${h.midpoints.map((m, i) => {
+                  const binW = h.binWidth || 0;
+                  const lo = (m - binW/2).toFixed(3);
+                  const hi = (m + binW/2).toFixed(3);
+                  const freq = h.frequencies[i] || 0;
+                  const pct = (freq / h.frequencies.reduce((a,b)=>a+b,0) * 100).toFixed(1);
+                  return `<tr><td>${lo} — ${hi}</td><td>${freq}</td><td>${pct}%</td></tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+
+        </div></div>`);
+    }
+  }
+
+  // ══ FASE II — MONITOREO ═══════════════════════════════════
+  if (showFase2) {
+    const mon = reportData.monitoring;
+    sections.push(`<div class="rep-section">
+      <div class="rep-shead"><span class="ico">📋</span><span class="rep-stitle">Fase II — Monitoreo SPC</span>
+      <span class="rep-ssub">Sesión de monitoreo en tiempo real</span></div>
+      <div class="rep-body">`);
+
+    if (mon && mon.sessionSubgroups?.length > 0) {
+      const sg = mon.sessionSubgroups;
+      const means = mon.sessionMeans || [];
+      const meanVal = means.length ? means.reduce((a,b)=>a+b,0)/means.length : null;
+      sections.push(`
+        <div class="rep-grid">
+          <div class="rep-stat"><div class="rep-stat-lbl">Subgrupos en Fase II</div>
+            <div class="rep-stat-val">${sg.length}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Media general Fase II</div>
+            <div class="rep-stat-val">${fmt(meanVal)}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Total entradas</div>
+            <div class="rep-stat-val">${mon.sessionCount || sg.length}</div></div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-sec);line-height:1.6">
+          La sesión de monitoreo registró <strong>${sg.length}</strong> subgrupos en Fase II.
+          ${meanVal != null ? `La media acumulada de Fase II es <strong>${fmt(meanVal)}</strong>, ` : ''}
+          comparada con la línea central de Fase I para evaluar la estabilidad continua del proceso.
+        </div>`);
+
+      // Tabla de entradas recientes
+      const recent = mon.sessionLog?.slice(0, 20) || [];
+      if (recent.length) {
+        sections.push(`
+          <div class="rep-table-wrap">
+            <table class="rep-table">
+              <thead><tr><th>#</th><th>Subgrupo</th><th>Valor</th><th>Estado</th></tr></thead>
+              <tbody>
+                ${recent.map((r, i) => {
+                  const oocTxt = mon.outOfControl?.includes(i) ? '⚠ OOC' : '✓ En control';
+                  const oocCls = mon.outOfControl?.includes(i) ? 'rep-ooc-bad' : 'rep-ooc-ok';
+                  return `<tr>
+                    <td>${r.n || i+1}</td>
+                    <td>SG #${r.sgId || (i+1)}</td>
+                    <td>${escHtml(r.displayVal || '—')}</td>
+                    <td class="${oocCls}">${oocTxt}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${recent.length < (mon.sessionLog?.length || 0) ? `<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Mostrando las últimas ${recent.length} entradas de ${mon.sessionLog.length}.</div>` : ''}`);
+      }
+    } else {
+      sections.push(`
+        <div class="rep-empty" style="padding:20px">
+          <div class="rep-empty-title" style="font-size:13px">Sin datos de monitoreo</div>
+          <div class="rep-empty-sub">No hay sesión de Fase II guardada para este proceso. Inicia un monitoreo en la página correspondiente.</div>
+        </div>`);
+    }
+    sections.push(`</div></div>`);
+  }
+
+  // ══ PLANES DE MUESTREO ════════════════════════════════════
+  if (showMuestreo) {
+    sections.push(`<div class="rep-section">
+      <div class="rep-shead"><span class="ico">📐</span><span class="rep-stitle">Planes de Muestreo por Atributos</span>
+      <span class="rep-ssub">Diseño de plan de aceptación (NCA / NRC)</span></div>
+      <div class="rep-body">
+
+        <div class="rep-empty" style="padding:20px">
+          <div class="rep-empty-title" style="font-size:13px">Diseño interactivo disponible</div>
+          <div class="rep-empty-sub" style="line-height:1.6">
+            Los planes de muestreo se diseñan en la página
+            <a href="/sampling-plan.html" style="color:var(--primary);font-weight:700">Diseño de Planes</a>.
+            Puedes configurar NCA (AQL), NRC (LTPD), riesgos α y β para obtener
+            el plan óptimo (n, NAC), curva CO, AOQ y recomendaciones.
+            <br><br>
+            <strong>Parámetros por defecto:</strong> N=1000, AQL=1%, α=5%, LTPD=5%, β=10%.
+            Ajusta según tus necesidades de protección productor/consumidor.
+          </div>
+        </div>
+
+      </div></div>`);
+  }
+
+  // ══ CONCLUSIONES ══════════════════════════════════════════
+  if (showFase1) {
+    let conclusion = '';
+    if (d.capability) {
+      const cap = d.capability;
+      if (cap.cpk >= 1.33) {
+        conclusion = 'El proceso es <strong>estadísticamente capaz</strong> (Cpk ≥ 1.33). Satisface las especificaciones con margen.';
+      } else if (cap.cpk >= 1.0) {
+        conclusion = 'El proceso es <strong>marginalmente capaz</strong> (1.0 ≤ Cpk < 1.33). Se requiere monitoreo estrecho.';
+      } else {
+        conclusion = 'El proceso <strong>no es capaz</strong> (Cpk < 1.0). Se requieren acciones correctivas para reducir variabilidad o ajustar la media.';
+      }
+    }
+    if (d.controlChart?.oocCount > 0) {
+      conclusion += ' Se detectaron puntos fuera de control estadístico en Fase I — revisar causas asignables antes de establecer límites definitivos.';
+    }
+    if (d.controlChart?.oocCount === 0 && d.controlChart?.totalSubgroups >= 20) {
+      conclusion += ' La carta de control no muestra señales OOC — el proceso parece estable y apto para Fase II.';
+    }
+    if (!conclusion) conclusion = 'No hay suficientes datos de Fase I para generar una conclusión sustancial.';
+
+    sections.push(`
+      <div class="rep-conclusion">
+        <strong>📌 Conclusión:</strong> ${conclusion}
+      </div>`);
+  }
+
+  document.getElementById('report-content').innerHTML = `
+    <div class="report-sections">
+      ${sections.join('')}
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UTILIDADES
+══════════════════════════════════════════════════════════════ */
+function fmt(v) {
+  if (v == null || !isFinite(v)) return '—';
+  return Number(v).toFixed(4);
+}
+
+const CHART_LABELS = {
+  xbar_r: 'X̄-R', xbar_s: 'X̄-S', p: 'Carta p', np: 'Carta np', c: 'Carta c', u: 'Carta u'
+};
+function chartLabel(t) { return CHART_LABELS[t] || t || '—'; }
+
+init();
+</script>
+</body>
+</html>

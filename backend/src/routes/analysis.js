@@ -401,4 +401,133 @@ router.post('/validate', async (req, res) => {
   }
 });
 
+// GET /api/analysis/report?process_id=
+router.get('/report', async (req, res) => {
+  const { process_id } = req.query;
+  if (!process_id) return res.status(400).json({ error: 'Se requiere process_id.' });
+
+  try {
+    const { process, rows } = await getProcessValues(process_id, req.user.company_id);
+    if (!process) return res.status(404).json({ error: 'Proceso no encontrado.' });
+
+    const values = rows.map(r => parseFloat(r.value));
+    const result = {
+      process: {
+        id: process.id,
+        name: process.name,
+        usl: process.usl,
+        lsl: process.lsl,
+        nominal: process.nominal,
+        unit: process.unit,
+        chartType: process.chart_type,
+        nSize: process.n_size
+      },
+      dataSummary: {
+        n: values.length,
+        mean: values.length ? spc.mean(values) : null,
+        stdDev: values.length >= 2 ? spc.stdDev(values) : null,
+        min: values.length ? Math.min(...values) : null,
+        max: values.length ? Math.max(...values) : null,
+        range: values.length ? Math.max(...values) - Math.min(...values) : null
+      }
+    };
+
+    // ── Control Chart (Fase I) ──
+    if (values.length >= 2) {
+      try {
+        const type = process.chart_type || 'xbar_r';
+        const ccRes = await new Promise((resolve) => {
+          const mockReq = { query: { process_id, type, simulate_n: '' } };
+          const mockRes = {
+            json: resolve,
+            status: (code) => ({ json: (d) => resolve({ error: d.error, statusCode: code }) })
+          };
+          // We can't easily re-use the route handler directly, so we repeat the logic inline
+          // Actually, better to call the existing logic via a helper
+          resolve(null);
+        });
+      } catch (e) { /* ignore */ }
+    }
+
+    // Use the existing SPC utilities directly for the report
+    if (values.length >= 2) {
+      const type = process.chart_type || 'xbar_r';
+      try {
+        let chartData = null;
+        if (type === 'xbar_r' || type === 'xbar_s') {
+          const n = process.n_size ? parseInt(process.n_size) : 5;
+          if (n >= 2 && n <= 10) {
+            const numGroups = Math.floor(values.length / n);
+            if (numGroups >= 2) {
+              const sgValues = [];
+              for (let g = 0; g < numGroups; g++) sgValues.push(values.slice(g * n, (g + 1) * n));
+              chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
+            }
+          }
+        } else if (type === 'p') {
+          // Simplified: use individual values as defectives
+          const subgroups = [{ defectives: Math.round(values.reduce((a, b) => a + b, 0)), n: values.length }];
+          // Not enough for p chart, skip
+        } else if (type === 'np') {
+          // skip for report
+        } else if (type === 'c') {
+          // skip for report
+        } else if (type === 'u') {
+          // skip for report
+        }
+
+        if (chartData) {
+          result.controlChart = chartData;
+          const mainKey = type === 'xbar_r' || type === 'xbar_s' ? 'xbar' : type;
+          const main = chartData[mainKey];
+          if (main) {
+            const violations = spc.applySPCRules(main.points, main.cl, main.ucl, main.lcl, {
+              detectOutOfControl: true, detectTrend: true, detectShift: true
+            });
+            const outOfControl = [...new Set(violations.map(v => v.index))];
+            result.controlChart.outOfControl = outOfControl;
+            result.controlChart.violations = violations;
+            result.controlChart.oocCount = outOfControl.length;
+            result.controlChart.totalSubgroups = main.points.length;
+            result.controlChart.summary = {
+              ucl: main.ucl, cl: main.cl, lcl: main.lcl,
+              mean: spc.mean(main.points),
+              oocRate: (outOfControl.length / main.points.length * 100).toFixed(1)
+            };
+          }
+        }
+      } catch (e) { console.error('Report: control chart error', e.message); }
+
+      // ── Capability (Fase I) ──
+      if (process.usl != null && process.lsl != null) {
+        try {
+          const capability = spc.calculateCapability(values, parseFloat(process.usl), parseFloat(process.lsl), process.nominal);
+          if (capability) result.capability = capability;
+        } catch (e) { console.error('Report: capability error', e.message); }
+      }
+
+      // ── Statistical Tests ──
+      if (values.length >= 7) {
+        try {
+          const statisticalTests = spc.runStatisticalTests(rows);
+          if (statisticalTests) result.statisticalTests = statisticalTests;
+        } catch (e) { console.error('Report: tests error', e.message); }
+      }
+
+      // ── Histogram ──
+      if (values.length >= 3) {
+        try {
+          const bins = Math.min(Math.max(Math.round(Math.sqrt(values.length)), 5), 30);
+          result.histogram = spc.generateHistogramData(values, bins);
+        } catch (e) { console.error('Report: histogram error', e.message); }
+      }
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al generar el reporte.' });
+  }
+});
+
 module.exports = router;

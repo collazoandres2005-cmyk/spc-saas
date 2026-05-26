@@ -291,6 +291,7 @@
             </div>
             <button class="btn btn-primary" onclick="startMonitoring()">Iniciar monitoreo</button>
             <button class="btn btn-secondary" onclick="showSessionsModal()" title="Ver y cargar sesiones guardadas">📂 Sesiones</button>
+            <button class="btn btn-secondary" onclick="openReport(document.getElementById('process-select').value)" id="btn-report-mon" style="display:none">📄 Informe</button>
           </div>
           <div id="mode-description" style="font-size:12px;color:var(--text-muted);margin-top:8px">
             Modo Industrial: n fijo, límites congelados desde Fase 1, interfaz enfocada en alertas.
@@ -851,6 +852,7 @@
         document.getElementById('btn-n-dec').disabled = sgSize <= 2;
         document.getElementById('btn-n-inc').disabled = sgSize >= 10;
       }
+      document.getElementById('btn-report-mon').style.display = 'inline-flex';
       setStatusBar('stable', 'Límites de Fase 1 listos', `${p1.chartData[mainKey].points?.length ?? 0} subgrupos históricos`);
       saveActiveSession();   // ← guardar sesión activa una vez que los límites están listos
     } catch (err) {
@@ -2099,6 +2101,11 @@
     XLSX.utils.book_append_sheet(wb, ws, 'Datos');
     const typeNames = { xbar_r:'XbarR', xbar_s:'XbarS', p:'p', np:'np', c:'c', u:'u' };
     XLSX.writeFile(wb, `plantilla_spc_${typeNames[chartType] || chartType}.xlsx`);
+  }
+
+  function openReport(pid) {
+    if (!pid) return;
+    window.open(`/report.html?process_id=${pid}`, '_blank');
   }
 
   init();

@@ -140,6 +140,7 @@
               </select>
             </div>
             <button class="btn btn-primary" onclick="loadChart()">Calcular</button>
+            <button class="btn btn-secondary" onclick="openReport(document.getElementById('process-select').value)" id="btn-report-cc" style="display:none">📄 Informe</button>
           </div>
 
           <!-- Panel simulación (solo X̄ charts) -->
@@ -427,6 +428,7 @@
     }
 
     renderViolations(violations);
+    document.getElementById('btn-report-cc').style.display = 'inline-flex';
   }
 
   function renderViolations(violations) {
@@ -589,6 +591,11 @@
     </div>`;
 
     body.innerHTML = summary + `<div class="tests-grid">${cards}</div>` + note;
+  }
+
+  function openReport(pid) {
+    if (!pid) return;
+    window.open(`/report.html?process_id=${pid}`, '_blank');
   }
 
   init();

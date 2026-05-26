@@ -409,7 +409,7 @@ function renderReport() {
           <div class="rep-stat"><div class="rep-stat-lbl">Estado</div>
             <div class="rep-stat-val" style="font-size:16px">${cpkLbl}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">% Fuera de especificación</div>
-            <div class="rep-stat-val">${cap.pctOutOfSpec != null ? cap.pctOutOfSpec.toFixed(2) + '%' : '—'}</div></div>
+            <div class="rep-stat-val">${cap.ppmTotal != null ? (cap.ppmTotal / 10000).toFixed(2) + '%' : '—'}</div></div>
         </div>`);
     }
 
@@ -425,20 +425,20 @@ function renderReport() {
       <div class="rep-body">
 
         <div class="rep-grid">
-          <div class="rep-stat ${st.andersonDarling?.normal ? 'good' : 'warn'}">
+          <div class="rep-stat ${st.normality?.normal ? 'good' : 'warn'}">
             <div class="rep-stat-lbl">Anderson-Darling (Normalidad)</div>
-            <div class="rep-stat-val" style="font-size:16px">${st.andersonDarling?.normal ? '✅ Normal' : '⚠ No normal'}</div>
-            <div class="rep-stat-sub">p-valor = ${st.andersonDarling?.pValue != null ? st.andersonDarling.pValue.toFixed(4) : '—'}</div>
+            <div class="rep-stat-val" style="font-size:16px">${st.normality?.normal ? '✅ Normal' : '⚠ No normal'}</div>
+            <div class="rep-stat-sub">p-valor = ${st.normality?.p_value != null ? st.normality.p_value.toFixed(4) : '—'}</div>
           </div>
-          <div class="rep-stat ${st.levene?.homogeneous ? 'good' : 'warn'}">
+          <div class="rep-stat ${st.homoscedasticity?.homoscedastic ? 'good' : 'warn'}">
             <div class="rep-stat-lbl">Levene (Homogeneidad)</div>
-            <div class="rep-stat-val" style="font-size:16px">${st.levene?.homogeneous ? '✅ Varianzas homogéneas' : '⚠ Varianzas heterogéneas'}</div>
-            <div class="rep-stat-sub">p-valor = ${st.levene?.pValue != null ? st.levene.pValue.toFixed(4) : '—'}</div>
+            <div class="rep-stat-val" style="font-size:16px">${st.homoscedasticity?.homoscedastic ? '✅ Varianzas homogéneas' : '⚠ Varianzas heterogéneas'}</div>
+            <div class="rep-stat-sub">p-valor = ${st.homoscedasticity?.p_value != null ? st.homoscedasticity.p_value.toFixed(4) : '—'}</div>
           </div>
-          <div class="rep-stat ${st.kruskalWallis?.different ? 'warn' : 'good'}">
+          <div class="rep-stat ${st.homogeneity?.homogeneous ? 'good' : 'warn'}">
             <div class="rep-stat-lbl">Kruskal-Wallis (Grupos)</div>
-            <div class="rep-stat-val" style="font-size:16px">${st.kruskalWallis?.different ? '⚠ Diferencias significativas' : '✅ Grupos homogéneos'}</div>
-            <div class="rep-stat-sub">p-valor = ${st.kruskalWallis?.pValue != null ? st.kruskalWallis.pValue.toFixed(4) : '—'}</div>
+            <div class="rep-stat-val" style="font-size:16px">${st.homogeneity?.homogeneous ? '✅ Grupos homogéneos' : '⚠ Diferencias significativas'}</div>
+            <div class="rep-stat-sub">p-valor = ${st.homogeneity?.p_value != null ? st.homogeneity.p_value.toFixed(4) : '—'}</div>
           </div>
         </div>
 
@@ -448,10 +448,10 @@ function renderReport() {
   // ══ FASE I — HISTOGRAMA ════════════════════════════════════
   if (showFase1 && d.histogram) {
     const h = d.histogram;
-    if (h.bins && h.midpoints) {
+    if (h.labels && h.midpoints) {
       sections.push(`<div class="rep-section">
         <div class="rep-shead"><span class="ico">📊</span><span class="rep-stitle">Fase I — Histograma</span>
-        <span class="rep-ssub">${h.bins.length} intervalos de clase</span></div>
+        <span class="rep-ssub">${h.labels.length} intervalos de clase</span></div>
         <div class="rep-body">
 
           <div class="rep-table-wrap">

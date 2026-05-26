@@ -345,6 +345,7 @@
                       Subgrupo <span id="sg-id-lbl" style="color:var(--primary);text-transform:none">#1</span>
                     </label>
                     <div id="sg-inputs" class="sg-grid" style="margin-top:6px"></div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px">📋 Puedes pegar desde Excel: filas = subgrupos, columnas = valores</div>
                   </div>
                 </div>
 
@@ -354,6 +355,7 @@
                     Subgrupo <span id="attr-sg-id-lbl" style="color:var(--primary);text-transform:none">#1</span>
                   </label>
                   <div class="attr-inp-row" style="margin-top:6px" id="attr-inputs"></div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:4px">📋 Puedes pegar desde Excel: cada fila = un subgrupo</div>
                 </div>
 
                 <!-- Live mean preview -->
@@ -1088,9 +1090,71 @@
     el.textContent = avg.toFixed(4);
   }
 
+  /* ── Pegado masivo desde Excel ─────────────────────────────── */
+  async function handleBulkPaste(e) {
+    const text = e.clipboardData.getData('text');
+    if (!text.trim()) return;
+    const rawRows = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+    if (rawRows.length < 2) return; // single-row paste handled normally
+
+    e.preventDefault();
+    const msg = document.getElementById('entry-msg');
+    msg.innerHTML = '<span style="color:var(--text-sec)">⏳ Procesando datos...</span>';
+
+    const isXbar = XBAR_TYPES.includes(chartType);
+    const total = rawRows.length;
+    let ok = 0, errs = 0;
+
+    for (let ri = 0; ri < rawRows.length; ri++) {
+      const cells = rawRows[ri].split('\t').map(v => v.trim());
+      if (isXbar) {
+        for (let ci = 0; ci < sgSize; ci++) {
+          const inp = document.getElementById(`sg-v-${ci}`);
+          if (!inp) break;
+          inp.value = cells[ci] || '';
+          inp.classList.toggle('bad', cells[ci] && isNaN(parseDecimal(cells[ci])));
+        }
+        let valid = true;
+        for (let ci = 0; ci < sgSize; ci++) {
+          const inp = document.getElementById(`sg-v-${ci}`);
+          if (!inp || !inp.value.trim() || isNaN(parseDecimal(inp.value.trim()))) { valid = false; break; }
+        }
+        if (!valid) { errs++; continue; }
+      } else {
+        const inpDef  = document.getElementById('attr-def');
+        const inpCnt  = document.getElementById('attr-count');
+        const inpN    = document.getElementById('attr-n');
+        if (inpDef) inpDef.value = cells[0] || '';
+        if (inpCnt) inpCnt.value = cells[0] || '';
+        if (inpN)   inpN.value   = cells[1] || '';
+        if (chartType === 'p' || chartType === 'np') {
+          if (!inpDef || isNaN(parseFloat(inpDef.value)) || parseFloat(inpDef.value) < 0) { errs++; continue; }
+          if (chartType === 'p' && inpN && (!inpN.value || isNaN(parseFloat(inpN.value)))) { errs++; continue; }
+        } else if (chartType === 'c' || chartType === 'u') {
+          if (!inpCnt || isNaN(parseFloat(inpCnt.value)) || parseFloat(inpCnt.value) < 0) { errs++; continue; }
+          if (chartType === 'u' && inpN && (!inpN.value || isNaN(parseFloat(inpN.value)))) { errs++; continue; }
+        }
+      }
+
+      msg.innerHTML = `<span style="color:var(--text-sec)">⏳ Agregando subgrupo ${ri+1}/${total}...</span>`;
+      const btn = document.getElementById('btn-add');
+      btn.disabled = false;
+      try { await addEntry(); ok++; } catch { errs++; }
+
+      const firstInp = document.querySelector('.sg-cell-inp, .attr-inp');
+      if (firstInp && ri < rawRows.length - 1) firstInp.focus();
+    }
+
+    msg.innerHTML = ok > 0
+      ? `<span style="color:var(--success);font-weight:700">✅ ${ok} subgrupo${ok>1?'s':''} agregado${ok>1?'s':''}${errs ? ', ' + errs + ' error(es)' : ''}</span>`
+      : `<span style="color:var(--danger)">❌ No se pudieron agregar datos. Revisa el formato: filas = subgrupos, columnas separadas por tabulador.</span>`;
+    setTimeout(() => { msg.innerHTML = ''; }, 6000);
+  }
+
   function buildSgInputs() {
     const container = document.getElementById('sg-inputs');
     container.innerHTML = '';
+    container.setAttribute('onpaste', 'handleBulkPaste(event)');
     for (let i = 0; i < sgSize; i++) {
       const cell = document.createElement('div');
       cell.className = 'sg-cell';
@@ -1106,6 +1170,7 @@
 
   function buildAttrInputs() {
     const container = document.getElementById('attr-inputs');
+    container.setAttribute('onpaste', 'handleBulkPaste(event)');
     let html = '';
     if (chartType === 'p' || chartType === 'np') {
       html += `<div class="attr-inp-col"><label>Defectuosos</label><input class="big-input attr-inp" id="attr-def" type="text" inputmode="numeric" placeholder="0" onkeydown="attrKey(event)" oninput="updateLiveMean()"></div>`;

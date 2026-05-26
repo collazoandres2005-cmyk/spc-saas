@@ -433,6 +433,9 @@ function renderReport() {
   const showMuestreo = phase === 'all' || phase === 'muestreo';
 
   const sections = [];
+  const _cpk = d.capability?.cpk;
+  const cpkCls = _cpk != null ? (_cpk >= 1.33 ? 'good' : _cpk >= 1.0 ? 'warn' : 'danger') : 'info';
+  const cpkLbl = _cpk != null ? (_cpk >= 1.33 ? 'Capaz' : _cpk >= 1.0 ? 'Marginal' : 'No capaz') : 'Sin datos';
 
   // ══ ENCABEZADO ══════════════════════════════════════════════
   sections.push(`
@@ -452,8 +455,6 @@ function renderReport() {
     const ds = d.dataSummary;
     const capable = d.capability;
     const hasSpecs = d.process.usl != null && d.process.lsl != null;
-    const cpkCls = capable?.cpk >= 1.33 ? 'good' : capable?.cpk >= 1.0 ? 'warn' : 'danger';
-    const cpkLbl = capable?.cpk >= 1.33 ? 'Capaz' : capable?.cpk >= 1.0 ? 'Marginal' : 'No capaz';
 
     sections.push(`<div class="rep-section">
       <div class="rep-shead"><span class="ico">📈</span><span class="rep-stitle">Fase I — Estabilización</span>

@@ -761,30 +761,62 @@ function renderReport() {
       const means = mon.sessionMeans || [];
       const meanVal = means.length ? means.reduce((a,b)=>a+b,0)/means.length : null;
       const ccSummary = d.controlChart?.summary;
-      const monSigma = ccSummary && ccSummary.ucl != null && ccSummary.cl != null
+      const mu0 = ccSummary?.cl;
+      const sigmaXbar = ccSummary && ccSummary.ucl != null && ccSummary.cl != null
         ? (ccSummary.ucl - ccSummary.cl) / 3 : null;
-      const monShift = monSigma > 0 && meanVal != null && ccSummary?.cl != null
-        ? (meanVal - ccSummary.cl) / monSigma : null;
+      const monShift = sigmaXbar > 0 && meanVal != null && mu0 != null
+        ? (meanVal - mu0) / sigmaXbar : null;
+
+      // Performance evaluation
+      const nSize = d.process?.nSize ? parseInt(d.process.nSize) : null;
+      const processSigma = sigmaXbar > 0 && nSize > 0 ? sigmaXbar * Math.sqrt(nSize) : null;
+      const shiftProcess = processSigma > 0 && meanVal != null && mu0 != null
+        ? (meanVal - mu0) / processSigma : null;
+      const usl = d.process?.usl != null ? parseFloat(d.process.usl) : null;
+      const lsl = d.process?.lsl != null ? parseFloat(d.process.lsl) : null;
+      const pnc0 = d.capability?.ppmTotal != null ? d.capability.ppmTotal / 10000 : null;
+      let pnc1 = null;
+      if (processSigma > 0 && usl != null && lsl != null && meanVal != null) {
+        const zLsl = (lsl - meanVal) / processSigma;
+        const zUsl = (usl - meanVal) / processSigma;
+        pnc1 = (normalCDF(zLsl) + (1 - normalCDF(zUsl))) * 100;
+      }
+
+      const deltaPnc = pnc0 != null && pnc1 != null ? pnc1 - pnc0 : null;
+
       sections.push(`
         <div class="rep-grid">
           <div class="rep-stat"><div class="rep-stat-lbl">Subgrupos en Fase II</div>
             <div class="rep-stat-val">${sg.length}</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">Media general Fase II</div>
-            <div class="rep-stat-val">${fmt(meanVal)}</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">Desplazamiento (σ)</div>
-            <div class="rep-stat-val">${monShift != null ? `${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ` : '—'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">n (tamaño subgrupo)</div>
+            <div class="rep-stat-val">${nSize || '—'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Media Fase I (μ₀)</div>
+            <div class="rep-stat-val">${mu0 != null ? fmt(mu0) : '—'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Media Fase II (μ₁)</div>
+            <div class="rep-stat-val">${meanVal != null ? fmt(meanVal) : '—'}</div></div>
+          <div class="rep-stat" style="grid-column:span 1"><div class="rep-stat-lbl">Desplazamiento (σ proceso)</div>
+            <div class="rep-stat-val" style="${shiftProcess != null && Math.abs(shiftProcess) > 0.5 ? 'color:var(--danger);font-weight:700' : ''}">${shiftProcess != null ? `${shiftProcess >= 0 ? '+' : ''}${shiftProcess.toFixed(4)}σ` : '—'}</div>
+            <div class="rep-stat-sub">X̄: ${monShift != null ? `${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ` : '—'} · n=${nSize || '?'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">%PNC original (μ₀)</div>
+            <div class="rep-stat-val">${pnc0 != null ? pnc0.toFixed(4) + '%' : '—'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">%PNC recalculado (μ₁)</div>
+            <div class="rep-stat-val" style="font-weight:700">${pnc1 != null ? pnc1.toFixed(4) + '%' : '—'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Δ%PNC</div>
+            <div class="rep-stat-val" style="color:${deltaPnc > 0 ? 'var(--danger)' : deltaPnc < 0 ? 'var(--success)' : 'inherit'}">${deltaPnc != null ? `${deltaPnc >= 0 ? '+' : ''}${deltaPnc.toFixed(4)} pp` : '—'}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Potencia detección</div>
             <div class="rep-stat-val">${monShift != null ? (detectionPower(monShift) * 100).toFixed(1) + '%' : '—'}</div>
             <div class="rep-stat-sub">ARL: ${monShift != null ? detectionPower(monShift) > 0 ? (1/detectionPower(monShift)).toFixed(1) : '∞' : ''}</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">Total entradas</div>
-            <div class="rep-stat-val">${mon.sessionCount || sg.length}</div></div>
         </div>
         <div style="margin-top:12px;font-size:12px;color:var(--text-sec);line-height:1.6">
-          La sesión de monitoreo registró <strong>${sg.length}</strong> subgrupos en Fase II.
-          ${meanVal != null ? `La media acumulada de Fase II es <strong>${fmt(meanVal)}</strong>. ` : ''}
-          ${monShift != null ? `Desplazamiento respecto a Fase I: <strong>${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ</strong>. ` : ''}
+          La sesión de monitoreo registró <strong>${sg.length}</strong> subgrupos (n=${nSize || '?'}) en Fase II.
+          ${mu0 != null && meanVal != null ? `La media pasó de <strong>${fmt(mu0)}</strong> (Fase I) a <strong>${fmt(meanVal)}</strong> (Fase II). ` : ''}
+          ${shiftProcess != null ? `Desplazamiento de <strong>${shiftProcess >= 0 ? '+' : ''}${shiftProcess.toFixed(4)}σ</strong> en el proceso. ` : ''}
+          ${monShift != null ? `En la carta X̄ equivale a <strong>${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ</strong>. ` : ''}
           ${monShift != null ? `Potencia de detección: <strong>${(detectionPower(monShift) * 100).toFixed(1)}%</strong> (ARL ${detectionPower(monShift) > 0 ? (1/detectionPower(monShift)).toFixed(1) : '∞'}). ` : ''}
-          ${monShift != null && Math.abs(monShift) >= 1.0 ? '⚠ El desplazamiento supera 1σ, puede indicar un cambio significativo en el proceso.' : monShift != null && Math.abs(monShift) >= 0.5 ? '⚠ El desplazamiento supera 0.5σ, monitorear tendencia.' : 'El proceso se mantiene centrado respecto a la referencia de Fase I.'}
+          ${pnc0 != null ? `%PNC original: <strong>${pnc0.toFixed(4)}%</strong>. ` : ''}
+          ${pnc1 != null ? `%PNC recalculado con la nueva media: <strong>${pnc1.toFixed(4)}%</strong>. ` : ''}
+          ${deltaPnc != null ? `Diferencia: <strong style="color:${deltaPnc > 0 ? 'var(--danger)' : 'var(--success)'}">${deltaPnc >= 0 ? '+' : ''}${deltaPnc.toFixed(4)} pp</strong>. ` : ''}
+          ${shiftProcess != null && Math.abs(shiftProcess) >= 1.0 ? '⚠ El desplazamiento supera 1σ del proceso, puede indicar un cambio significativo en la calidad del producto.' : shiftProcess != null && Math.abs(shiftProcess) >= 0.5 ? '⚠ El desplazamiento supera 0.5σ del proceso, monitorear tendencia cuidadosamente.' : 'El proceso se mantiene centrado respecto a la referencia de Fase I.'}
         </div>`);
 
       // Tabla de entradas recientes (últimas 20)

@@ -892,6 +892,23 @@ function renderReport() {
             const evDate = new Date(ev.savedAt).toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' });
             const evShiftCls = Math.abs(ev.deltaReal) > 0.5 ? 'color:var(--danger);font-weight:700' : '';
             const p = ev.performance;
+
+            // Recalcular pnc0/pnc1 con normalCDF correcta (los valores guardados
+            // pueden ser de una version antigua con phi() incorrecta)
+            const evSigma = ev.sigmaP ?? d.capability?.sigma;
+            const evUsl   = ev.usl   ?? (d.process?.usl   != null ? parseFloat(d.process.usl)   : null);
+            const evLsl   = ev.lsl   ?? (d.process?.lsl   != null ? parseFloat(d.process.lsl)   : null);
+            let evPnc0 = null, evPnc1 = null;
+            if (evSigma > 0 && evUsl != null && evLsl != null) {
+              if (ev.mu0 != null) {
+                evPnc0 = (normalCDF((evLsl - ev.mu0) / evSigma) + (1 - normalCDF((evUsl - ev.mu0) / evSigma))) * 100;
+              }
+              if (ev.mu1 != null) {
+                evPnc1 = (normalCDF((evLsl - ev.mu1) / evSigma) + (1 - normalCDF((evUsl - ev.mu1) / evSigma))) * 100;
+              }
+            }
+            const fmtPnc = v => v != null ? v.toFixed(4) + '%' : '—';
+
             sections.push(`
               <div style="margin-top:16px;padding:14px 18px;background:var(--glass-card);border:1px solid var(--glass-border);border-radius:var(--radius)">
                 <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:10px">📊 Evaluación de Desempeño guardada <span style="font-weight:400;text-transform:none;color:var(--text-sec)">(${evDate})</span></div>
@@ -899,11 +916,11 @@ function renderReport() {
                   <div class="rep-stat"><div class="rep-stat-lbl">μ₀</div><div class="rep-stat-val">${fmt(ev.mu0)}</div></div>
                   <div class="rep-stat"><div class="rep-stat-lbl">μ₁</div><div class="rep-stat-val">${fmt(ev.mu1)}</div></div>
                   <div class="rep-stat"><div class="rep-stat-lbl">δ (σ proceso)</div><div class="rep-stat-val" style="${evShiftCls}">${ev.deltaReal >= 0 ? '+' : ''}${ev.deltaReal.toFixed(4)}σ</div></div>
-                  <div class="rep-stat"><div class="rep-stat-lbl">σ̂ proceso</div><div class="rep-stat-val">${fmt(ev.sigmaP)}</div></div>
+                  <div class="rep-stat"><div class="rep-stat-lbl">σ̂ proceso</div><div class="rep-stat-val">${fmt(evSigma)}</div></div>
                   <div class="rep-stat"><div class="rep-stat-lbl">n</div><div class="rep-stat-val">${ev.n}</div></div>
                   <div class="rep-stat"><div class="rep-stat-lbl">Subgrupos</div><div class="rep-stat-val">${ev.sgCount}</div></div>
-                  <div class="rep-stat"><div class="rep-stat-lbl">%PNC original</div><div class="rep-stat-val">${ev.pnc0 != null ? (ev.pnc0 * 100).toFixed(4) + '%' : '—'}</div></div>
-                  <div class="rep-stat" style="grid-column:span 2"><div class="rep-stat-lbl">%PNC recalculado (μ₁)</div><div class="rep-stat-val" style="font-size:24px;font-weight:900">${ev.pnc1 != null ? (ev.pnc1 * 100).toFixed(4) + '%' : '—'}</div></div>
+                  <div class="rep-stat"><div class="rep-stat-lbl">%PNC original (μ₀)</div><div class="rep-stat-val">${fmtPnc(evPnc0)}</div></div>
+                  <div class="rep-stat" style="grid-column:span 2"><div class="rep-stat-lbl">%PNC recalculado (μ₁)</div><div class="rep-stat-val" style="font-size:24px;font-weight:900">${fmtPnc(evPnc1)}</div></div>
                 </div>
                 ${p ? `
                 <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">

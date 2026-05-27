@@ -24,6 +24,24 @@ async function getProcessValues(process_id, company_id) {
   return { process: procResult.rows[0], rows: measResult.rows };
 }
 
+// Deriva el tamaño de subgrupo n a partir de los subgroup_id almacenados.
+// Cuenta cuántas mediciones hay por cada subgroup_id y devuelve la moda.
+// Retorna 0 si no hay subgroup_id o si todos son nulos.
+function inferSubgroupSize(rows) {
+  const counts = new Map();
+  for (const r of rows) {
+    if (r.subgroup_id == null) continue;
+    counts.set(r.subgroup_id, (counts.get(r.subgroup_id) || 0) + 1);
+  }
+  if (counts.size === 0) return 0;
+  // moda: tamaño más frecuente
+  let mode = 0, maxFreq = 0;
+  for (const [, cnt] of counts) {
+    if (cnt > maxFreq) { maxFreq = cnt; mode = cnt; }
+  }
+  return (mode >= 2 && mode <= 10) ? mode : 0;
+}
+
 // GET /api/analysis/capability?process_id=&simulate_n=
 router.get('/capability', async (req, res) => {
   const { process_id, simulate_n } = req.query;
@@ -40,10 +58,9 @@ router.get('/capability', async (req, res) => {
     }
 
     const values = rows.map(r => parseFloat(r.value));
-    // Para cartas de variables (xbar_r / xbar_s), usar n=5 por defecto si n_size no está configurado
-    const isVarsChart = !process.chart_type || ['xbar_r', 'xbar_s'].includes(process.chart_type);
-    const defaultN = isVarsChart ? 5 : 0;
-    const n = simulate_n ? parseInt(simulate_n) : (process.n_size ? parseInt(process.n_size) : defaultN);
+    const n = simulate_n
+      ? parseInt(simulate_n)
+      : (process.n_size ? parseInt(process.n_size) : inferSubgroupSize(rows));
     let capability;
     let simulated = false;
     let testRows;   // rows with subgroup_id for statistical tests
@@ -459,7 +476,7 @@ router.get('/report', async (req, res) => {
       try {
         let chartData = null;
         if (type === 'xbar_r' || type === 'xbar_s') {
-          const n = process.n_size ? parseInt(process.n_size) : 5;
+          const n = process.n_size ? parseInt(process.n_size) : inferSubgroupSize(rows);
           if (n >= 2 && n <= 10) {
             const numGroups = Math.floor(values.length / n);
             if (numGroups >= 2) {

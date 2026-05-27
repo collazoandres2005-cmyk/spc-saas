@@ -359,7 +359,7 @@ function initSidebar(activePage) {
       <div class="logo-mark">
         <div class="logo-icon">SPC</div>
         <div>
-          <span>${escHtml(company?.name || 'SPC SaaS')}</span>
+          <span>${escHtml(company?.name || 'ControlNow')}</span>
           <span class="logo-sub">Control Estadístico</span>
         </div>
       </div>

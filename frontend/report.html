@@ -264,7 +264,7 @@ async function init() {
     `${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`, p.id
   )));
   const comp = Auth.getCompany();
-  companyName = comp?.name || 'SPC SaaS';
+  companyName = comp?.name || 'ControlNow';
 
   const pid = new URLSearchParams(location.search).get('process_id');
   if (pid) { sel.value = pid; await loadProcess(); }
@@ -822,8 +822,32 @@ function renderReport() {
               <tbody>
                 ${recent.map((r, i) => {
                   const origIdx = recentOffset + i;
-                  const oocTxt = mon.outOfControl?.includes(origIdx) ? '⚠ OOC' : '✓ En control';
-                  const oocCls = mon.outOfControl?.includes(origIdx) ? 'rep-ooc-bad' : 'rep-ooc-ok';
+                  // sessionLog is newest-first (unshift), sessionSubgroups is oldest-first (push).
+                  // For recent[i], the matching subgroup is at index (recent.length - 1 - i) in sessionSubgroups.
+                  const sgIdx  = recent.length - 1 - i;
+                  const sgData = mon.sessionSubgroups?.[sgIdx];
+                  const ccSum  = d.controlChart?.summary;
+                  let isOoc = false;
+                  if (sgData != null && ccSum?.ucl != null && ccSum?.lcl != null) {
+                    let statVal = null;
+                    if (Array.isArray(sgData))
+                      statVal = sgData.reduce((a, b) => a + b, 0) / sgData.length;
+                    else if (sgData.defectives != null && sgData.n)
+                      statVal = sgData.defectives / sgData.n;
+                    else if (sgData.defectives != null)
+                      statVal = sgData.defectives;
+                    else if (sgData.count != null && sgData.n)
+                      statVal = sgData.count / sgData.n;
+                    else if (sgData.count != null)
+                      statVal = sgData.count;
+                    if (statVal != null)
+                      isOoc = statVal > ccSum.ucl || statVal < ccSum.lcl;
+                  } else {
+                    // fallback to pre-computed index (same order as subgroups)
+                    isOoc = mon.outOfControl?.includes(sgIdx) ?? false;
+                  }
+                  const oocTxt = isOoc ? '⚠ Fuera de control' : '✓ En control';
+                  const oocCls = isOoc ? 'rep-ooc-bad' : 'rep-ooc-ok';
                   return `<tr>
                     <td>${r.n || origIdx+1}</td>
                     <td>SG #${r.sgId || (origIdx+1)}</td>

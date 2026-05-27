@@ -388,7 +388,7 @@
           <div class="card-header">
             <div class="card-title">Análisis de Carga Muestral — CM = n / t</div>
             <span style="font-size:11px;color:var(--text-muted)">
-              Especifica cuánto quieres aumentar la CM y obtén los planes (n, t) resultantes
+              Aumenta la CM y obtén 2 planes de muestreo
             </span>
           </div>
           <div style="padding:14px 20px 0">
@@ -413,29 +413,14 @@
               <div class="cfg-field">
                 <label class="cfg-label">CM objetivo</label>
                 <input id="cm-target-display" class="cfg-input" disabled value="—">
-                <p class="cfg-hint">CM mínima requerida para el rediseño.</p>
-              </div>
-              <div class="cfg-field">
-                <label class="cfg-label">n mín a evaluar</label>
-                <input id="cm-n-min" class="cfg-input" type="number" min="1" max="20" value="2" oninput="recalc()">
-              </div>
-              <div class="cfg-field">
-                <label class="cfg-label">n máx a evaluar</label>
-                <input id="cm-n-max" class="cfg-input" type="number" min="2" max="25" value="10" oninput="recalc()">
+                <p class="cfg-hint">CM requerida para los planes rediseñados.</p>
               </div>
             </div>
           </div>
 
           <!-- Planes diseñados -->
-          <div style="padding:0 20px 16px">
-            <div class="sens-table-wrap">
-              <table class="sens-table" id="cm-table">
-                <thead><tr id="cm-thead-row"></tr></thead>
-                <tbody id="cm-tbody"></tbody>
-              </table>
-            </div>
-            <div id="cm-optimal-row" style="margin-top:12px"></div>
-          </div>
+          <div id="cm-plans" style="padding:0 20px 16px;display:flex;gap:16px;flex-wrap:wrap"></div>
+          <div id="cm-optimal-row" style="padding:0 20px 16px"></div>
         </div>
 
         <!-- ── Fórmulas ───────────────────────────────────────── -->
@@ -555,18 +540,13 @@ function readConfig() {
   return {
     t:     parseFloat(document.getElementById('inp-t').value) || 4,
     prod:  parseFloat(document.getElementById('inp-prod').value) || 100,
-    cmDelta:  parseFloat(document.getElementById('cm-delta').value) || 0.2,
-    cmNMin:   parseInt(document.getElementById('cm-n-min').value) || 2,
-    cmNMax:   parseInt(document.getElementById('cm-n-max').value) || 10
+    cmDelta: parseFloat(document.getElementById('cm-delta').value) || 0.2
   };
 }
 
 function applyConfig(cfg) {
   if (!cfg) return;
-  const map = {
-    'inp-t': 't', 'inp-prod': 'prod', 'cm-delta': 'cmDelta',
-    'cm-n-min': 'cmNMin', 'cm-n-max': 'cmNMax'
-  };
+  const map = { 'inp-t': 't', 'inp-prod': 'prod', 'cm-delta': 'cmDelta' };
   for (const [id, key] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (el && cfg[key] != null) el.value = cfg[key];
@@ -1153,130 +1133,87 @@ function renderFormulaRef(type) {
 /* ══════════════════════════════════════════════════════════════
    CARGA MUESTRAL — CM = n / t
 ══════════════════════════════════════════════════════════════ */
-function syncCmChips() {
-  document.querySelectorAll('#cm-t-chips label').forEach(lbl => {
-    const inp = lbl.querySelector('input');
-    if (inp.checked) {
-      lbl.style.borderColor = 'var(--primary)';
-      lbl.style.background  = '#dbeafe';
-      lbl.style.color       = '#1e40af';
-    } else {
-      lbl.style.borderColor = 'var(--border)';
-      lbl.style.background  = 'var(--card)';
-      lbl.style.color       = 'var(--text)';
-    }
-  });
+function planCard(p, label, cls) {
+  const abbr = v => v.toLocaleString('es', {maximumFractionDigits:1});
+  return `<div style="flex:1;min-width:260px;border:2px solid ${cls};border-radius:var(--radius);padding:14px 18px;background:${cls === '#86efac' ? '#f0fdf4' : '#fefce8'}">
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;color:${cls === '#86efac' ? '#15803d' : '#92400e'}">${label}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px">
+      <span>n = <strong>${p.n}</strong></span>
+      <span>t = <strong>${p.t.toFixed(2)}</strong> h</span>
+      <span>CM = <strong>${p.cm.toFixed(2)}</strong> u/h</span>
+      <span>β = <strong>${p.b.toFixed(4)}</strong></span>
+      <span>Potencia = <strong>${(p.power*100).toFixed(1)}%</strong></span>
+      <span>ARL₁ = <strong>${abbr(p.arl1)}</strong></span>
+      <span>ATS₁ = <strong style="color:${p.ats1<=8?'#15803d':p.ats1<=24?'#92400e':'#b91c1c'}">${p.ats1.toFixed(1)}</strong> h</span>
+      <span>PPNC = <strong>${abbr(p.ppnc)}</strong> ud</span>
+    </div>
+  </div>`;
 }
 
 function renderCM({ k, delta, pnc, prod, betaParams }) {
-  const currentN = Math.max(1, parseInt(document.getElementById('inp-n').value) || 5);
+  const currentN = chartInfo?.n || 5;
   const currentT = Math.max(0.01, parseFloat(document.getElementById('inp-t').value) || 4);
   const currentCM = currentN / currentT;
 
-  // Incremento porcentual (0-1)
   const pctInc = Math.max(0, Math.min(1, parseFloat(document.getElementById('cm-delta').value) || 0));
   const targetCM = currentCM * (1 + pctInc);
 
-  // CM actual y objetivo
   document.getElementById('cm-current-val').textContent = currentCM.toFixed(2);
   document.getElementById('cm-cur-n').textContent = currentN;
   document.getElementById('cm-cur-t').textContent = currentT;
-  document.getElementById('cm-cur-ats1').textContent = '—'; // se actualiza abajo
   document.getElementById('cm-target-display').value = targetCM.toFixed(2);
 
-  // Rango de n
-  const nMin = Math.max(1, parseInt(document.getElementById('cm-n-min').value) || 2);
-  const nMax = Math.min(25, Math.max(nMin + 1, parseInt(document.getElementById('cm-n-max').value) || 10));
-  const nVals = [];
-  for (let ni = nMin; ni <= nMax; ni++) nVals.push(ni);
-
-  // Valores de t seleccionados
-  const tVals = Array.from(document.querySelectorAll('#cm-t-chips input:checked'))
-    .map(inp => parseFloat(inp.value))
-    .filter(v => v > 0)
-    .sort((a, b) => a - b);
-
-  if (tVals.length === 0) {
-    document.getElementById('cm-thead-row').innerHTML = '';
-    document.getElementById('cm-tbody').innerHTML =
-      `<tr><td colspan="2" style="text-align:center;padding:14px;color:var(--text-muted)">Selecciona al menos un valor de t</td></tr>`;
-    document.getElementById('cm-optimal-row').innerHTML = '';
-    return;
+  // Helper: compute metrics for a given (n, t)
+  function compute(n, t) {
+    const bp = { ...betaParams, n };
+    const b = Math.max(1e-9, Math.min(1 - 1e-9, calcBeta(bp)));
+    const power = Math.max(1e-9, 1 - b);
+    const arl1 = 1 / power;
+    const ats1 = arl1 * t;
+    const cm = n / t;
+    const ppnc = ats1 * pnc * prod;
+    return { n, t, cm, b, power, arl1, ats1, ppnc };
   }
 
-  // Calcular todas las celdas
-  const cells = [];
-  let minAts1 = Infinity;
+  const current = compute(currentN, currentT);
 
-  for (const ni of nVals) {
-    for (const ti of tVals) {
-      const bp    = { ...betaParams, n: ni };
-      const b     = Math.max(1e-9, Math.min(1 - 1e-9, calcBeta(bp)));
-      const power = Math.max(1e-9, 1 - b);
-      const arl1  = 1 / power;
-      const ats1  = arl1 * ti;
-      const cm    = ni / ti;
-      const meetsCM = cm >= targetCM;
-      cells.push({ n: ni, t: ti, cm, ats1, b, power, meetsCM });
-      if (meetsCM && ats1 < minAts1) minAts1 = ats1;
-    }
+  // Plan 1: misma n, despejar t de CM = n/t → t = n / CM_objetivo
+  const plan1N = currentN;
+  const plan1T = plan1N / targetCM;
+  const plan1 = compute(plan1N, plan1T);
+
+  // Plan 2: mismo t (del input), despejar n de CM = n/t → n = CM_objetivo × t
+  const plan2T = currentT;
+  const plan2N = Math.max(1, Math.round(targetCM * plan2T));
+  const plan2 = compute(plan2N, plan2T);
+
+  document.getElementById('cm-cur-ats1').textContent = current.ats1.toFixed(1) + ' h';
+
+  document.getElementById('cm-plans').innerHTML =
+    planCard(plan1, `Plan 1 — Misma n (n=${plan1N}), t calculado`, '#86efac') +
+    planCard(plan2, `Plan 2 — Mismo t (t=${currentT.toFixed(2)} h), n calculado`, '#fde047');
+
+  // Mejor plan (menor ATS₁ entre los que cumplen CM objetivo)
+  const candidates = [plan1, plan2].filter(p => p.cm >= targetCM);
+  if (candidates.length) {
+    const best = candidates.reduce((a, b) => a.ats1 < b.ats1 ? a : b);
+    document.getElementById('cm-optimal-row').innerHTML =
+      `<div style="display:inline-flex;align-items:center;gap:12px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius);padding:10px 16px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#15803d">★ Mejor plan (CM ≥ ${targetCM.toFixed(2)})</span>
+        <span style="font-size:14px;font-weight:700;color:#166534">n = ${best.n} &nbsp;·&nbsp; t = ${best.t.toFixed(2)} h</span>
+        <span style="font-size:12px;color:#166534">CM = ${best.cm.toFixed(2)} u/h</span>
+        <span style="font-size:12px;color:#166534">ATS₁ = ${best.ats1.toFixed(1)} h</span>
+        <span style="font-size:12px;color:#166534">Potencia = ${(best.power * 100).toFixed(1)}%</span>
+      </div>`;
+  } else {
+    document.getElementById('cm-optimal-row').innerHTML =
+      `<div style="padding:10px 14px;color:var(--danger);font-size:13px">Ningún plan alcanza la CM objetivo de ${targetCM.toFixed(2)} u/h. Aumenta Δ%.</div>`;
   }
-
-  // ATS₁ actual (con n,t actuales)
-  const curAts1 = cells.find(c => c.n === currentN && Math.abs(c.t - currentT) < 0.001)?.ats1;
-  if (curAts1 != null) document.getElementById('cm-cur-ats1').textContent = curAts1.toFixed(1) + ' h';
-
-  // Encabezado (columnas = t)
-  document.getElementById('cm-thead-row').innerHTML =
-    `<th style="text-align:center">n \\ t (h)</th>` +
-    tVals.map(ti => `<th>t = ${ti} h</th>`).join('');
-
-  // Filas (filas = n)
-  document.getElementById('cm-tbody').innerHTML = nVals.map(ni => {
-    const isCurN = ni === currentN;
-    const rowCells = tVals.map(ti => {
-      const cell  = cells.find(c => c.n === ni && c.t === ti);
-      const isMin = cell.meetsCM && cell.ats1 - minAts1 < 0.001;
-      const isCurCell = isCurN && Math.abs(ti - currentT) < 0.001;
-
-      const ats1Cls = !cell.meetsCM ? '' : cell.ats1 <= 8 ? 'cell-good' : cell.ats1 <= 24 ? 'cell-warn' : 'cell-danger';
-      const bg = isMin ? 'background:#dcfce7;' : isCurCell ? 'background:#eff6ff;' : '';
-
-      const ats1Fmt = !isFinite(cell.ats1) || cell.ats1 > 1e5
-        ? '> 100 k h'
-        : cell.ats1.toLocaleString('es', { maximumFractionDigits: 1 }) + ' h';
-
-      return `<td style="${bg}${!cell.meetsCM ? 'opacity:.35' : ''}">
-        <span style="font-size:10px;color:var(--text-muted);display:block">CM ${cell.cm.toFixed(2)}${!cell.meetsCM ? ' ✗' : ' ✓'}</span>
-        <span class="${ats1Cls}">${ats1Fmt}</span>
-        ${isMin ? `<span style="font-size:9px;display:block;color:#15803d;font-weight:800">★ mín</span>` : ''}
-      </td>`;
-    }).join('');
-
-    return `<tr class="${isCurN ? 'row-current' : ''}">
-      <td style="text-align:center;font-weight:${isCurN ? '800' : '600'}">n = ${ni}${isCurN ? ' ←' : ''}</td>
-      ${rowCells}
-    </tr>`;
-  }).join('');
-
-  // Fila óptima (solo entre los que cumplen CM objetivo)
-  const validCells = cells.filter(c => c.meetsCM);
-  const opt = validCells.length ? validCells.reduce((best, c) => c.ats1 < best.ats1 ? c : best, validCells[0]) : null;
-  document.getElementById('cm-optimal-row').innerHTML = opt
-    ? `<div style="display:inline-flex;align-items:center;gap:12px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius);padding:10px 16px;flex-wrap:wrap">
-        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#15803d">★ Plan óptimo (CM ≥ ${targetCM.toFixed(2)})</span>
-        <span style="font-size:14px;font-weight:700;color:#166534">n = ${opt.n} &nbsp;·&nbsp; t = ${opt.t} h</span>
-        <span style="font-size:12px;color:#166534">CM = ${opt.cm.toFixed(2)} u/h</span>
-        <span style="font-size:12px;color:#166534">ATS₁ = ${opt.ats1.toFixed(1)} h</span>
-        <span style="font-size:12px;color:#166534">Potencia = ${(opt.power * 100).toFixed(1)}%</span>
-      </div>`
-    : `<div style="padding:10px 14px;color:var(--danger);font-size:13px">Ningún plan alcanza la CM objetivo de ${targetCM.toFixed(2)} u/h. Aumenta n o reduce t.</div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════
    ARRANQUE
 ══════════════════════════════════════════════════════════════ */
-syncCmChips();
 init();
 </script>
 </body>

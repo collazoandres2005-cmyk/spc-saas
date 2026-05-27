@@ -846,6 +846,11 @@
         main: p1.chartData[mainKey],
         sec:  secKey ? p1.chartData[secKey] : null
       };
+      // Use Phase I subgroup size when available
+      if (phase1Limits.main?.n >= 2) {
+        sgSize = phase1Limits.main.n;
+        if (XBAR_TYPES.includes(chartType)) buildInputForm();
+      }
       phase1Data = p1.chartData;
       applyLimitChips();
       applyMode();

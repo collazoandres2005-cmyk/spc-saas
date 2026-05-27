@@ -179,13 +179,15 @@ function calculateXbarR(subgroups) {
       points: means.map(v => round(v, 4)),
       cl:     round(xbarBar, 4),
       ucl:    round(xbarBar + c.A2 * rBar, 4),
-      lcl:    round(xbarBar - c.A2 * rBar, 4)
+      lcl:    round(xbarBar - c.A2 * rBar, 4),
+      n
     },
     r: {
       points: ranges.map(v => round(v, 4)),
       cl:     round(rBar, 4),
       ucl:    round(c.D4 * rBar, 4),
-      lcl:    round(c.D3 * rBar, 4)
+      lcl:    round(c.D3 * rBar, 4),
+      n
     }
   };
 }
@@ -205,13 +207,15 @@ function calculateXbarS(subgroups) {
       points: means.map(v => round(v, 4)),
       cl:     round(xbarBar, 4),
       ucl:    round(xbarBar + c.A3 * sBar, 4),
-      lcl:    round(xbarBar - c.A3 * sBar, 4)
+      lcl:    round(xbarBar - c.A3 * sBar, 4),
+      n
     },
     s: {
       points: stdevs.map(v => round(v, 4)),
       cl:     round(sBar, 4),
       ucl:    round(c.B4 * sBar, 4),
-      lcl:    round(c.B3 * sBar, 4)
+      lcl:    round(c.B3 * sBar, 4),
+      n
     }
   };
 }
@@ -629,6 +633,8 @@ function calculatePChart(subgroups) {
 
   const variableN = new Set(subgroups.map(sg => sg.n)).size > 1;
 
+  const avgN = round(mean(subgroups.map(sg => sg.n)), 0);
+
   return {
     p: {
       points:      pointData.map(p => p.value),
@@ -636,7 +642,8 @@ function calculatePChart(subgroups) {
       cl:          round(pBar, 4),
       ucl:         round(mean(pointData.map(p => p.ucl)), 4),
       lcl:         round(mean(pointData.map(p => p.lcl)), 4),
-      variableN
+      variableN,
+      n:           avgN
     }
   };
 }
@@ -678,7 +685,8 @@ function calculateCChart(subgroups) {
       cl:        round(cBar, 4),
       ucl:       round(ucl,  4),
       lcl:       round(lcl,  4),
-      variableN: false
+      variableN: false,
+      n:         1
     }
   };
 }
@@ -699,6 +707,7 @@ function calculateUChart(subgroups) {
   });
 
   const variableN = new Set(subgroups.map(sg => sg.n)).size > 1;
+  const avgN = round(mean(subgroups.map(sg => sg.n)), 0);
 
   return {
     u: {
@@ -707,7 +716,8 @@ function calculateUChart(subgroups) {
       cl:          round(uBar, 4),
       ucl:         round(mean(pointData.map(p => p.ucl)), 4),
       lcl:         round(mean(pointData.map(p => p.lcl)), 4),
-      variableN
+      variableN,
+      n:           avgN
     }
   };
 }

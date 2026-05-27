@@ -40,7 +40,7 @@ router.get('/capability', async (req, res) => {
     }
 
     const values = rows.map(r => parseFloat(r.value));
-    const n = simulate_n ? parseInt(simulate_n) : 0;
+    const n = simulate_n ? parseInt(simulate_n) : (process.n_size ? parseInt(process.n_size) : 0);
     let capability;
     let simulated = false;
     let testRows;   // rows with subgroup_id for statistical tests

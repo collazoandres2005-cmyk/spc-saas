@@ -212,24 +212,7 @@
           </div>
         </div>
 
-        <!-- %PNC por cola -->
-        <div class="cap-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;display:none" id="pnc-grid">
-          <div class="cap-card" id="pnc-card-lsi">
-            <div class="cap-val" id="val-pnc-lsi" style="font-size:26px">—</div>
-            <div class="cap-lbl">%PNC hacia LSI</div>
-            <div class="cap-sublbl" id="ppm-lsi-sub">cola inferior</div>
-          </div>
-          <div class="cap-card" id="pnc-card-lse">
-            <div class="cap-val" id="val-pnc-lse" style="font-size:26px">—</div>
-            <div class="cap-lbl">%PNC hacia LSE</div>
-            <div class="cap-sublbl" id="ppm-lse-sub">cola superior</div>
-          </div>
-          <div class="cap-card" id="pnc-card-total">
-            <div class="cap-val" id="val-pnc-total" style="font-size:26px">—</div>
-            <div class="cap-lbl">%PNC Total</div>
-            <div class="cap-sublbl" id="ppm-total-sub">ambas colas</div>
-          </div>
-        </div>
+
 
         <!-- Métricas principales -->
         <div class="metrics-grid" style="margin-bottom:14px">
@@ -435,20 +418,9 @@
   }
 
   // ── Render capacidad ───────────────────────────────────────
-  function fmtPnc(ppm) {
-    if (ppm == null) return '—';
-    const pct = ppm / 10000;
-    return pct < 0.0001
-      ? pct.toExponential(2) + '%'
-      : pct < 0.01
-        ? pct.toFixed(4) + '%'
-        : pct.toFixed(3) + '%';
-  }
-
   function renderCapability({ process, capability }, histogram = null) {
     const { cp, cpk, cpu, cpl, xbar, sigma, sigmaTotal, sigmaMethod, status, n,
-            n_subgroups, subgroup_size, tolerance, distToUsl, distToLsl, distToNominal,
-            ppmUpper, ppmLower, ppmTotal } = capability;
+            n_subgroups, subgroup_size, tolerance, distToUsl, distToLsl, distToNominal } = capability;
 
     // Semáforo
     const banner = document.getElementById('status-banner');
@@ -479,25 +451,6 @@
       ? 'Índices de capacidad (σ̂<sub style="font-size:9px">w</sub> = R̄/d₂)'
       : 'Índices de capacidad (σ = σ<sub style="font-size:9px">total</sub>, sin subgrupos)';
 
-    // %PNC por cola
-    const pncLsi   = fmtPnc(ppmLower);
-    const pncLse   = fmtPnc(ppmUpper);
-    const pncTot   = fmtPnc(ppmTotal);
-    const pncColor = pncPpm => {
-      if (pncPpm == null) return '';
-      if (pncPpm < 100)   return 'text-success';
-      if (pncPpm < 1000)  return 'text-warning';
-      return 'text-danger';
-    };
-    const setCard = (id, pct, ppm) => {
-      document.getElementById(id).textContent = pct;
-      document.getElementById(id).className   = `cap-val ${pncColor(ppm)}`;
-    };
-    setCard('val-pnc-lsi',   pncLsi,  ppmLower);
-    setCard('val-pnc-lse',   pncLse,  ppmUpper);
-    setCard('val-pnc-total', pncTot,  ppmTotal);
-    document.getElementById('pnc-grid').style.display =
-      (ppmTotal != null) ? 'grid' : 'none';
     document.getElementById('val-xbar').textContent = formatNum(xbar, 4);
     document.getElementById('val-unit').textContent = process.unit || '';
 

@@ -403,12 +403,10 @@ function cpkInterpretation(v) {
 
 function riskLevel(cap) {
   if (!cap) return { label: 'Sin datos', color: 'info', text: 'No hay datos de capacidad para evaluar el riesgo.' };
-  const pnc = (cap.ppmTotal || 0) / 10000;
-  if (pnc <= 0.01) return { label: 'Muy bajo', color: 'good', text: `Riesgo mínimo: ${pnc.toFixed(3)}% PNC esperado fuera de especificación.` };
-  if (pnc <= 0.5) return { label: 'Bajo', color: 'good', text: `Riesgo bajo: ${pnc.toFixed(2)}% PNC esperado fuera de especificación.` };
-  if (pnc <= 5) return { label: 'Moderado', color: 'warn', text: `Riesgo moderado: ${pnc.toFixed(2)}% PNC esperado fuera de especificación. Se recomienda monitoreo continuo.` };
-  if (pnc <= 20) return { label: 'Alto', color: 'danger', text: `Riesgo alto: ${pnc.toFixed(2)}% PNC esperado fuera de especificación. Se requieren acciones correctivas.` };
-  return { label: 'Crítico', color: 'danger', text: `Riesgo crítico: ${pnc.toFixed(2)}% PNC esperado fuera de especificación. El proceso no es aceptable para producción.` };
+  const cpk = cap.cpk;
+  if (cpk >= 1.33) return { label: 'Muy bajo', color: 'good', text: 'Riesgo mínimo: el proceso es capaz (Cpk ≥ 1.33).' };
+  if (cpk >= 1.0) return { label: 'Moderado', color: 'warn', text: `Riesgo moderado: proceso marginalmente capaz (Cpk = ${cpk.toFixed(3)}). Se recomienda monitoreo continuo.` };
+  return { label: 'Alto', color: 'danger', text: `Riesgo alto: proceso no capaz (Cpk = ${cpk.toFixed(3)}). Se requieren acciones correctivas.` };
 }
 
 function crossAnalysis(d) {
@@ -428,10 +426,8 @@ function crossAnalysis(d) {
   if (isNormal === false) recs.push({ prio: 'med', text: 'Los datos no son normales. Los índices Cp/Cpk asumen normalidad — considerar transformación Box-Cox o usar índices no paramétricos. Verificar histograma para identificar asimetría o valores atípicos.' });
   if (cap && cap.cpk < cap.cp - 0.1) recs.push({ prio: 'high', text: `Diferencia significativa entre Cp (${fmt(cap.cp)}) y Cpk (${fmt(cap.cpk)}). El proceso está descentrado: ajustar la media hacia el nominal para mejorar capacidad real.` });
   if (cc && cc.totalSubgroups < 20 && cc.oocCount === 0) recs.push({ prio: 'low', text: `Solo ${cc.totalSubgroups} subgrupos disponibles. Para una validación robusta de estabilidad se recomiendan ≥ 20 subgrupos.` });
-  if (cap && cap.ppmTotal > 66800) recs.push({ prio: 'high', text: `El %PNC predicho (${(cap.ppmTotal/10000).toFixed(2)}%) es elevado. Implementar mejora continua para reducir variabilidad.` });
+  if (cap && cap.cpk < 1.0) recs.push({ prio: 'high', text: 'El proceso no es capaz (Cpk < 1.0). Implementar mejora continua para reducir variabilidad.' });
   if (cap && cap.distToNominal != null && cap.distToNominal > cap.tolerance * 0.15) recs.push({ prio: 'med', text: `La media está a ${fmt(cap.distToNominal)} del nominal (tolerancia: ${fmt(cap.tolerance)}). Centrar el proceso para maximizar Cpk.` });
-  if (cap && cap.ppmUpper > cap.ppmLower * 3) recs.push({ prio: 'med', text: 'La mayoría de defectos se concentran en el límite superior. Revisar causa de sesgo hacia LSE.' });
-  if (cap && cap.ppmLower > cap.ppmUpper * 3) recs.push({ prio: 'med', text: 'La mayoría de defectos se concentran en el límite inferior. Revisar causa de sesgo hacia LSI.' });
 
   return recs;
 }
@@ -581,12 +577,6 @@ function renderReport() {
             <div class="rep-stat-val">${fmt(cap.sigma)}</div><div class="rep-stat-sub">desviación estándar estimada</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Tolerancia</div>
             <div class="rep-stat-val">${fmt(cap.tolerance)}</div><div class="rep-stat-sub">LSE − LSI (${d.process.usl}, ${d.process.lsl})</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">% PNC</div>
-            <div class="rep-stat-val">${cap.ppmTotal != null ? (cap.ppmTotal / 10000).toFixed(4) + '%' : '—'}</div><div class="rep-stat-sub">porcentaje no conforme</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">% PNC superior</div>
-            <div class="rep-stat-val">${(cap.ppmUpper / 10000).toFixed(4)}%</div><div class="rep-stat-sub">por encima de LSE</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">% PNC inferior</div>
-            <div class="rep-stat-val">${(cap.ppmLower / 10000).toFixed(4)}%</div><div class="rep-stat-sub">por debajo de LSI</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Distancia a LSE</div>
             <div class="rep-stat-val">${fmt(cap.distToUsl)}</div><div class="rep-stat-sub">media − LSE</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Distancia a LSI</div>
@@ -730,7 +720,7 @@ function renderReport() {
             <div class="rep-stat-sub">Anderson-Darling</div></div>
           <div class="rep-stat ${risk.color}"><div class="rep-stat-lbl">Riesgo de defectos</div>
             <div class="rep-stat-val" style="font-size:16px">${risk.label}</div>
-            <div class="rep-stat-sub">${cap ? (cap.ppmTotal / 10000).toFixed(3) + '% PNC' : '—'}</div></div>
+            <div class="rep-stat-sub">${cap && cap.cpk < 1.0 ? 'Proceso no capaz' : cap ? 'Proceso capaz' : '—'}</div></div>
         </div>
 
         <div class="rep-analysis" style="border-left-color: ${matrixCls === 'good' ? 'var(--success)' : matrixCls === 'warn' ? 'var(--warning)' : matrixCls === 'danger' ? 'var(--danger)' : 'var(--primary)'}">
@@ -774,7 +764,7 @@ function renderReport() {
         ? (meanVal - mu0) / processSigma : null;
       const usl = d.process?.usl != null ? parseFloat(d.process.usl) : null;
       const lsl = d.process?.lsl != null ? parseFloat(d.process.lsl) : null;
-      const pnc0 = d.capability?.ppmTotal != null ? d.capability.ppmTotal / 10000 : null;
+      const pnc0 = null;
       let pnc1 = null;
       if (processSigma > 0 && usl != null && lsl != null && meanVal != null) {
         const zLsl = (lsl - meanVal) / processSigma;
@@ -968,7 +958,7 @@ function renderReport() {
     } else if (cap && cc && cc.oocCount === 0 && cap.cpk >= 1.0) {
       par1 = 'El proceso es <strong>estable</strong> pero su capacidad es <strong>marginal</strong> (Cpk = ' + fmt(cap.cpk) + '). Aunque no hay causas asignables, la variabilidad común es excesiva para las especificaciones actuales.';
     } else if (cap && cc && cc.oocCount === 0 && cap.cpk < 1.0) {
-      par1 = 'El proceso es <strong>estable</strong> pero <strong>no es capaz</strong> (Cpk = ' + fmt(cap.cpk) + '). Produce un ' + (cap.ppmTotal / 10000).toFixed(2) + '% de piezas fuera de especificación (%PNC = ' + (cap.ppmTotal / 10000).toFixed(3) + '%).';
+      par1 = 'El proceso es <strong>estable</strong> pero <strong>no es capaz</strong> (Cpk = ' + fmt(cap.cpk) + '). Se requiere acción correctiva para reducir variabilidad o ajustar la media.';
     } else if (cap && cc && cc.oocCount > 0) {
       par1 = 'El proceso presenta <strong>inestabilidad</strong> (' + cc.oocCount + ' punto' + (cc.oocCount > 1 ? 's' : '') + ' fuera de control) y una capacidad ' + (cap.cpk >= 1.33 ? 'aparentemente buena' : cap.cpk >= 1.0 ? 'marginal' : 'insuficiente') + ' (Cpk = ' + fmt(cap.cpk) + '). Los índices de capacidad no son fiables hasta estabilizar el proceso.';
     } else if (cap) {

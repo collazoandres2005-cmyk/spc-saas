@@ -349,7 +349,7 @@
             <ul class="manual-ul">
               <li>Facilitar la recolección estructurada de datos de medición en tiempo real.</li>
               <li>Generar automáticamente cartas de control (X̄-R, X̄-S, p, np, c, u) conforme a los estándares ISO y AIAG.</li>
-              <li>Calcular índices de capacidad del proceso (Cp, Cpk, Pp, Ppk) y evaluar si un proceso cumple especificaciones.</li>
+              <li>Calcular índices de capacidad del proceso (Cp, Cpk) y evaluar si un proceso cumple especificaciones.</li>
               <li>Detectar señales de causas especiales de variación mediante reglas de Nelson y Western Electric.</li>
               <li>Proporcionar informes exportables y un historial auditado de todas las mediciones.</li>
               <li>Permitir el monitoreo continuo en Fase II con alertas automáticas de puntos fuera de control.</li>
@@ -497,7 +497,7 @@ NODE_ENV=production
             <div class="module-grid">
               <div class="module-card m-yellow">
                 <div class="module-name">🎯 Capacidad del Proceso</div>
-                <div class="module-desc">Cálculo de Cp, Cpk, Pp, Ppk, Cpm. Histograma de distribución con curva normal.</div>
+                <div class="module-desc">Cálculo de Cp, Cpk. Histograma de distribución con curva normal.</div>
               </div>
               <div class="module-card m-yellow">
                 <div class="module-name">🔍 Monitoreo SPC</div>
@@ -565,7 +565,7 @@ NODE_ENV=production
             <ol class="step-list">
               <li><span class="step-num">1</span>Ir a <strong>Capacidad del Proceso</strong>.</li>
               <li><span class="step-num">2</span>Seleccionar el proceso (debe tener LSE y/o LIE definidos).</li>
-              <li><span class="step-num">3</span>El sistema calcula Cp, Cpk, Pp, Ppk y muestra el histograma con la curva normal superpuesta.</li>
+              <li><span class="step-num">3</span>El sistema calcula Cp, Cpk y muestra el histograma con la curva normal superpuesta.</li>
               <li><span class="step-num">4</span>Interpretar los valores con el panel de semáforo: verde (capaz), amarillo (marginal), rojo (no capaz).</li>
             </ol>
 
@@ -671,7 +671,6 @@ NODE_ENV=production
                 <tr><td>Cp</td><td>(LSE − LIE) / 6σ</td><td>Capacidad potencial (no considera centrado).</td></tr>
                 <tr><td>Cpk</td><td>min[(LSE−X̄)/3σ, (X̄−LIE)/3σ]</td><td>Capacidad real. ≥ 1.33 = capaz; 1.00–1.33 = marginal; &lt; 1.00 = no capaz.</td></tr>
                 <tr><td>Pp</td><td>(LSE − LIE) / 6s</td><td>Desempeño potencial (usa desviación real).</td></tr>
-                <tr><td>Ppk</td><td>Igual que Cpk pero con s en lugar de σ</td><td>Desempeño real a largo plazo.</td></tr>
               </tbody>
             </table>
 

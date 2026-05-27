@@ -626,7 +626,7 @@
           <p class="copy" style="margin-bottom:8px;font-weight:700;color:var(--dark)">Objetivos específicos:</p>
           <div class="copy">
             <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Generar cartas de control (X̄-R, X̄-S, p, np, c, u) conforme a ISO y AIAG.</div>
-            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Calcular índices de capacidad Cp, Cpk, Pp, Ppk.</div>
+            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Calcular índices de capacidad Cp, Cpk.</div>
             <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Detectar señales de causas especiales de variación.</div>
             <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Proporcionar informes exportables y historial auditado.</div>
             <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Diseñar planes de muestreo (MIL-STD-1916, ISO 2859).</div>
@@ -854,7 +854,7 @@ NODE_ENV=production
         <div class="mod-grid">
           <div class="mod-item accent-amber">
             <div class="mod-item-name">🎯 Capacidad</div>
-            <div class="mod-item-desc">Cp, Cpk, Pp, Ppk, Cpm. Histograma de distribución con curva normal y bandas σ.</div>
+            <div class="mod-item-desc">Cp, Cpk. Histograma de distribución con curva normal y bandas σ.</div>
           </div>
           <div class="mod-item accent-amber">
             <div class="mod-item-name">🔍 Monitoreo SPC</div>
@@ -913,7 +913,7 @@ NODE_ENV=production
           <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid var(--red)">④ Análisis de capacidad</div>
           <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Capacidad del Proceso</strong>.</div></div>
           <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">Seleccionar el proceso (debe tener LSE / LIE definidos).</div></div>
-          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">El sistema calcula Cp, Cpk, Pp, Ppk y muestra el histograma con curva normal.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">El sistema calcula Cp, Cpk y muestra el histograma con curva normal.</div></div>
           <div class="step"><div class="step-num" style="background:var(--red)">4</div><div class="step-text">Semáforo: <span style="color:var(--green);font-weight:700">verde</span> capaz · <span style="color:var(--amber);font-weight:700">amarillo</span> marginal · <span style="color:var(--red);font-weight:700">rojo</span> no capaz.</div></div>
 
           <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:14px 0 10px;padding-bottom:4px;border-bottom:2px solid var(--red)">⑤ Monitoreo en tiempo real (Fase II)</div>
@@ -1228,7 +1228,7 @@ value,subgroup_id<br>
           <div class="gloss"><div class="gloss-term">LCS / LCI</div><div class="gloss-def">Límites de Control Superior / Inferior. Se calculan como LC ± 3σ del estadístico muestreado.</div></div>
           <div class="gloss"><div class="gloss-term">LSE / LIE</div><div class="gloss-def">Límites de Especificación Superior / Inferior. Definidos por cliente o diseño. Distintos a LCS/LCI.</div></div>
           <div class="gloss"><div class="gloss-term">OOC</div><div class="gloss-def">Out of Control (fuera de control). Punto que supera LCS o está bajo LCI. Indicado en rojo en la carta.</div></div>
-          <div class="gloss"><div class="gloss-term">Pp / Ppk</div><div class="gloss-def">Índices de desempeño a largo plazo. Usan desviación estándar real (s) en lugar de σ estimado.</div></div>
+          <div class="gloss"><div class="gloss-term">Pp</div><div class="gloss-def">Índice de desempeño potencial a largo plazo. Usa desviación estándar real (s) en lugar de σ estimado.</div></div>
         </div>
         <div>
           <div class="gloss"><div class="gloss-term">Plan de Muestreo</div><div class="gloss-def">Procedimiento estadístico que define tamaño de muestra y criterios de aceptación/rechazo por lote.</div></div>

@@ -29,13 +29,12 @@ const SPC = (() => {
     const cpu = (usl - xbar) / (3 * sigma);
     const cpl = (xbar - lsl) / (3 * sigma);
     const cpk = Math.min(cpu, cpl);
-    const ppm = (normalCDF(-(usl - xbar) / sigma) + normalCDF(-(xbar - lsl) / sigma)) * 1e6;
 
     let status = 'no_capaz';
     if (cpk >= 1.33) status = 'capaz';
     else if (cpk >= 1.0) status = 'marginal';
 
-    return { xbar, sigma, cp, cpu, cpl, cpk, ppm, status };
+    return { xbar, sigma, cp, cpu, cpl, cpk, status };
   }
 
   function histogramData(values, bins = 10) {

@@ -228,6 +228,10 @@
               <div class="perf-card" id="card-mon-pnc0"><div class="pc-label">%PNC original (μ₀)</div><div class="pc-value" id="mon-pnc0">—</div></div>
               <div class="perf-card" id="card-mon-pnc1" style="grid-column:span 3"><div class="pc-label">Producto No Conforme (μ₁)</div><div class="pc-value" id="mon-pnc1" style="font-size:32px">—</div><div class="pc-unit" id="mon-pnc1-desc">% fuera de especificación con la nueva media</div></div>
             </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="savePerformanceEval()">💾 Guardar evaluación</button>
+              <span id="eval-save-msg" style="font-size:11px;color:var(--text-muted)"></span>
+            </div>
           </div>
         </div>
 
@@ -513,6 +517,8 @@ initTopBar('Evaluación del Desempeño SPC');
 ══════════════════════════════════════════════════════════════ */
 let chartInfo = null;       // datos reales de la carta cargada
 let monitoringData = null;  // datos de monitoreo Fase II
+let currentPid = null;      // proceso actualmente cargado
+let lastEval = null;        // últimos resultados de renderMonitoringEval
 
 /* ══════════════════════════════════════════════════════════════
    MONITOREO FASE II — Evaluación con datos reales
@@ -566,6 +572,47 @@ function renderMonitoringEval() {
     : '% fuera de especificación con la nueva media';
 
   document.getElementById('mon-sg-count').textContent = monitoringData.sessionSubgroups?.length || means.length;
+  document.getElementById('eval-save-msg').textContent = '';
+
+  // Guardar para exportar
+  lastEval = { mu0, mu1, sigmaP, n, deltaReal, shiftXbar, pnc0, pnc1, usl, lsl, sgCount: monitoringData.sessionSubgroups?.length || means.length };
+
+  // Mostrar si ya hay una evaluación guardada
+  loadSavedEvalStatus();
+}
+
+/* ── Cargar estado de evaluación guardada ──────────────────────── */
+function loadSavedEvalStatus() {
+  const msg = document.getElementById('eval-save-msg');
+  if (!currentPid) { msg.textContent = ''; return; }
+  try {
+    const raw = localStorage.getItem('spc_eval_' + currentPid);
+    if (raw) {
+      const s = JSON.parse(raw);
+      const dt = new Date(s.savedAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+      msg.innerHTML = `✅ Evaluación guardada el ${dt}`;
+    }
+  } catch {}
+}
+
+/* ── Guardar evaluación en localStorage ────────────────────────── */
+function savePerformanceEval() {
+  if (!currentPid || !lastEval) {
+    document.getElementById('eval-save-msg').textContent = '❌ No hay datos de evaluación para guardar.';
+    return;
+  }
+  const data = {
+    processId: currentPid,
+    chartType: chartInfo?.type || 'xbar_r',
+    savedAt: new Date().toISOString(),
+    ...lastEval
+  };
+  try {
+    localStorage.setItem('spc_eval_' + currentPid, JSON.stringify(data));
+    document.getElementById('eval-save-msg').innerHTML = '✅ Evaluación guardada.';
+  } catch (e) {
+    document.getElementById('eval-save-msg').textContent = '❌ Error al guardar: ' + e.message;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -689,6 +736,7 @@ async function loadProcess() {
     renderChartInfoPanel(chartInfo);
     applyChartInfoToInputs(chartInfo);
     renderFormulaRef(chartInfo.type);
+    currentPid = pid;
 
     document.getElementById('chart-info-panel').style.display = 'block';
     document.getElementById('empty-state').style.display      = 'none';

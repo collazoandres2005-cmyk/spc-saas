@@ -436,15 +436,34 @@ function renderReport() {
   const showFase2   = phase === 'all' || phase === 'fase2';
   const showMuestreo = phase === 'all' || phase === 'muestreo';
 
-  // Compute OOC for monitoring data from Phase I limits
+    // Ensure sessionMeans exists (old cache may lack it)
   const mon = reportData.monitoring;
-  if (mon && mon.sessionMeans?.length && d.controlChart?.summary) {
-    const lims = d.controlChart.summary;
-    const ucl = lims.ucl, lcl = lims.lcl;
-    if (ucl != null && lcl != null) {
-      mon.outOfControl = mon.sessionMeans
-        .map((v, i) => (v > ucl || v < lcl) ? i : -1)
-        .filter(i => i >= 0);
+  if (mon && mon.sessionSubgroups?.length) {
+    if (!mon.sessionMeans?.length) {
+      mon.sessionMeans = [];
+      const sgs = mon.sessionSubgroups;
+      const ct = mon.chartType || 'xbar_r';
+      const isXbar = ['xbar_r', 'xbar_s'].includes(ct);
+      for (const sg of sgs) {
+        if (Array.isArray(sg)) {
+          mon.sessionMeans.push(sg.reduce((a,b)=>a+b,0) / sg.length);
+        } else if (sg && typeof sg === 'object') {
+          if (sg.defectives != null && sg.n)       mon.sessionMeans.push(sg.defectives / sg.n);
+          else if (sg.count != null && sg.n)       mon.sessionMeans.push(sg.count / sg.n);
+          else if (sg.defectives != null)          mon.sessionMeans.push(sg.defectives);
+          else if (sg.count != null)               mon.sessionMeans.push(sg.count);
+        }
+      }
+    }
+    // Compute OOC for monitoring data from Phase I limits
+    if (mon.sessionMeans.length && d.controlChart?.summary) {
+      const lims = d.controlChart.summary;
+      const ucl = lims.ucl, lcl = lims.lcl;
+      if (ucl != null && lcl != null) {
+        mon.outOfControl = mon.sessionMeans
+          .map((v, i) => (v > ucl || v < lcl) ? i : -1)
+          .filter(i => i >= 0);
+      }
     }
   }
 

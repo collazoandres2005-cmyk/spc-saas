@@ -425,7 +425,7 @@ router.get('/report', async (req, res) => {
       dataSummary: {
         n: values.length,
         mean: values.length ? spc.mean(values) : null,
-        stdDev: values.length >= 2 ? spc.stdDev(values) : null,
+        stdDev: null,
         min: values.length ? Math.min(...values) : null,
         max: values.length ? Math.max(...values) : null,
         range: values.length ? Math.max(...values) - Math.min(...values) : null
@@ -463,9 +463,17 @@ router.get('/report', async (req, res) => {
               sgValues = [];
               for (let g = 0; g < numGroups; g++) sgValues.push(values.slice(g * n, (g + 1) * n));
               chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
+              const ranges = sgValues.map(sg => Math.max(...sg) - Math.min(...sg));
+              const rBar = spc.mean(ranges);
+              const d2 = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 }[n] || 2.326;
+              result.dataSummary.stdDev = parseFloat((rBar / d2).toFixed(4));
             }
           }
-        } else if (type === 'p') {
+        }
+        if (result.dataSummary.stdDev == null) {
+          result.dataSummary.stdDev = parseFloat(spc.stdDev(values).toFixed(4));
+        }
+        if (type === 'p') {
           // Simplified: use individual values as defectives
           const subgroups = [{ defectives: Math.round(values.reduce((a, b) => a + b, 0)), n: values.length }];
           // Not enough for p chart, skip

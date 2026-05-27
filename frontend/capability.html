@@ -436,15 +436,13 @@
 
   // ── Render capacidad ───────────────────────────────────────
   function fmtPnc(ppm) {
-    if (ppm == null) return { pct: '—', sub: '' };
+    if (ppm == null) return '—';
     const pct = ppm / 10000;
-    const pctStr = pct < 0.0001
+    return pct < 0.0001
       ? pct.toExponential(2) + '%'
       : pct < 0.01
         ? pct.toFixed(4) + '%'
         : pct.toFixed(3) + '%';
-    const ppmStr = ppm < 1 ? `${ppm.toFixed(2)} PPM` : `${Math.round(ppm).toLocaleString('es')} PPM`;
-    return { pct: pctStr, sub: ppmStr };
   }
 
   function renderCapability({ process, capability }, histogram = null) {
@@ -485,20 +483,19 @@
     const pncLsi   = fmtPnc(ppmLower);
     const pncLse   = fmtPnc(ppmUpper);
     const pncTot   = fmtPnc(ppmTotal);
-    const pncColor = ppm => {
-      if (ppm == null) return '';
-      if (ppm < 100)   return 'text-success';
-      if (ppm < 1000)  return 'text-warning';
+    const pncColor = pncPpm => {
+      if (pncPpm == null) return '';
+      if (pncPpm < 100)   return 'text-success';
+      if (pncPpm < 1000)  return 'text-warning';
       return 'text-danger';
     };
-    const setCard = (valId, subId, cardId, fmt, ppm) => {
-      document.getElementById(valId).textContent  = fmt.pct;
-      document.getElementById(subId).textContent  = fmt.sub;
-      document.getElementById(valId).className    = `cap-val ${pncColor(ppm)}`;
+    const setCard = (id, pct, ppm) => {
+      document.getElementById(id).textContent = pct;
+      document.getElementById(id).className   = `cap-val ${pncColor(ppm)}`;
     };
-    setCard('val-pnc-lsi', 'ppm-lsi-sub',   'pnc-card-lsi',   pncLsi,  ppmLower);
-    setCard('val-pnc-lse', 'ppm-lse-sub',   'pnc-card-lse',   pncLse,  ppmUpper);
-    setCard('val-pnc-total','ppm-total-sub', 'pnc-card-total', pncTot,  ppmTotal);
+    setCard('val-pnc-lsi',   pncLsi,  ppmLower);
+    setCard('val-pnc-lse',   pncLse,  ppmUpper);
+    setCard('val-pnc-total', pncTot,  ppmTotal);
     document.getElementById('pnc-grid').style.display =
       (ppmTotal != null) ? 'grid' : 'none';
     document.getElementById('val-xbar').textContent = formatNum(xbar, 4);

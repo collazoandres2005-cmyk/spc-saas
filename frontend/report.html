@@ -181,7 +181,7 @@
       .rep-ooc-ok  { color: #16a34a !important; }
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="app-layout">
   <aside class="sidebar" id="sidebar"></aside>
@@ -1056,90 +1056,30 @@ async function downloadPDF() {
   btn.innerHTML = '⏳ Generando…';
 
   try {
+    // Verificar que html2pdf esté disponible
+    if (typeof html2pdf === 'undefined') {
+      throw new Error('La librería pdf no está cargada. Recarga la página e intenta de nuevo.');
+    }
+
     const element = document.getElementById('report-content');
     const procName = reportData?.process?.process?.name || 'informe';
     const fecha    = new Date().toISOString().slice(0, 10);
-    const fileName = `SPC_${procName.replace(/[^a-z0-9áéíóúñ]/gi, '_')}_${fecha}.pdf`;
+    const fileName = `SPC_${procName.replace(/[^a-z0-9]/gi, '_')}_${fecha}.pdf`;
 
-    // Clonar el contenido para aplicar estilos de impresión sin alterar la vista
-    const clone = element.cloneNode(true);
-    clone.style.cssText = `
-      background: #fff;
-      color: #0f172a;
-      font-family: system-ui, sans-serif;
-      padding: 0;
-      width: 794px;
-    `;
+    await html2pdf()
+      .set({
+        margin:      [10, 10, 10, 10],
+        filename:    fileName,
+        image:       { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      })
+      .from(element)
+      .save();
 
-    // Aplicar estilos light al clon
-    clone.querySelectorAll('*').forEach(el => {
-      el.style.backdropFilter = 'none';
-      el.style.webkitBackdropFilter = 'none';
-    });
-    clone.querySelectorAll('.rep-section, .rep-header, .rep-conclusion').forEach(el => {
-      el.style.background = '#f8fafc';
-      el.style.border = '1px solid #e2e8f0';
-      el.style.borderRadius = '8px';
-    });
-    clone.querySelectorAll('.rep-shead').forEach(el => {
-      el.style.background = '#f1f5f9';
-      el.style.borderBottom = '1px solid #e2e8f0';
-    });
-    clone.querySelectorAll('.rep-stitle, .rep-h1').forEach(el => {
-      el.style.color = '#0f172a';
-    });
-    clone.querySelectorAll('.rep-ssub, .rep-h1-sub, .rep-meta').forEach(el => {
-      el.style.color = '#64748b';
-    });
-    clone.querySelectorAll('.rep-val, .rep-cell-val').forEach(el => {
-      el.style.color = '#0f172a';
-    });
-    clone.querySelectorAll('.rep-lbl, .rep-cell-lbl').forEach(el => {
-      el.style.color = '#475569';
-    });
-    clone.querySelectorAll('.rep-stat').forEach(el => {
-      el.style.background = '#f8fafc';
-    });
-    clone.querySelectorAll('.rep-table').forEach(el => {
-      el.style.color = '#0f172a';
-    });
-    clone.querySelectorAll('th').forEach(el => {
-      el.style.background = '#f1f5f9';
-      el.style.color = '#0f172a';
-    });
-    clone.querySelectorAll('tr:nth-child(even)').forEach(el => {
-      el.style.background = '#f8fafc';
-    });
-    clone.querySelectorAll('.rep-conclusion').forEach(el => {
-      el.style.background = '#eff6ff';
-      el.style.border = '1px solid #bfdbfe';
-      el.style.color = '#1e3a5f';
-    });
-
-    // Insertar temporalmente en el DOM (fuera de pantalla)
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;';
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-
-    await html2pdf().set({
-      margin:     [12, 12, 12, 12],
-      filename:   fileName,
-      image:      { type: 'jpeg', quality: 0.97 },
-      html2canvas: {
-        scale:           2,
-        useCORS:         true,
-        backgroundColor: '#ffffff',
-        logging:         false
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    }).from(wrapper).save();
-
-    document.body.removeChild(wrapper);
   } catch (err) {
     console.error('Error generando PDF:', err);
-    alert('Error al generar el PDF. Intenta de nuevo.');
+    alert('Error al generar el PDF: ' + err.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalHTML;

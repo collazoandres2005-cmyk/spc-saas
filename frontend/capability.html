@@ -262,6 +262,15 @@
           </div>
         </div>
 
+        <!-- ── Supuestos ───────────────────────────────────────── -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><div class="card-title">Supuestos del análisis</div></div>
+          <div class="card-body">
+            <div id="assumptions-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+            <div id="assumptions-note" style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.5"></div>
+          </div>
+        </div>
+
         <div class="chart-wrap">
           <div class="chart-title">Distribución del proceso vs. Especificaciones</div>
           <div id="centering-msg"></div>
@@ -403,13 +412,16 @@
     msg.innerHTML = '';
 
     try {
-      const [capResult, histResult] = await Promise.all([
+      const [capResult, histResult, testsResult, measResult] = await Promise.all([
         analysisApi.capability(pid),
-        analysisApi.histogram(pid, 10)
+        analysisApi.histogram(pid, 10),
+        analysisApi.statisticalTests(pid).catch(() => null),
+        measurementsApi.list(pid, 200).catch(() => null)
       ]);
 
       document.getElementById('process-crumb').textContent = `· ${capResult.process.name}`;
       renderCapability(capResult, histResult.histogram);
+      renderAssumptions(testsResult, measResult);
       document.getElementById('result-area').classList.remove('hidden');
     } catch (err) {
       showAlert(msg, err.message, 'error');
@@ -525,6 +537,85 @@
       parseFloat(process.nominal), xbar, sigma, histogram);
 
     renderRecommendations(capability, process);
+  }
+
+  // ── Prueba de independencia (rachas) ────────────────────────
+  function runsTest(values) {
+    if (!values || values.length < 10) return null;
+    const sorted = values.slice().sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    let runs = 1;
+    for (let i = 1; i < values.length; i++) {
+      const prevAbove = values[i - 1] > median;
+      const currAbove = values[i] > median;
+      if (prevAbove !== currAbove) runs++;
+    }
+    const n1 = values.filter(v => v > median).length;
+    const n2 = values.length - n1;
+    const expectedRuns = 1 + (2 * n1 * n2) / (n1 + n2);
+    const variance = (2 * n1 * n2 * (2 * n1 * n2 - n1 - n2)) / ((n1 + n2) ** 2 * (n1 + n2 - 1));
+    if (variance <= 0) return null;
+    const z = (runs - expectedRuns) / Math.sqrt(variance);
+    const p = 2 * (1 - normalCDF2(Math.abs(z)));
+    return { runs, expectedRuns, z, p, independent: p > 0.05 };
+  }
+
+  function normalCDF2(x) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.8212560 + t * 1.3302744))));
+    return x > 0 ? 1 - p : p;
+  }
+
+  // ── Render supuestos ────────────────────────────────────────
+  function renderAssumptions(tests, measResult) {
+    const grid = document.getElementById('assumptions-grid');
+    const note = document.getElementById('assumptions-note');
+    const cards = [];
+
+    function addCard(label, ok, detail) {
+      cards.push(`<div style="background:var(--glass-card);border:1px solid ${ok ? 'var(--success-bdr)' : 'var(--danger-bdr)'};border-radius:var(--radius);padding:10px 14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);margin-bottom:4px">${label}</div>
+        <div style="font-size:14px;font-weight:800;color:${ok ? 'var(--success)' : 'var(--danger)'}">${ok ? '✅ Válido' : '⚠ No válido'}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${detail || ''}</div>
+      </div>`);
+    }
+
+    // Normalidad
+    if (tests?.normality?.available) {
+      const n = tests.normality;
+      addCard('Normalidad (Anderson-Darling)', n.normal,
+        `A² = ${n.statistic.toFixed(4)} · p = ${n.p_value.toFixed(4)}`);
+    } else {
+      addCard('Normalidad', false, 'Prueba no disponible');
+    }
+
+    // Homocedasticidad
+    if (tests?.homoscedasticity?.available) {
+      const h = tests.homoscedasticity;
+      addCard('Homogeneidad de varianzas (Levene)', h.homoscedastic,
+        `W = ${h.statistic.toFixed(4)} · p = ${h.p_value.toFixed(4)}`);
+    } else {
+      addCard('Homogeneidad de varianzas', false, 'Se requieren ≥2 subgrupos con ≥2 obs.');
+    }
+
+    // Independencia (prueba de rachas)
+    const measArr = measResult?.data || measResult || null;
+    const rawValues = Array.isArray(measArr)
+      ? measArr.map(m => parseFloat(m.value)).filter(v => !isNaN(v)).reverse()
+      : null;
+    const rt = runsTest(rawValues);
+    if (rt) {
+      addCard('Independencia (Rachas)', rt.independent,
+        `Rachas obs. = ${rt.runs} · esperadas = ${rt.expectedRuns.toFixed(1)} · p = ${rt.p.toFixed(4)}`);
+    } else if (rawValues && rawValues.length < 10) {
+      addCard('Independencia', false, `Se requieren ≥10 obs. (se tienen ${rawValues.length})`);
+    } else {
+      addCard('Independencia', false, 'No hay datos suficientes');
+    }
+
+    grid.innerHTML = cards.join('');
+    note.innerHTML = cards.length ? 'Los supuestos deben cumplirse para que los índices de capacidad e inferencias sean válidos.' : '';
   }
 
   function renderRecommendations(cap, proc) {

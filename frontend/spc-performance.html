@@ -596,6 +596,33 @@ function loadSavedEvalStatus() {
 }
 
 /* ── Guardar evaluación en localStorage ────────────────────────── */
+function readConfig() {
+  return {
+    k:     parseFloat(document.getElementById('inp-k').value) || 3,
+    n:     parseInt(document.getElementById('inp-n').value) || 5,
+    t:     parseFloat(document.getElementById('inp-t').value) || 4,
+    delta: parseFloat(document.getElementById('inp-delta').value) || 1,
+    pnc:   parseFloat(document.getElementById('inp-pnc').value) || 2.5,
+    prod:  parseFloat(document.getElementById('inp-prod').value) || 100,
+    cmDelta:  parseFloat(document.getElementById('cm-delta').value) || 0.2,
+    cmNMin:   parseInt(document.getElementById('cm-n-min').value) || 2,
+    cmNMax:   parseInt(document.getElementById('cm-n-max').value) || 10
+  };
+}
+
+function applyConfig(cfg) {
+  if (!cfg) return;
+  const map = {
+    'inp-k': 'k', 'inp-n': 'n', 'inp-t': 't', 'inp-delta': 'delta',
+    'inp-pnc': 'pnc', 'inp-prod': 'prod', 'cm-delta': 'cmDelta',
+    'cm-n-min': 'cmNMin', 'cm-n-max': 'cmNMax'
+  };
+  for (const [id, key] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el && cfg[key] != null) el.value = cfg[key];
+  }
+}
+
 function savePerformanceEval() {
   if (!currentPid || !lastEval) {
     document.getElementById('eval-save-msg').textContent = '❌ No hay datos de evaluación para guardar.';
@@ -605,11 +632,12 @@ function savePerformanceEval() {
     processId: currentPid,
     chartType: chartInfo?.type || 'xbar_r',
     savedAt: new Date().toISOString(),
+    config: readConfig(),
     ...lastEval
   };
   try {
     localStorage.setItem('spc_eval_' + currentPid, JSON.stringify(data));
-    document.getElementById('eval-save-msg').innerHTML = '✅ Evaluación guardada.';
+    document.getElementById('eval-save-msg').innerHTML = '✅ Evaluación y parámetros guardados.';
   } catch (e) {
     document.getElementById('eval-save-msg').textContent = '❌ Error al guardar: ' + e.message;
   }
@@ -754,6 +782,12 @@ async function loadProcess() {
       } catch {}
     }
     renderMonitoringEval();
+
+    // Restaurar parámetros guardados
+    try {
+      const saved = JSON.parse(localStorage.getItem('spc_eval_' + pid));
+      if (saved?.config) applyConfig(saved.config);
+    } catch {}
 
     recalc();
   } catch (err) {

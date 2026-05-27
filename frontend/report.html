@@ -753,25 +753,42 @@ function renderReport() {
       const means = mon.sessionMeans || [];
       const meanVal = means.length ? means.reduce((a,b)=>a+b,0)/means.length : null;
       const ccSummary = d.controlChart?.summary;
-      const mu0 = ccSummary?.cl;
-      const sigmaXbar = ccSummary && ccSummary.ucl != null && ccSummary.cl != null
-        ? (ccSummary.ucl - ccSummary.cl) / 3 : null;
+      const mu0 = ccSummary?.cl ?? d.dataSummary?.mean ?? null;
+
+      // σ̂w: usar directamente el sigma de capacidad (R̄/d₂ o S̄/c₄), exacto sin redondeo de límites
+      const processSigma = d.capability?.sigma ?? null;
+
+      // n efectivo: del proceso o infiriendo de subgrupos en memoria
+      const nSize = d.process?.nSize
+        ? parseInt(d.process.nSize)
+        : (sg[0]?.length ?? null);
+
+      // σ de la carta X̄ = σ/√n (para calcular desplazamiento en unidades de la carta)
+      const sigmaXbar = processSigma != null && nSize > 0
+        ? processSigma / Math.sqrt(nSize) : null;
+
       const monShift = sigmaXbar > 0 && meanVal != null && mu0 != null
         ? (meanVal - mu0) / sigmaXbar : null;
-
-      // Performance evaluation
-      const nSize = d.process?.nSize ? parseInt(d.process.nSize) : null;
-      const processSigma = sigmaXbar > 0 && nSize > 0 ? sigmaXbar * Math.sqrt(nSize) : null;
       const shiftProcess = processSigma > 0 && meanVal != null && mu0 != null
         ? (meanVal - mu0) / processSigma : null;
+
       const usl = d.process?.usl != null ? parseFloat(d.process.usl) : null;
       const lsl = d.process?.lsl != null ? parseFloat(d.process.lsl) : null;
-      const pnc0 = null;
+
+      // %PNC con μ₀ (Fase I)
+      let pnc0 = null;
+      if (processSigma > 0 && usl != null && lsl != null && mu0 != null) {
+        const z0Lsl = (lsl - mu0) / processSigma;
+        const z0Usl = (usl - mu0) / processSigma;
+        pnc0 = (normalCDF(z0Lsl) + (1 - normalCDF(z0Usl))) * 100;
+      }
+
+      // %PNC con μ₁ (Fase II)
       let pnc1 = null;
       if (processSigma > 0 && usl != null && lsl != null && meanVal != null) {
-        const zLsl = (lsl - meanVal) / processSigma;
-        const zUsl = (usl - meanVal) / processSigma;
-        pnc1 = (normalCDF(zLsl) + (1 - normalCDF(zUsl))) * 100;
+        const z1Lsl = (lsl - meanVal) / processSigma;
+        const z1Usl = (usl - meanVal) / processSigma;
+        pnc1 = (normalCDF(z1Lsl) + (1 - normalCDF(z1Usl))) * 100;
       }
 
       const deltaPnc = pnc0 != null && pnc1 != null ? pnc1 - pnc0 : null;

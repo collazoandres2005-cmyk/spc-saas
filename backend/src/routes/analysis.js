@@ -517,28 +517,44 @@ router.get('/report', async (req, res) => {
       try {
         let chartData = null;
         if (type === 'xbar_r' || type === 'xbar_s') {
-          const n = process.n_size ? parseInt(process.n_size) : inferSubgroupSize(rows);
-          if (n >= 2 && n <= 10) {
-            const numGroups = Math.floor(values.length / n);
-            if (numGroups >= 2) {
-              sgValues = [];
-              for (let g = 0; g < numGroups; g++) sgValues.push(values.slice(g * n, (g + 1) * n));
+          // Prioridad: subgroup_id reales (igual que /capability y /control-chart)
+          const hasSubgroupIds = rows.some(r => r.subgroup_id != null);
+          if (hasSubgroupIds) {
+            const subgroupMap = new Map();
+            rows.forEach(row => {
+              const key = row.subgroup_id;
+              if (!subgroupMap.has(key)) subgroupMap.set(key, []);
+              subgroupMap.get(key).push(parseFloat(row.value));
+            });
+            const sgArrays = [...subgroupMap.values()].filter(sg => sg.length >= 2);
+            if (sgArrays.length >= 2) {
+              sgValues = sgArrays;
               chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
-              if (type === 'xbar_s') {
-                // σ̂ = S̄/c₄
-                const C4 = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727 };
-                const stdevs = sgValues.map(sg => spc.stdDev(sg));
-                const sBar = spc.mean(stdevs);
-                const c4 = C4[n] || 0.9400;
-                result.dataSummary.stdDev = parseFloat((sBar / c4).toFixed(4));
-              } else {
-                // σ̂ = R̄/d₂
-                const D2 = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
-                const ranges = sgValues.map(sg => Math.max(...sg) - Math.min(...sg));
-                const rBar = spc.mean(ranges);
-                const d2 = D2[n] || 2.326;
-                result.dataSummary.stdDev = parseFloat((rBar / d2).toFixed(4));
+            }
+          }
+          // Fallback: slice secuencial si no hay subgroup_ids
+          if (!sgValues) {
+            const n = process.n_size ? parseInt(process.n_size) : inferSubgroupSize(rows);
+            if (n >= 2 && n <= 10) {
+              const numGroups = Math.floor(values.length / n);
+              if (numGroups >= 2) {
+                sgValues = [];
+                for (let g = 0; g < numGroups; g++) sgValues.push(values.slice(g * n, (g + 1) * n));
+                chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
               }
+            }
+          }
+          // Calcular σ̂w desde subgrupos (n tomado de sgValues)
+          if (sgValues && sgValues.length >= 2) {
+            const subgroupN = sgValues[0].length;
+            if (type === 'xbar_s') {
+              const C4r = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727 };
+              const sBar = spc.mean(sgValues.map(sg => spc.stdDev(sg)));
+              result.dataSummary.stdDev = parseFloat((sBar / (C4r[subgroupN] || 0.9400)).toFixed(4));
+            } else {
+              const D2r = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
+              const rBar = spc.mean(sgValues.map(sg => Math.max(...sg) - Math.min(...sg)));
+              result.dataSummary.stdDev = parseFloat((rBar / (D2r[subgroupN] || 2.326)).toFixed(4));
             }
           }
         }

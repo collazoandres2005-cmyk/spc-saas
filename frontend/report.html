@@ -1047,7 +1047,7 @@ const CHART_LABELS = {
 function chartLabel(t) { return CHART_LABELS[t] || t || '—'; }
 
 /* ══════════════════════════════════════════════════════════════
-   EXPORTAR PDF
+   EXPORTAR PDF — tema claro mediante onclone de html2canvas
 ══════════════════════════════════════════════════════════════ */
 async function downloadPDF() {
   const btn = document.getElementById('btn-print');
@@ -1056,12 +1056,11 @@ async function downloadPDF() {
   btn.innerHTML = '⏳ Generando…';
 
   try {
-    // Verificar que html2pdf esté disponible
     if (typeof html2pdf === 'undefined') {
-      throw new Error('La librería pdf no está cargada. Recarga la página e intenta de nuevo.');
+      throw new Error('Librería PDF no cargada. Recarga la página.');
     }
 
-    const element = document.getElementById('report-content');
+    const element  = document.getElementById('report-content');
     const procName = reportData?.process?.process?.name || 'informe';
     const fecha    = new Date().toISOString().slice(0, 10);
     const fileName = `SPC_${procName.replace(/[^a-z0-9]/gi, '_')}_${fecha}.pdf`;
@@ -1071,8 +1070,54 @@ async function downloadPDF() {
         margin:      [10, 10, 10, 10],
         filename:    fileName,
         image:       { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: {
+          scale:           2,
+          useCORS:         true,
+          logging:         false,
+          backgroundColor: '#ffffff',
+          onclone: (clonedDoc) => {
+            // ── Sobrescribir variables CSS del tema oscuro ──────────────
+            const root = clonedDoc.documentElement;
+            root.style.setProperty('--bg-1',          '#ffffff');
+            root.style.setProperty('--bg-2',          '#f8fafc');
+            root.style.setProperty('--bg-3',          '#f1f5f9');
+            root.style.setProperty('--bg-accent',     '#2563eb');
+            root.style.setProperty('--glass-base',    '#f8fafc');
+            root.style.setProperty('--glass-card',    '#f8fafc');
+            root.style.setProperty('--glass-card-hov','#f1f5f9');
+            root.style.setProperty('--glass-border',  '#e2e8f0');
+            root.style.setProperty('--glass-border-hov','#cbd5e1');
+            root.style.setProperty('--glass-blur',    'none');
+            root.style.setProperty('--glass-blur-lg', 'none');
+            root.style.setProperty('--text',          '#0f172a');
+            root.style.setProperty('--text-sec',      '#1e293b');
+            root.style.setProperty('--text-muted',    '#475569');
+            root.style.setProperty('--text-dim',      '#64748b');
+            root.style.setProperty('--border',        '#e2e8f0');
+            root.style.setProperty('--border-lt',     '#f1f5f9');
+
+            // ── Fondo del body y contenido ──────────────────────────────
+            clonedDoc.body.style.background    = '#ffffff';
+            clonedDoc.body.style.color         = '#0f172a';
+            clonedDoc.body.style.backgroundImage = 'none';
+
+            const content = clonedDoc.getElementById('report-content');
+            if (content) {
+              content.style.background = '#ffffff';
+              content.style.color      = '#0f172a';
+            }
+
+            // ── Quitar backdrop-filter (no renderiza en canvas) ─────────
+            clonedDoc.querySelectorAll('*').forEach(el => {
+              const cs = window.getComputedStyle(el);
+              if (cs.backdropFilter !== 'none' || el.style.backdropFilter) {
+                el.style.backdropFilter = 'none';
+                el.style.webkitBackdropFilter = 'none';
+              }
+            });
+          }
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       })
       .from(element)
       .save();

@@ -1138,7 +1138,7 @@ function planCard(p, label, accent) {
   return `<div style="flex:1;min-width:260px;border:2px solid ${accent};border-radius:var(--radius);padding:14px 18px;background:var(--card)">
     <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;color:${accent}">${label}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px;color:var(--text)">
-      <span>n = <strong>${p.n}</strong></span>
+      <span>n = <strong>${Number.isInteger(p.n) ? p.n : p.n.toFixed(2)}</strong></span>
       <span>t = <strong>${p.t.toFixed(2)}</strong> h</span>
       <span>CM = <strong>${p.cm.toFixed(2)}</strong> u/h</span>
       <span>β = <strong>${p.b.toFixed(4)}</strong></span>
@@ -1184,7 +1184,7 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
 
   // Plan 2: mismo t (del input), despejar n de CM = n/t → n = CM_objetivo × t
   const plan2T = currentT;
-  const plan2N = Math.max(1, Math.round(targetCM * plan2T));
+  const plan2N = Math.max(1, targetCM * plan2T);
   const plan2 = compute(plan2N, plan2T);
 
   document.getElementById('cm-cur-ats1').textContent = current.ats1.toFixed(1) + ' h';

@@ -458,9 +458,11 @@
     document.getElementById('val-cpl').textContent  = formatNum(cpl, 3);
 
     // Indicar método de estimación de sigma
-    const hasSubgroups = sigmaMethod === 'within';
+    // sigmaMethod: 'rbar_d2' | 'sbar_c4' | null (sin subgrupos)
+    const hasSubgroups = sigmaMethod === 'rbar_d2' || sigmaMethod === 'sbar_c4' || sigmaMethod === 'within';
+    const sigmaFormula = sigmaMethod === 'sbar_c4' ? 'S̄/c₄' : 'R̄/d₂';
     document.getElementById('lbl-cp-section').innerHTML = hasSubgroups
-      ? 'Índices de capacidad (σ̂<sub style="font-size:9px">w</sub> = R̄/d₂)'
+      ? `Índices de capacidad (σ̂<sub style="font-size:9px">w</sub> = ${sigmaFormula})`
       : 'Índices de capacidad (σ = σ<sub style="font-size:9px">total</sub>, sin subgrupos)';
 
     document.getElementById('val-xbar').textContent = formatNum(xbar, 4);
@@ -469,9 +471,9 @@
     document.getElementById('val-cpk').className =
       `cap-val ${cpk >= 1.33 ? 'text-success' : cpk >= 1.0 ? 'text-warning' : 'text-danger'}`;
 
-    if (sigmaMethod === 'within') {
-      document.getElementById('lbl-sigma').textContent = 'Desv. Estándar σ̂w (corto plazo)';
-      document.getElementById('sub-sigma').textContent = 'σ̂w = R̄/d₂ (dentro de subgrupos)';
+    if (hasSubgroups) {
+      document.getElementById('lbl-sigma').textContent = `Desv. Estándar σ̂w (corto plazo)`;
+      document.getElementById('sub-sigma').textContent = `σ̂w = ${sigmaFormula} (dentro de subgrupos)`;
       document.getElementById('val-sigma-total').textContent = formatNum(sigmaTotal, 4);
       document.getElementById('card-sigma-total').style.display = '';
     } else {

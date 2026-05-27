@@ -765,12 +765,17 @@ function buildChartInfo(ccRes, proc) {
        || parseInt(proc.n_size)
        || 5;
 
-  // σ̂ del proceso (solo para cartas variable)
+  // σ̂w del proceso (solo para cartas variable)
+  // Prioridad: sigmaWithin del backend (calculado sin redondeo) > derivado de límites
   let sigmaProcess = null;
   if (type === 'xbar_r' || type === 'xbar_s') {
-    // halfRange = k × σ̂/√n  → con k=3: σ̂ = halfRange × √n / 3
-    const halfRange = (main.ucl - main.cl);
-    sigmaProcess = halfRange * Math.sqrt(n) / 3;
+    if (ccRes.sigmaWithin != null) {
+      sigmaProcess = ccRes.sigmaWithin;
+    } else {
+      // Fallback: derivar desde límites (puede tener error de redondeo pequeño)
+      const halfRange = (main.ucl - main.cl);
+      sigmaProcess = halfRange * Math.sqrt(n) / 3;
+    }
   }
 
   // k efectivo (siempre 3 para Shewhart estándar)

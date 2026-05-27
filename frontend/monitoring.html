@@ -403,25 +403,6 @@
               </div>
             </div>
 
-            <!-- Evaluación de Desempeño -->
-            <div class="card" id="perf-eval-card" style="display:none">
-              <div class="card-header" style="padding:10px 14px">
-                <div class="card-title" style="font-size:13px">Evaluación de Desempeño</div>
-              </div>
-              <div class="card-body" style="padding:12px 14px">
-                <div class="mon-stats" id="perf-eval-body">
-                  <div class="mon-stat"><div class="mon-stat-lbl">Media Fase I (μ₀)</div><div class="mon-stat-val" id="pe-mu0">—</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl">Media Monitoreo (μ₁)</div><div class="mon-stat-val" id="pe-mu1">—</div></div>
-                  <div class="mon-stat" style="grid-column:span 1"><div class="mon-stat-lbl">Desplazamiento (σ proceso)</div><div class="mon-stat-val" id="pe-shift" style="font-size:14px">—</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl">%PNC original</div><div class="mon-stat-val" id="pe-pnc0">—</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl">%PNC recalculado (μ₁)</div><div class="mon-stat-val" id="pe-pnc1" style="font-weight:700">—</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl">Δ%PNC</div><div class="mon-stat-val" id="pe-delta-pnc">—</div></div>
-                  <div class="mon-stat"><div class="mon-stat-lbl">Potencia detección</div><div class="mon-stat-val" id="pe-power">—</div></div>
-                </div>
-                <div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.5" id="pe-narrative"></div>
-              </div>
-            </div>
-
             <!-- Registro -->
             <div class="card">
               <div class="card-header" style="padding:10px 14px">
@@ -723,7 +704,6 @@
   let sessionSubgroups = [];   // xbar: [[v1..vn], ...]   attr: [{defectives,n?}, ...]
   let phase1Limits     = null; // { type, main:{ucl,cl,lcl}, sec }
   let phase1Data       = null; // full chartData from Phase 1 analysis
-  let processSpecs     = null; // { usl, lsl, nominal } from process
   let mainChartInst    = null;
   let secChartInst     = null;
   let adjustingN       = false;
@@ -869,7 +849,6 @@
     try {
       const p = await processesApi.get(pid);
       document.getElementById('process-crumb').textContent = `· ${p.name}`;
-      processSpecs = { usl: p.usl, lsl: p.lsl, nominal: p.nominal };
       // Sincronizar n_size del proceso (modo industrial)
       if (p.n_size && mode === 'industrial') {
         sgSize = parseInt(p.n_size);
@@ -1518,63 +1497,6 @@
     document.getElementById('stat-total').textContent  = sessionSubgroups.length || '—';
     document.getElementById('stat-session').textContent = sessionCount;
     updateSessionMean();
-    updatePerformanceEval();
-  }
-
-  // ── Evaluación de Desempeño ─────────────────────────────────────
-  function updatePerformanceEval() {
-    const card = document.getElementById('perf-eval-card');
-    if (sessionMeans.length === 0 || !phase1Limits?.main || !XBAR_TYPES.includes(chartType) || !processSpecs) {
-      card.style.display = 'none'; return;
-    }
-    const usl = parseFloat(processSpecs.usl), lsl = parseFloat(processSpecs.lsl);
-    if (isNaN(usl) || isNaN(lsl)) { card.style.display = 'none'; return; }
-
-    const mu0  = phase1Limits.main.cl;
-    const sigmaXbar = (phase1Limits.main.ucl - phase1Limits.main.cl) / 3;
-    if (sigmaXbar <= 0 || mu0 == null) { card.style.display = 'none'; return; }
-
-    const mu1 = sessionMeans.reduce((a,b) => a + b, 0) / sessionMeans.length;
-    const processSigma = sigmaXbar * Math.sqrt(sgSize);
-    const shiftXbar    = (mu1 - mu0) / sigmaXbar;
-    const shiftProcess = (mu1 - mu0) / processSigma;
-
-    // %PNC original (Fase I)
-    const zLsl0 = (lsl - mu0) / processSigma;
-    const zUsl0 = (usl - mu0) / processSigma;
-    const pnc0  = normalCDF(zLsl0) + (1 - normalCDF(zUsl0));
-
-    // %PNC recalculado (nueva media)
-    const zLsl1 = (lsl - mu1) / processSigma;
-    const zUsl1 = (usl - mu1) / processSigma;
-    const pnc1  = normalCDF(zLsl1) + (1 - normalCDF(zUsl1));
-
-    // Potencia de detección
-    const power  = detectionPower(shiftXbar);
-    const arl    = power > 0 ? (1 / power).toFixed(1) : '∞';
-
-    card.style.display = '';
-    const fmt = v => v.toFixed(4);
-    const pct = v => (v * 100).toFixed(4) + '%';
-    const absShift = Math.abs(shiftProcess);
-    document.getElementById('pe-mu0').textContent   = fmt(mu0);
-    document.getElementById('pe-mu1').textContent   = fmt(mu1);
-    document.getElementById('pe-shift').innerHTML    = `<span style="color:${absShift > 0.5 ? 'var(--danger)' : 'inherit'};font-weight:${absShift > 0.5 ? 700 : 400}">${shiftProcess >= 0 ? '+' : ''}${shiftProcess.toFixed(4)} σ</span>`
-      + `<div style="font-size:10px;color:var(--text-muted);margin-top:1px">(X̄: ${shiftXbar >= 0 ? '+' : ''}${shiftXbar.toFixed(4)} σ · n=${sgSize})</div>`;
-    document.getElementById('pe-pnc0').textContent  = pct(pnc0);
-    document.getElementById('pe-pnc1').textContent  = pct(pnc1);
-    const deltaPnc = (pnc1 - pnc0) * 100;
-    document.getElementById('pe-delta-pnc').innerHTML = `<span style="color:${deltaPnc > 0 ? 'var(--danger)' : 'var(--success)'}">${deltaPnc >= 0 ? '+' : ''}${deltaPnc.toFixed(4)} pp</span>`;
-    document.getElementById('pe-power').innerHTML    = `<strong>${(power * 100).toFixed(1)}%</strong> · ARL: ${arl}`;
-
-    // Narrative
-    const narEl = document.getElementById('pe-narrative');
-    const shiftDir = shiftProcess >= 0 ? 'incrementó' : 'disminuyó';
-    const intensidad = absShift < 0.3 ? 'leve' : absShift < 0.8 ? 'moderado' : absShift < 1.5 ? 'significativo' : 'severo';
-    narEl.innerHTML = `La media del proceso se ${shiftDir} <strong>${absShift.toFixed(4)}σ</strong> (${intensidad}). `
-      + `El %PNC pasó de <strong>${pct(pnc0)}</strong> a <strong>${pct(pnc1)}</strong> `
-      + `(Δ <span style="color:${deltaPnc > 0 ? 'var(--danger)' : 'var(--success)'}">${deltaPnc >= 0 ? '+' : ''}${deltaPnc.toFixed(4)} pp</span>). `
-      + `La carta X̄ tiene potencia <strong>${(power * 100).toFixed(1)}%</strong> para detectar este cambio (ARL ${arl}).`;
   }
 
   // ── Status bar ────────────────────────────────────────────────

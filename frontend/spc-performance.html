@@ -1133,18 +1133,18 @@ function renderFormulaRef(type) {
 /* ══════════════════════════════════════════════════════════════
    CARGA MUESTRAL — CM = n / t
 ══════════════════════════════════════════════════════════════ */
-function planCard(p, label, cls) {
+function planCard(p, label, accent) {
   const abbr = v => v.toLocaleString('es', {maximumFractionDigits:1});
-  return `<div style="flex:1;min-width:260px;border:2px solid ${cls};border-radius:var(--radius);padding:14px 18px;background:${cls === '#86efac' ? '#f0fdf4' : '#fefce8'}">
-    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;color:${cls === '#86efac' ? '#15803d' : '#92400e'}">${label}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px">
+  return `<div style="flex:1;min-width:260px;border:2px solid ${accent};border-radius:var(--radius);padding:14px 18px;background:var(--card)">
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;color:${accent}">${label}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px;color:var(--text)">
       <span>n = <strong>${p.n}</strong></span>
       <span>t = <strong>${p.t.toFixed(2)}</strong> h</span>
       <span>CM = <strong>${p.cm.toFixed(2)}</strong> u/h</span>
       <span>β = <strong>${p.b.toFixed(4)}</strong></span>
       <span>Potencia = <strong>${(p.power*100).toFixed(1)}%</strong></span>
       <span>ARL₁ = <strong>${abbr(p.arl1)}</strong></span>
-      <span>ATS₁ = <strong style="color:${p.ats1<=8?'#15803d':p.ats1<=24?'#92400e':'#b91c1c'}">${p.ats1.toFixed(1)}</strong> h</span>
+      <span>ATS₁ = <strong style="color:${p.ats1<=8?'var(--success)':p.ats1<=24?'var(--warning)':'var(--danger)'}">${p.ats1.toFixed(1)}</strong> h</span>
       <span>PPNC = <strong>${abbr(p.ppnc)}</strong> ud</span>
     </div>
   </div>`;

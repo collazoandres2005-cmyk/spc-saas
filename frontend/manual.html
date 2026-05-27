@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual del Software — SPC SaaS</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* ── Layout ───────────────────────────────────────────────────── */
+    .manual-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 760px) {
+      .manual-layout { grid-template-columns: 1fr; }
+      .manual-toc    { display: none; }
+    }
+
+    /* ── Table of Contents ───────────────────────────────────────── */
+    .manual-toc {
+      position: sticky;
+      top: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 0;
+      font-size: 12px;
+    }
+    .toc-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      padding: 0 16px 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+    .toc-item {
+      display: block;
+      padding: 5px 16px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all .15s;
+      line-height: 1.35;
+    }
+    .toc-item:hover  { color: var(--primary); background: var(--primary-bg); }
+    .toc-item.active { color: var(--primary); border-left-color: var(--primary); font-weight: 600; background: var(--primary-bg); }
+    .toc-num { color: var(--text-muted); font-size: 10px; margin-right: 4px; }
+
+    /* ── Content ─────────────────────────────────────────────────── */
+    .manual-body { min-width: 0; }
+
+    .manual-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+      scroll-margin-top: 80px;
+    }
+    @media (max-width: 600px) {
+      .manual-section { padding: 18px 16px; }
+    }
+
+    .section-number {
+      display: inline-block;
+      background: var(--primary);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 4px;
+    }
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0 0 20px;
+    }
+    .section-divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+    /* ── Typography ─────────────────────────────────────────────── */
+    .manual-p  { font-size: 13px; color: var(--text); line-height: 1.7; margin: 0 0 12px; }
+    .manual-h3 { font-size: 13px; font-weight: 700; color: var(--text); margin: 18px 0 6px; }
+    .manual-h4 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 14px 0 4px; }
+
+    /* ── Lists ───────────────────────────────────────────────────── */
+    .manual-ul, .manual-ol {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.7;
+      padding-left: 20px;
+      margin: 0 0 12px;
+    }
+    .manual-ul li, .manual-ol li { margin-bottom: 4px; }
+
+    /* ── Step list ───────────────────────────────────────────────── */
+    .step-list { list-style: none; padding: 0; margin: 0 0 12px; }
+    .step-list li {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+
+    /* ── Badges / Pills ─────────────────────────────────────────── */
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-blue    { background: var(--primary-bg); color: var(--primary); }
+    .badge-green   { background: var(--success-bg, #ecfdf5); color: var(--success); }
+    .badge-yellow  { background: var(--warning-bg); color: var(--warning); }
+    .badge-red     { background: var(--danger-bg);  color: var(--danger); }
+    .badge-gray    { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ── Requirement table ───────────────────────────────────────── */
+    .req-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 12.5px; margin-bottom: 12px;
+    }
+    .req-table th {
+      background: var(--bg); text-align: left;
+      padding: 8px 12px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .4px;
+      color: var(--text-muted); border-bottom: 1px solid var(--border);
+    }
+    .req-table td {
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+      color: var(--text); vertical-align: top; line-height: 1.5;
+    }
+    .req-table tr:last-child td { border-bottom: none; }
+    .req-table td:first-child { font-weight: 600; white-space: nowrap; color: var(--text-muted); }
+
+    /* ── Module cards ────────────────────────────────────────────── */
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px; margin-bottom: 12px;
+    }
+    .module-card {
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .module-card.m-green  { border-top-color: var(--success); }
+    .module-card.m-yellow { border-top-color: var(--warning); }
+    .module-card.m-red    { border-top-color: var(--danger); }
+    .module-card.m-gray   { border-top-color: var(--text-muted); }
+    .module-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .module-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Code / formula box ─────────────────────────────────────── */
+    .formula-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-family: var(--font-data, monospace);
+      font-size: 12.5px;
+      color: var(--text);
+      margin-bottom: 12px;
+      overflow-x: auto;
+    }
+
+    /* ── Example box ─────────────────────────────────────────────── */
+    .example-box {
+      background: var(--primary-bg);
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 14px;
+    }
+    .example-box .ex-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--primary); margin-bottom: 8px;
+    }
+    .example-box p { font-size: 12.5px; color: var(--text); line-height: 1.6; margin: 0 0 6px; }
+    .example-box p:last-child { margin: 0; }
+
+    /* ── Error box ───────────────────────────────────────────────── */
+    .error-block {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .error-header {
+      background: var(--danger-bg);
+      border-bottom: 1px solid var(--danger-bdr, var(--border));
+      padding: 8px 14px;
+      font-size: 12px; font-weight: 700; color: var(--danger);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .error-body { padding: 12px 14px; font-size: 12.5px; color: var(--text); line-height: 1.6; }
+    .error-body strong { color: var(--text); }
+
+    /* ── Glossary ────────────────────────────────────────────────── */
+    .gloss-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+    }
+    .gloss-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .gloss-term { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+    .gloss-def  { font-size: 12px; color: var(--text); line-height: 1.55; }
+
+    /* ── Contact cards ───────────────────────────────────────────── */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .contact-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .contact-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 8px;
+    }
+    .contact-name  { font-size: 13px; font-weight: 700; color: var(--text); }
+    .contact-role  { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+    .contact-email { font-size: 12px; color: var(--primary); }
+
+    /* ── Info callout ────────────────────────────────────────────── */
+    .callout {
+      display: flex; gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--warning);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 12.5px; color: var(--text);
+      line-height: 1.55; margin-bottom: 12px;
+    }
+    .callout.info  { border-left-color: var(--primary); }
+    .callout.ok    { border-left-color: var(--success); }
+    .callout-icon  { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+
+    /* ── Page header ─────────────────────────────────────────────── */
+    .page-header {
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
+      margin-bottom: 22px;
+    }
+    .page-header h2 { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 2px; }
+    .page-header p  { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+    /* ── Print ───────────────────────────────────────────────────── */
+    @media print {
+      .manual-toc { display: none; }
+      .manual-layout { grid-template-columns: 1fr; }
+      .manual-section { break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <div class="top-bar-title">Manual del Software</div>
+      </div>
+      <div class="top-bar-right">
+        <span class="sub-badge" id="sub-status-badge">...</span>
+        <button class="btn btn-secondary btn-sm" onclick="window.print()" style="margin-left:8px">🖨 Imprimir</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="page-header">
+        <h2>Manual de Manejo del Software</h2>
+        <p>SPC SaaS — Sistema de Control Estadístico de Procesos · Versión 1.0</p>
+      </div>
+
+      <div class="manual-layout">
+
+        <!-- ══ TABLE OF CONTENTS ══════════════════════════════════ -->
+        <aside class="manual-toc" id="manual-toc">
+          <div class="toc-title">Contenido</div>
+          <a class="toc-item" href="#sec-objetivo"><span class="toc-num">1.</span>Objetivo del programa</a>
+          <a class="toc-item" href="#sec-publico"><span class="toc-num">2.</span>Público objetivo</a>
+          <a class="toc-item" href="#sec-requisitos"><span class="toc-num">3.</span>Requisitos de instalación</a>
+          <a class="toc-item" href="#sec-modulos"><span class="toc-num">4.</span>Estructura de módulos</a>
+          <a class="toc-item" href="#sec-funciones"><span class="toc-num">5.</span>Descripción de funciones</a>
+          <a class="toc-item" href="#sec-entrada"><span class="toc-num">6.</span>Formato de entrada</a>
+          <a class="toc-item" href="#sec-salidas"><span class="toc-num">7.</span>Interpretación de salidas</a>
+          <a class="toc-item" href="#sec-ejemplos"><span class="toc-num">8.</span>Ejemplos de uso</a>
+          <a class="toc-item" href="#sec-errores"><span class="toc-num">9.</span>Solución de errores</a>
+          <a class="toc-item" href="#sec-glosario"><span class="toc-num">10.</span>Glosario técnico</a>
+          <a class="toc-item" href="#sec-contacto"><span class="toc-num">11.</span>Contacto del equipo</a>
+        </aside>
+
+        <!-- ══ CONTENT ════════════════════════════════════════════ -->
+        <div class="manual-body">
+
+          <!-- 1. Objetivo -->
+          <div class="manual-section" id="sec-objetivo">
+            <span class="section-number">1</span>
+            <h2 class="section-title">Objetivo del Programa</h2>
+            <p class="section-subtitle">¿Qué hace SPC SaaS y para qué fue creado?</p>
+
+            <p class="manual-p">
+              <strong>SPC SaaS</strong> es una plataforma web de <em>Control Estadístico de Procesos</em> (SPC,
+              por sus siglas en inglés) diseñada para ayudar a empresas e instituciones a monitorear,
+              analizar y mejorar la calidad de sus procesos productivos o de servicio mediante herramientas
+              estadísticas estandarizadas.
+            </p>
+            <p class="manual-p">El sistema persigue los siguientes objetivos específicos:</p>
+            <ul class="manual-ul">
+              <li>Facilitar la recolección estructurada de datos de medición en tiempo real.</li>
+              <li>Generar automáticamente cartas de control (X̄-R, X̄-S, p, np, c, u) conforme a los estándares ISO y AIAG.</li>
+              <li>Calcular índices de capacidad del proceso (Cp, Cpk, Pp, Ppk) y evaluar si un proceso cumple especificaciones.</li>
+              <li>Detectar señales de causas especiales de variación mediante reglas de Nelson y Western Electric.</li>
+              <li>Proporcionar informes exportables y un historial auditado de todas las mediciones.</li>
+              <li>Permitir el monitoreo continuo en Fase II con alertas automáticas de puntos fuera de control.</li>
+              <li>Ofrecer diseño de planes de muestreo según normas internacionales (MIL-STD-1916, ISO 2859).</li>
+            </ul>
+            <div class="callout info">
+              <span class="callout-icon">ℹ️</span>
+              El software implementa las dos fases clásicas del SPC: <strong>Fase I</strong> (estabilización y cálculo de límites de control) y <strong>Fase II</strong> (monitoreo en producción usando los límites establecidos).
+            </div>
+          </div>
+
+          <!-- 2. Público objetivo -->
+          <div class="manual-section" id="sec-publico">
+            <span class="section-number">2</span>
+            <h2 class="section-title">Público Objetivo</h2>
+            <p class="section-subtitle">¿A quién está dirigido este sistema?</p>
+
+            <div class="module-grid">
+              <div class="module-card">
+                <div class="module-name">👷 Ingenieros de Calidad</div>
+                <div class="module-desc">Profesionales que necesitan implementar SPC en líneas de producción y verificar la estabilidad de procesos.</div>
+              </div>
+              <div class="module-card m-green">
+                <div class="module-name">📊 Analistas Estadísticos</div>
+                <div class="module-desc">Especialistas que interpretan cartas de control, indices de capacidad y señales de causas especiales.</div>
+              </div>
+              <div class="module-card m-yellow">
+                <div class="module-name">🎓 Docentes y Estudiantes</div>
+                <div class="module-desc">Personas en formación académica que requieren una herramienta práctica para aprender SPC con datos reales.</div>
+              </div>
+              <div class="module-card m-red">
+                <div class="module-name">🏭 Supervisores de Planta</div>
+                <div class="module-desc">Encargados de producción que necesitan visualizar el estado del proceso sin conocimiento estadístico profundo.</div>
+              </div>
+              <div class="module-card m-gray">
+                <div class="module-name">🔬 Laboratorios</div>
+                <div class="module-desc">Entidades que requieren control de procesos de medición, ensayos o calibración con trazabilidad.</div>
+              </div>
+            </div>
+
+            <p class="manual-p">
+              El perfil mínimo recomendado es un usuario con conocimientos básicos de estadística descriptiva
+              (media, desviación estándar) y familiaridad con conceptos de procesos industriales o de servicio.
+            </p>
+          </div>
+
+          <!-- 3. Requisitos -->
+          <div class="manual-section" id="sec-requisitos">
+            <span class="section-number">3</span>
+            <h2 class="section-title">Requerimientos de Instalación</h2>
+            <p class="section-subtitle">Infraestructura necesaria para desplegar y usar el sistema</p>
+
+            <p class="manual-h3">3.1 Requisitos del cliente (usuario final)</p>
+            <table class="req-table">
+              <thead>
+                <tr><th>Componente</th><th>Requerimiento mínimo</th><th>Recomendado</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Navegador</td><td>Chrome 90, Firefox 88, Edge 90, Safari 14</td><td>Chrome / Edge última versión</td></tr>
+                <tr><td>Conexión</td><td>3 Mbps</td><td>10 Mbps o superior</td></tr>
+                <tr><td>Pantalla</td><td>1024 × 768 px</td><td>1366 × 768 px o superior</td></tr>
+                <tr><td>JavaScript</td><td>Habilitado (requerido)</td><td>—</td></tr>
+                <tr><td>Cookies / localStorage</td><td>Habilitados (requeridos)</td><td>—</td></tr>
+              </tbody>
+            </table>
+            <div class="callout info">
+              <span class="callout-icon">🌐</span>
+              El sistema es <strong>100 % web</strong>. No requiere instalación de ningún software en el equipo del usuario. Basta con un navegador moderno y conexión a internet.
+            </div>
+
+            <p class="manual-h3">3.2 Requisitos del servidor (despliegue propio)</p>
+            <table class="req-table">
+              <thead>
+                <tr><th>Componente</th><th>Tecnología</th><th>Versión mínima</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Runtime</td><td>Node.js</td><td>18 LTS</td></tr>
+                <tr><td>Base de datos</td><td>PostgreSQL</td><td>14</td></tr>
+                <tr><td>Sistema operativo</td><td>Linux (Ubuntu 22.04 recomendado)</td><td>—</td></tr>
+                <tr><td>RAM</td><td>Servidor de aplicación</td><td>512 MB mínimo, 1 GB recomendado</td></tr>
+                <tr><td>Almacenamiento</td><td>Base de datos + logs</td><td>5 GB mínimo</td></tr>
+                <tr><td>Puertos</td><td>HTTP / HTTPS</td><td>80 y 443 abiertos</td></tr>
+              </tbody>
+            </table>
+
+            <p class="manual-h3">3.3 Variables de entorno requeridas</p>
+            <div class="formula-box">
+DATABASE_URL=postgresql://usuario:clave@host:5432/spc_db<br>
+JWT_SECRET=clave_secreta_muy_larga<br>
+PORT=3000<br>
+NODE_ENV=production
+            </div>
+            <p class="manual-h3">3.4 Pasos de instalación del servidor</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Clonar el repositorio: <code>git clone https://github.com/tu-org/spc-saas.git</code></li>
+              <li><span class="step-num">2</span>Instalar dependencias: <code>cd backend &amp;&amp; npm install</code></li>
+              <li><span class="step-num">3</span>Configurar el archivo <code>.env</code> con las variables indicadas arriba.</li>
+              <li><span class="step-num">4</span>Ejecutar migraciones de base de datos: <code>npm run migrate</code></li>
+              <li><span class="step-num">5</span>Iniciar el servidor: <code>npm start</code> (o con PM2: <code>pm2 start src/app.js</code>)</li>
+              <li><span class="step-num">6</span>Servir el frontend desde la carpeta <code>/frontend</code> con Nginx o el servidor estático integrado.</li>
+            </ol>
+          </div>
+
+          <!-- 4. Módulos -->
+          <div class="manual-section" id="sec-modulos">
+            <span class="section-number">4</span>
+            <h2 class="section-title">Estructura de Menús y Módulos</h2>
+            <p class="section-subtitle">Organización funcional del sistema</p>
+
+            <p class="manual-p">El sistema está organizado en cuatro grupos de módulos accesibles desde el menú lateral:</p>
+
+            <p class="manual-h3">Módulos generales</p>
+            <div class="module-grid">
+              <div class="module-card">
+                <div class="module-name">🏠 Panel de Control</div>
+                <div class="module-desc">Vista global con KPIs: total de procesos, capaces (Cpk ≥ 1.33), marginales y no capaces.</div>
+              </div>
+              <div class="module-card">
+                <div class="module-name">📋 Historial de Datos</div>
+                <div class="module-desc">Tabla paginada de todas las mediciones. Filtros por Fase I / Fase II. Eliminación individual y masiva.</div>
+              </div>
+              <div class="module-card">
+                <div class="module-name">📄 Informes</div>
+                <div class="module-desc">Generación de informes de capacidad y control por proceso, exportables a PDF o imprimibles.</div>
+              </div>
+            </div>
+
+            <p class="manual-h3">Fase I — Estabilización</p>
+            <div class="module-grid">
+              <div class="module-card m-green">
+                <div class="module-name">⚙️ Procesos</div>
+                <div class="module-desc">Crear, editar y eliminar procesos. Definir tipo de carta, tamaño de subgrupo y límites de especificación.</div>
+              </div>
+              <div class="module-card m-green">
+                <div class="module-name">✏️ Entrada de Datos</div>
+                <div class="module-desc">Ingresar mediciones individuales, por subgrupo o mediante importación de archivo CSV/Excel.</div>
+              </div>
+              <div class="module-card m-green">
+                <div class="module-name">📈 Cartas de Control</div>
+                <div class="module-desc">Visualización interactiva de cartas X̄-R, X̄-S, p, np, c, u con límites calculados automáticamente.</div>
+              </div>
+            </div>
+
+            <p class="manual-h3">Fase II — Monitoreo y Desempeño</p>
+            <div class="module-grid">
+              <div class="module-card m-yellow">
+                <div class="module-name">🎯 Capacidad del Proceso</div>
+                <div class="module-desc">Cálculo de Cp, Cpk, Pp, Ppk, Cpm. Histograma de distribución con curva normal.</div>
+              </div>
+              <div class="module-card m-yellow">
+                <div class="module-name">🔍 Monitoreo SPC</div>
+                <div class="module-desc">Ingreso de nuevos subgrupos en tiempo real. Alertas de puntos fuera de control. Historial de sesión.</div>
+              </div>
+              <div class="module-card m-yellow">
+                <div class="module-name">📊 Evaluación del Desempeño</div>
+                <div class="module-desc">Análisis de tendencias, comparación de índices históricos y evaluación del desempeño general.</div>
+              </div>
+            </div>
+
+            <p class="manual-h3">Planes de Muestreo</p>
+            <div class="module-grid">
+              <div class="module-card m-gray">
+                <div class="module-name">🗂️ Diseño de Planes</div>
+                <div class="module-desc">Diseño de planes de muestreo por atributos y variables según normas MIL-STD e ISO 2859.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Funciones paso a paso -->
+          <div class="manual-section" id="sec-funciones">
+            <span class="section-number">5</span>
+            <h2 class="section-title">Descripción Paso a Paso de Cada Función</h2>
+            <p class="section-subtitle">Guía detallada de operación de los módulos principales</p>
+
+            <!-- 5.1 -->
+            <p class="manual-h3">5.1 Crear un nuevo proceso</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Ir a <strong>Procesos</strong> en el menú lateral.</li>
+              <li><span class="step-num">2</span>Hacer clic en el botón <strong>+ Nuevo proceso</strong>.</li>
+              <li><span class="step-num">3</span>Completar el formulario: nombre del proceso, tipo de carta de control, tamaño de subgrupo (n) y límites de especificación (LSE / LIE) si aplica.</li>
+              <li><span class="step-num">4</span>Hacer clic en <strong>Guardar</strong>. El proceso aparecerá en la lista.</li>
+            </ol>
+
+            <div class="section-divider"></div>
+
+            <!-- 5.2 -->
+            <p class="manual-h3">5.2 Ingresar mediciones (Fase I)</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Ir a <strong>Entrada de Datos</strong>.</li>
+              <li><span class="step-num">2</span>Seleccionar el proceso del menú desplegable.</li>
+              <li><span class="step-num">3</span>Elegir el método de ingreso: <em>Manual</em> (campos numéricos) o <em>Importar CSV/Excel</em>.</li>
+              <li><span class="step-num">4</span>Para ingreso manual: completar los valores del subgrupo (X₁, X₂, … Xₙ) y hacer clic en <strong>Agregar subgrupo</strong>.</li>
+              <li><span class="step-num">5</span>Para importación: arrastrar el archivo o hacer clic en el área de carga. El sistema detectará automáticamente las columnas.</li>
+              <li><span class="step-num">6</span>Verificar el resumen de inserción (filas importadas / errores) y hacer clic en <strong>Confirmar</strong>.</li>
+            </ol>
+
+            <div class="section-divider"></div>
+
+            <!-- 5.3 -->
+            <p class="manual-h3">5.3 Generar y revisar la carta de control</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Ir a <strong>Cartas de Control</strong>.</li>
+              <li><span class="step-num">2</span>Seleccionar el proceso deseado.</li>
+              <li><span class="step-num">3</span>El sistema calcula automáticamente los límites de control (LCS, LC, LCI) y dibuja la carta.</li>
+              <li><span class="step-num">4</span>Los puntos fuera de control se muestran en <span style="color:var(--danger)"><strong>rojo</strong></span>. El panel lateral indica cuántas señales existen y de qué tipo.</li>
+              <li><span class="step-num">5</span>Usar el botón <strong>Exportar</strong> para descargar la carta como imagen o incluirla en un informe.</li>
+            </ol>
+
+            <div class="section-divider"></div>
+
+            <!-- 5.4 -->
+            <p class="manual-h3">5.4 Analizar la capacidad del proceso</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Ir a <strong>Capacidad del Proceso</strong>.</li>
+              <li><span class="step-num">2</span>Seleccionar el proceso (debe tener LSE y/o LIE definidos).</li>
+              <li><span class="step-num">3</span>El sistema calcula Cp, Cpk, Pp, Ppk y muestra el histograma con la curva normal superpuesta.</li>
+              <li><span class="step-num">4</span>Interpretar los valores con el panel de semáforo: verde (capaz), amarillo (marginal), rojo (no capaz).</li>
+            </ol>
+
+            <div class="section-divider"></div>
+
+            <!-- 5.5 -->
+            <p class="manual-h3">5.5 Monitoreo en tiempo real (Fase II)</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Ir a <strong>Monitoreo SPC</strong>.</li>
+              <li><span class="step-num">2</span>Seleccionar el proceso. El sistema carga los límites establecidos en Fase I.</li>
+              <li><span class="step-num">3</span>Ingresar los valores del nuevo subgrupo en los campos de la sección <em>Entrada de datos</em>.</li>
+              <li><span class="step-num">4</span>Hacer clic en <strong>Agregar</strong>. El punto se grafica inmediatamente y se actualiza el historial.</li>
+              <li><span class="step-num">5</span>Si el punto está fuera de control, se muestra una alerta roja con el número de señal.</li>
+              <li><span class="step-num">6</span>Los datos de Fase II se guardan en la base de datos y en caché local para persistir entre sesiones.</li>
+              <li><span class="step-num">7</span>Usar <strong>Deshacer</strong> (⟲) para revertir el último punto ingresado.</li>
+            </ol>
+
+            <div class="section-divider"></div>
+
+            <!-- 5.6 -->
+            <p class="manual-h3">5.6 Gestionar el historial de datos</p>
+            <ol class="step-list">
+              <li><span class="step-num">1</span>Ir a <strong>Historial de Datos</strong>.</li>
+              <li><span class="step-num">2</span>Usar los filtros <em>Todas / Fase I / Fase II</em> para segmentar las mediciones.</li>
+              <li><span class="step-num">3</span>Marcar filas individualmente o usar el checkbox del encabezado para seleccionar todas.</li>
+              <li><span class="step-num">4</span>En la barra de acciones que aparece, hacer clic en <strong>Eliminar seleccionados</strong> para borrar las mediciones.</li>
+              <li><span class="step-num">5</span>La tabla se actualiza automáticamente tras la eliminación.</li>
+            </ol>
+          </div>
+
+          <!-- 6. Formato de entrada -->
+          <div class="manual-section" id="sec-entrada">
+            <span class="section-number">6</span>
+            <h2 class="section-title">Formato de Entrada de Datos</h2>
+            <p class="section-subtitle">Especificaciones para ingreso manual e importación masiva</p>
+
+            <p class="manual-h3">6.1 Ingreso manual</p>
+            <table class="req-table">
+              <thead>
+                <tr><th>Campo</th><th>Tipo</th><th>Ejemplo</th><th>Observaciones</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Valor (X)</td><td>Numérico decimal</td><td>23.45</td><td>Separador decimal: punto (.) o coma (,)</td></tr>
+                <tr><td>Subgrupo ID</td><td>Entero positivo</td><td>5</td><td>Opcional. Se asigna automáticamente si se omite.</td></tr>
+                <tr><td>Fecha/hora</td><td>ISO 8601</td><td>2025-05-01T08:30:00</td><td>Opcional. Se usa la hora actual si se omite.</td></tr>
+                <tr><td>Defectuosos</td><td>Entero ≥ 0</td><td>3</td><td>Solo para cartas p y np.</td></tr>
+                <tr><td>n (tamaño muestra)</td><td>Entero ≥ 1</td><td>50</td><td>Requerido para cartas p y u con n variable.</td></tr>
+              </tbody>
+            </table>
+
+            <p class="manual-h3">6.2 Importación CSV</p>
+            <p class="manual-p">El archivo CSV debe tener encabezados en la primera fila. Las columnas reconocidas son:</p>
+            <div class="formula-box">value, subgroup_id, recorded_at<br>
+— Alternativas: valor, Valor, VALOR, medicion, Medicion</div>
+            <p class="manual-p">Ejemplo de archivo CSV válido:</p>
+            <div class="formula-box">value,subgroup_id<br>
+23.45,1<br>
+23.12,1<br>
+23.67,1<br>
+22.98,2<br>
+23.31,2</div>
+
+            <p class="manual-h3">6.3 Importación Excel (.xlsx / .xls)</p>
+            <p class="manual-p">
+              El sistema lee la primera hoja del libro. Los nombres de columnas aceptados son los mismos que
+              para CSV. El separador decimal puede ser punto o coma (se normaliza automáticamente).
+              Tamaño máximo permitido: <strong>5 MB</strong>.
+            </p>
+
+            <div class="callout">
+              <span class="callout-icon">⚠️</span>
+              Las filas con valores no numéricos o vacíos son omitidas y reportadas en el resumen de importación como errores. El resto de filas válidas se insertan correctamente.
+            </div>
+          </div>
+
+          <!-- 7. Interpretación de salidas -->
+          <div class="manual-section" id="sec-salidas">
+            <span class="section-number">7</span>
+            <h2 class="section-title">Interpretación de Salidas</h2>
+            <p class="section-subtitle">Cómo leer los resultados del sistema</p>
+
+            <p class="manual-h3">7.1 Cartas de control</p>
+            <table class="req-table">
+              <thead>
+                <tr><th>Elemento</th><th>Significado</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Línea central (LC)</td><td>Media del proceso (X̄̄) o promedio histórico del estadístico.</td></tr>
+                <tr><td>LCS (verde)</td><td>Límite de control superior: cualquier punto por encima indica señal de causa especial.</td></tr>
+                <tr><td>LCI (verde)</td><td>Límite de control inferior: cualquier punto por debajo indica señal de causa especial.</td></tr>
+                <tr><td>Punto rojo ●</td><td>Punto fuera de control: supera LCS o está bajo LCI. Requiere investigación.</td></tr>
+                <tr><td>Punto azul ●</td><td>Punto dentro de control: variabilidad natural del proceso.</td></tr>
+                <tr><td>Carta secundaria</td><td>Carta R (rango) o S (desviación estándar) complementaria para variables; monitorea la dispersión.</td></tr>
+              </tbody>
+            </table>
+
+            <p class="manual-h3">7.2 Índices de capacidad</p>
+            <table class="req-table">
+              <thead>
+                <tr><th>Índice</th><th>Fórmula</th><th>Interpretación</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Cp</td><td>(LSE − LIE) / 6σ</td><td>Capacidad potencial (no considera centrado).</td></tr>
+                <tr><td>Cpk</td><td>min[(LSE−X̄)/3σ, (X̄−LIE)/3σ]</td><td>Capacidad real. ≥ 1.33 = capaz; 1.00–1.33 = marginal; &lt; 1.00 = no capaz.</td></tr>
+                <tr><td>Pp</td><td>(LSE − LIE) / 6s</td><td>Desempeño potencial (usa desviación real).</td></tr>
+                <tr><td>Ppk</td><td>Igual que Cpk pero con s en lugar de σ</td><td>Desempeño real a largo plazo.</td></tr>
+              </tbody>
+            </table>
+
+            <p class="manual-h3">7.3 Panel de estado en monitoreo</p>
+            <div class="badge-row">
+              <span class="badge badge-green">✓ Proceso estable</span>
+              <span class="badge badge-red">⚠ N señales fuera de control</span>
+              <span class="badge badge-yellow">— Sin datos suficientes</span>
+            </div>
+            <p class="manual-p">
+              El contador de señales en el panel lateral indica cuántos puntos del subgrupo actual están fuera de los límites de Fase I.
+              La tabla de historial de sesión muestra estado por subgrupo: <em>Estable</em> (dentro de límites) o <em>Fuera de control</em>.
+            </p>
+          </div>
+
+          <!-- 8. Ejemplos -->
+          <div class="manual-section" id="sec-ejemplos">
+            <span class="section-number">8</span>
+            <h2 class="section-title">Ejemplos de Uso</h2>
+            <p class="section-subtitle">Casos prácticos de aplicación del sistema</p>
+
+            <div class="example-box">
+              <div class="ex-label">Ejemplo 1 — Control de diámetro de piezas maquinadas</div>
+              <p><strong>Contexto:</strong> Una empresa fabrica ejes con diámetro nominal de 25 mm. El ingeniero de calidad quiere verificar si el proceso de maquinado está bajo control estadístico.</p>
+              <p><strong>Pasos:</strong> Se crea el proceso "Eje Ø25mm" con carta X̄-R, n=5, LSE=25.10 mm, LIE=24.90 mm. Se ingresan 25 subgrupos de 5 mediciones cada uno durante un turno. La carta X̄-R muestra todos los puntos dentro de los límites → proceso estable. Cpk = 1.45 → proceso capaz.</p>
+            </div>
+
+            <div class="example-box">
+              <div class="ex-label">Ejemplo 2 — Control de proporción de defectuosos (carta p)</div>
+              <p><strong>Contexto:</strong> Una línea de ensamble inspecciona lotes de 200 unidades y registra las unidades defectuosas por lote.</p>
+              <p><strong>Pasos:</strong> Se crea el proceso "Ensamble-L3" con carta p, n=200. Se ingresan 30 lotes (valores de defectuosos). El sistema calcula LCS_p = 0.048. En el lote 22, p = 0.065 → punto fuera de control detectado. Se investiga y se descubre un problema de ajuste en la operación 7.</p>
+            </div>
+
+            <div class="example-box">
+              <div class="ex-label">Ejemplo 3 — Monitoreo en tiempo real (Fase II)</div>
+              <p><strong>Contexto:</strong> Una vez establecidos los límites en Fase I, el operario ingresa nuevas mediciones durante el turno de producción.</p>
+              <p><strong>Pasos:</strong> Abrir <strong>Monitoreo SPC</strong>, seleccionar el proceso. Ingresar los 5 valores del subgrupo del turno actual y presionar <strong>Agregar</strong>. El sistema grafica el punto y notifica inmediatamente si está dentro o fuera de control, sin necesidad de cálculo manual.</p>
+            </div>
+
+            <div class="example-box">
+              <div class="ex-label">Ejemplo 4 — Importación masiva desde Excel</div>
+              <p><strong>Contexto:</strong> El analista tiene una hoja Excel con 200 mediciones históricas y desea cargarlas al sistema para establecer los límites de Fase I.</p>
+              <p><strong>Pasos:</strong> En <strong>Entrada de Datos</strong>, seleccionar el proceso, hacer clic en <em>Importar Excel</em>, arrastrar el archivo .xlsx. El sistema muestra "198 filas importadas, 2 errores (filas 45 y 112: valor vacío)". Los límites se calculan automáticamente.</p>
+            </div>
+          </div>
+
+          <!-- 9. Errores frecuentes -->
+          <div class="manual-section" id="sec-errores">
+            <span class="section-number">9</span>
+            <h2 class="section-title">Solución de Errores Frecuentes</h2>
+            <p class="section-subtitle">Diagnóstico y resolución de los problemas más comunes</p>
+
+            <div class="error-block">
+              <div class="error-header">🔴 "Se requiere process_id" al guardar mediciones</div>
+              <div class="error-body">
+                <strong>Causa:</strong> No se ha seleccionado un proceso antes de ingresar datos.<br>
+                <strong>Solución:</strong> En la pantalla de Entrada de Datos, asegurarse de seleccionar un proceso del menú desplegable antes de completar los campos de medición.
+              </div>
+            </div>
+
+            <div class="error-block">
+              <div class="error-header">🔴 "Error al obtener las mediciones" en Historial de Datos</div>
+              <div class="error-body">
+                <strong>Causa:</strong> Problema de conexión con el servidor o sesión expirada.<br>
+                <strong>Solución:</strong> Recargar la página (F5). Si persiste, cerrar sesión y volver a iniciarla. Verificar conexión a internet.
+              </div>
+            </div>
+
+            <div class="error-block">
+              <div class="error-header">🔴 Los datos de Fase II desaparecen al recargar la página</div>
+              <div class="error-body">
+                <strong>Causa:</strong> Los datos no se guardaron en el servidor (error de conexión) o el caché local fue limpiado.<br>
+                <strong>Solución:</strong> El sistema recupera automáticamente los datos desde el caché local (localStorage). Si no hay datos, usar el botón 🔄 <em>Recargar desde servidor</em> en el panel de monitoreo. Verificar que el navegador permita localStorage.
+              </div>
+            </div>
+
+            <div class="error-block">
+              <div class="error-header">🔴 La carta de control no se muestra / aparece vacía</div>
+              <div class="error-body">
+                <strong>Causa:</strong> El proceso no tiene datos suficientes (mínimo 2 subgrupos) o JavaScript está deshabilitado.<br>
+                <strong>Solución:</strong> Ingresar al menos 2 subgrupos de datos en Fase I y volver a la carta. Verificar que JavaScript esté habilitado en el navegador.
+              </div>
+            </div>
+
+            <div class="error-block">
+              <div class="error-header">🔴 "El archivo está vacío o sin datos reconocibles" al importar</div>
+              <div class="error-body">
+                <strong>Causa:</strong> El archivo no tiene encabezados reconocibles o la primera fila contiene datos no numéricos sin encabezado.<br>
+                <strong>Solución:</strong> Asegurarse de que el CSV/Excel tenga la primera fila como encabezado con las columnas <code>value</code> (o variantes aceptadas). Ver sección 6.2 para el formato correcto.
+              </div>
+            </div>
+
+            <div class="error-block">
+              <div class="error-header">🔴 Índices de capacidad no se calculan (Cp, Cpk aparecen como —)</div>
+              <div class="error-body">
+                <strong>Causa:</strong> El proceso no tiene límites de especificación (LSE / LIE) definidos.<br>
+                <strong>Solución:</strong> Ir a <strong>Procesos</strong>, editar el proceso y completar los campos LSE y/o LIE. Los índices requieren al menos un límite de especificación.
+              </div>
+            </div>
+
+            <div class="error-block">
+              <div class="error-header">🔴 Sesión expirada / redirige al login constantemente</div>
+              <div class="error-body">
+                <strong>Causa:</strong> El token de autenticación (JWT) expiró (validez de 8 horas) o las cookies del navegador fueron borradas.<br>
+                <strong>Solución:</strong> Iniciar sesión nuevamente. Para evitar interrupciones, no limpiar las cookies del sitio manualmente durante el turno de trabajo.
+              </div>
+            </div>
+
+            <div class="callout ok">
+              <span class="callout-icon">✅</span>
+              Si el error persiste luego de seguir los pasos de solución, contactar al equipo de soporte indicando el mensaje exacto de error y los pasos previos realizados (ver sección 11).
+            </div>
+          </div>
+
+          <!-- 10. Glosario -->
+          <div class="manual-section" id="sec-glosario">
+            <span class="section-number">10</span>
+            <h2 class="section-title">Glosario Técnico</h2>
+            <p class="section-subtitle">Definición de términos estadísticos y del sistema</p>
+
+            <div class="gloss-grid">
+              <div class="gloss-card">
+                <div class="gloss-term">Carta de Control</div>
+                <div class="gloss-def">Gráfico que muestra la evolución temporal de un estadístico del proceso (X̄, R, p, etc.) con respecto a límites de control calculados estadísticamente.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Causa Especial (Asignable)</div>
+                <div class="gloss-def">Fuente de variación identificable y no aleatoria que genera puntos fuera de los límites de control o patrones sistemáticos en la carta.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Causa Común (Aleatoria)</div>
+                <div class="gloss-def">Variabilidad inherente a un proceso estable, distribuida aleatoriamente dentro de los límites de control.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Cp (Índice de capacidad potencial)</div>
+                <div class="gloss-def">Relación entre el ancho de la especificación y la variabilidad natural del proceso (6σ). No considera el centrado.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Cpk (Índice de capacidad real)</div>
+                <div class="gloss-def">Mide la capacidad considerando tanto la variabilidad como el centrado del proceso respecto a las especificaciones. Es el índice más representativo.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Fase I</div>
+                <div class="gloss-def">Etapa de estabilización del SPC: se recopilan datos históricos, se calculan los límites de control y se verifica la estabilidad del proceso.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Fase II</div>
+                <div class="gloss-def">Etapa de monitoreo continuo: se usan los límites calculados en Fase I para evaluar nuevos subgrupos en tiempo real y detectar desviaciones.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">LC (Línea Central)</div>
+                <div class="gloss-def">Valor promedio del estadístico monitoreado (X̄̄, p̄, c̄, etc.). Eje de referencia central de la carta.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">LCS / LCI</div>
+                <div class="gloss-def">Límite de Control Superior / Inferior. Se calculan como LC ± 3σ del estadístico. Definen la zona de variabilidad esperada.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">LSE / LIE</div>
+                <div class="gloss-def">Límite de Especificación Superior / Inferior. Definidos por el cliente o diseño. Distintos a los límites de control (no confundir).</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Subgrupo</div>
+                <div class="gloss-def">Conjunto de n mediciones tomadas en condiciones similares (mismo turno, lote, operario) y tratadas como una unidad en la carta de control.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">X̄ (X-barra)</div>
+                <div class="gloss-def">Media aritmética de las mediciones dentro de un subgrupo. Es el estadístico principal de la carta X̄-R y X̄-S.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">R (Rango)</div>
+                <div class="gloss-def">Diferencia entre el valor máximo y mínimo dentro de un subgrupo. Mide la dispersión interna del subgrupo.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">σ (Sigma del proceso)</div>
+                <div class="gloss-def">Desviación estándar estimada a partir de la variabilidad dentro de los subgrupos (R̄/d₂). Representa la variación a corto plazo.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">SPC</div>
+                <div class="gloss-def">Statistical Process Control (Control Estadístico de Procesos). Metodología para monitorear y controlar la calidad de procesos mediante herramientas estadísticas.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">JWT</div>
+                <div class="gloss-def">JSON Web Token. Mecanismo de autenticación segura usado por el sistema. Tiene una validez de 8 horas por sesión.</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">OOC (Out of Control)</div>
+                <div class="gloss-def">Punto fuera de control. Se indica en la carta con marcador rojo y en la tabla de historial como "⚠ Fuera de control".</div>
+              </div>
+              <div class="gloss-card">
+                <div class="gloss-term">Plan de Muestreo</div>
+                <div class="gloss-def">Procedimiento estadístico que determina el tamaño de muestra y los criterios de aceptación/rechazo para inspección por lotes.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 11. Contacto -->
+          <div class="manual-section" id="sec-contacto">
+            <span class="section-number">11</span>
+            <h2 class="section-title">Datos de Contacto del Equipo Desarrollador</h2>
+            <p class="section-subtitle">Para soporte técnico, reportes de errores o consultas académicas</p>
+
+            <div class="contact-grid">
+              <div class="contact-card">
+                <div class="contact-avatar">AC</div>
+                <div class="contact-name">Andrés Collazo</div>
+                <div class="contact-role">Desarrollador Principal · Full Stack</div>
+                <div class="contact-email">starbotsczo@gmail.com</div>
+              </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <p class="manual-h3">Información del proyecto</p>
+            <table class="req-table">
+              <tbody>
+                <tr><td>Nombre del sistema</td><td>SPC SaaS — Control Estadístico de Procesos</td></tr>
+                <tr><td>Versión</td><td>1.0.0</td></tr>
+                <tr><td>Año de desarrollo</td><td>2025 – 2026</td></tr>
+                <tr><td>Tecnologías</td><td>Node.js, Express, PostgreSQL, Chart.js, HTML5 / CSS3 / JavaScript</td></tr>
+                <tr><td>Repositorio</td><td>github.com/collazoandres2005-cmyk/spc-saas</td></tr>
+                <tr><td>Despliegue</td><td>Render.com (backend) · Hosting estático (frontend)</td></tr>
+              </tbody>
+            </table>
+
+            <div class="callout info">
+              <span class="callout-icon">📧</span>
+              Para reportar un error, incluir en el mensaje: módulo donde ocurrió, pasos para reproducirlo, mensaje de error exacto y captura de pantalla si es posible.
+            </div>
+          </div>
+
+        </div><!-- /manual-body -->
+      </div><!-- /manual-layout -->
+    </div><!-- /page-content -->
+  </div><!-- /main-content -->
+
+  <script src="/js/api.js"></script>
+  <script>
+    initSidebar('manual');
+    loadSubStatusBadge('sub-status-badge');
+
+    // ── Sticky TOC highlight ─────────────────────────────────────
+    const sections = document.querySelectorAll('.manual-section');
+    const tocLinks = document.querySelectorAll('.toc-item');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          tocLinks.forEach(l => l.classList.remove('active'));
+          const active = document.querySelector(`.toc-item[href="#${entry.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>

@@ -315,6 +315,7 @@ function initSidebar(activePage) {
     { id: 'dashboard',    href: '/dashboard.html',    label: 'Panel de Control'   },
     { id: 'measurements', href: '/measurements.html', label: 'Historial de datos' },
     { id: 'report',       href: '/report.html',       label: 'Informes'           },
+    { id: 'manual',       href: '/manual.html',       label: '📖 Manual del Software' },
   ];
 
   const fase1Pages = [

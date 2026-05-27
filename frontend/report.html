@@ -892,6 +892,32 @@ function renderReport() {
                     <div class="rep-stat" style="grid-column:span 2"><div class="rep-stat-lbl">PPNC</div><div class="rep-stat-val" style="font-size:18px;font-weight:900">${fmt(p.ppnc)} ud</div></div>
                   </div>
                 </div>` : ''}
+                ${ev.cmPlans ? `
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">
+                  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px">⚖️ Carga Muestral — CM objetivo: ${ev.cmPlans.targetCM.toFixed(2)} u/h (Δ=${(ev.cmPlans.pctInc*100).toFixed(0)}%)</div>
+                  <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    ${['plan1','plan2'].map((key, i) => {
+                      const pl = ev.cmPlans[key];
+                      if (!pl) return '';
+                      const label = i === 0 ? `Plan 1 — misma n (n=${ev.cmPlans.current.n})` : `Plan 2 — mismo t (t=${ev.cmPlans.current.t}h)`;
+                      return `<div style="flex:1;min-width:200px;padding:10px 14px;background:var(--glass-card);border:1px solid ${i===0?'var(--success-bdr)':'var(--warning-bdr)'};border-radius:var(--radius)">
+                        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:${i===0?'var(--success)':'var(--warning)'};margin-bottom:6px">${label}</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:12px">
+                          <span>n = <strong>${Number.isInteger(pl.n) ? pl.n : pl.n.toFixed(2)}</strong></span>
+                          <span>t = <strong>${pl.t.toFixed(2)}</strong> h</span>
+                          <span>CM = <strong>${pl.cm.toFixed(2)}</strong> u/h</span>
+                          <span>ATS₁ = <strong>${pl.ats1.toFixed(1)}</strong> h</span>
+                          <span>Potencia = <strong>${(pl.power*100).toFixed(1)}%</strong></span>
+                          <span>PPNC = <strong>${fmt(pl.ppnc)}</strong> ud</span>
+                        </div>
+                      </div>`;
+                    }).join('')}
+                  </div>
+                  ${ev.cmPlans.best ? `
+                  <div style="margin-top:8px;padding:8px 12px;background:var(--success-bg);border:1px solid var(--success-bdr);border-radius:var(--radius);font-size:12px">
+                    <strong>★ Plan recomendado:</strong> n = ${Number.isInteger(ev.cmPlans.best.n) ? ev.cmPlans.best.n : ev.cmPlans.best.n.toFixed(2)} · t = ${ev.cmPlans.best.t.toFixed(2)} h · CM = ${ev.cmPlans.best.cm.toFixed(2)} · ATS₁ = ${ev.cmPlans.best.ats1.toFixed(1)} h
+                  </div>` : ''}
+                </div>` : ''}
               </div>`);
           }
         }

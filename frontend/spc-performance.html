@@ -453,6 +453,7 @@ let monitoringData = null;  // datos de monitoreo Fase II
 let currentPid = null;      // proceso actualmente cargado
 let lastEval = null;        // últimos resultados de renderMonitoringEval
 let lastPerf = null;        // últimos resultados de recalc()
+let lastCM = null;          // últimos resultados de renderCM()
 
 /* ══════════════════════════════════════════════════════════════
    MONITOREO FASE II — Evaluación con datos reales
@@ -565,7 +566,8 @@ function savePerformanceEval() {
     savedAt: new Date().toISOString(),
     config: readConfig(),
     ...lastEval,
-    performance: lastPerf || undefined
+    performance: lastPerf || undefined,
+    cmPlans: lastCM || undefined
   };
   try {
     localStorage.setItem('spc_eval_' + currentPid, JSON.stringify(data));
@@ -1205,8 +1207,9 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
 
   // Mejor plan (menor ATS₁ entre los que cumplen CM objetivo)
   const candidates = [plan1, plan2].filter(p => p.cm >= targetCM);
+  let best = null;
   if (candidates.length) {
-    const best = candidates.reduce((a, b) => a.ats1 < b.ats1 ? a : b);
+    best = candidates.reduce((a, b) => a.ats1 < b.ats1 ? a : b);
     document.getElementById('cm-optimal-row').innerHTML =
       `<div style="display:inline-flex;align-items:center;gap:12px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius);padding:10px 16px;flex-wrap:wrap">
         <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#15803d">★ Mejor plan (CM ≥ ${targetCM.toFixed(2)})</span>
@@ -1219,6 +1222,9 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
     document.getElementById('cm-optimal-row').innerHTML =
       `<div style="padding:10px 14px;color:var(--danger);font-size:13px">Ningún plan alcanza la CM objetivo de ${targetCM.toFixed(2)} u/h. Aumenta Δ%.</div>`;
   }
+
+  // Guardar para exportar
+  lastCM = { current, plan1, plan2, best, targetCM, pctInc };
 }
 
 /* ══════════════════════════════════════════════════════════════

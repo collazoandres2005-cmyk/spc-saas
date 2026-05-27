@@ -58,14 +58,14 @@ router.get('/capability', async (req, res) => {
     }
 
     const values = rows.map(r => parseFloat(r.value));
-    const n = simulate_n
-      ? parseInt(simulate_n)
-      : (process.n_size ? parseInt(process.n_size) : inferSubgroupSize(rows));
     let capability;
     let simulated = false;
     let testRows;   // rows with subgroup_id for statistical tests
+    const chartType = process.chart_type || 'xbar_r';
 
-    if (n >= 2 && n <= 10) {
+    // ── Prioridad 1: simulate_n forzado ─────────────────────────────────────
+    if (simulate_n) {
+      const n = parseInt(simulate_n);
       const numGroups = Math.floor(values.length / n);
       if (numGroups < 2) {
         return res.status(400).json({
@@ -73,19 +73,31 @@ router.get('/capability', async (req, res) => {
         });
       }
       const subgroups = [];
-      for (let g = 0; g < numGroups; g++) {
-        subgroups.push(values.slice(g * n, (g + 1) * n));
-      }
-      capability = spc.calculateCapabilityFromSubgroups(subgroups, parseFloat(usl), parseFloat(lsl), process.nominal, process.chart_type || 'xbar_r');
-      // Build rows with simulated subgroup IDs for statistical tests
-      testRows = values.slice(0, numGroups * n).map((v, i) => ({
-        value: v,
-        subgroup_id: Math.floor(i / n) + 1
-      }));
+      for (let g = 0; g < numGroups; g++) subgroups.push(values.slice(g * n, (g + 1) * n));
+      capability = spc.calculateCapabilityFromSubgroups(subgroups, parseFloat(usl), parseFloat(lsl), process.nominal, chartType);
+      testRows = values.slice(0, numGroups * n).map((v, i) => ({ value: v, subgroup_id: Math.floor(i / n) + 1 }));
       simulated = true;
+
+    // ── Prioridad 2: subgroup_id reales (igual que la carta de control) ──────
+    } else if (rows.some(r => r.subgroup_id != null)) {
+      const subgroupMap = new Map();
+      rows.forEach(row => {
+        const key = row.subgroup_id;
+        if (!subgroupMap.has(key)) subgroupMap.set(key, []);
+        subgroupMap.get(key).push(parseFloat(row.value));
+      });
+      const sgArrays = [...subgroupMap.values()].filter(sg => sg.length >= 2);
+      if (sgArrays.length < 2) {
+        return res.status(400).json({ error: 'Se necesitan al menos 2 subgrupos con ≥ 2 mediciones.' });
+      }
+      capability = spc.calculateCapabilityFromSubgroups(sgArrays, parseFloat(usl), parseFloat(lsl), process.nominal, chartType);
+      testRows = rows;
+      simulated = false;
+
+    // ── Prioridad 3: sin subgrupos → σ global ────────────────────────────────
     } else {
       capability = spc.calculateCapability(values, parseFloat(usl), parseFloat(lsl), process.nominal);
-      testRows = rows;  // use original rows (may have real subgroup_id or null)
+      testRows = rows;
     }
 
     if (!capability) {

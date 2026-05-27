@@ -745,19 +745,27 @@ function renderReport() {
       const sg = mon.sessionSubgroups;
       const means = mon.sessionMeans || [];
       const meanVal = means.length ? means.reduce((a,b)=>a+b,0)/means.length : null;
+      const ccSummary = d.controlChart?.summary;
+      const monSigma = ccSummary && ccSummary.ucl != null && ccSummary.cl != null
+        ? (ccSummary.ucl - ccSummary.cl) / 3 : null;
+      const monShift = monSigma > 0 && meanVal != null && ccSummary?.cl != null
+        ? (meanVal - ccSummary.cl) / monSigma : null;
       sections.push(`
         <div class="rep-grid">
           <div class="rep-stat"><div class="rep-stat-lbl">Subgrupos en Fase II</div>
             <div class="rep-stat-val">${sg.length}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Media general Fase II</div>
             <div class="rep-stat-val">${fmt(meanVal)}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Desplazamiento (σ)</div>
+            <div class="rep-stat-val">${monShift != null ? `${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ` : '—'}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Total entradas</div>
             <div class="rep-stat-val">${mon.sessionCount || sg.length}</div></div>
         </div>
         <div style="margin-top:12px;font-size:12px;color:var(--text-sec);line-height:1.6">
           La sesión de monitoreo registró <strong>${sg.length}</strong> subgrupos en Fase II.
-          ${meanVal != null ? `La media acumulada de Fase II es <strong>${fmt(meanVal)}</strong>, ` : ''}
-          comparada con la línea central de Fase I para evaluar la estabilidad continua del proceso.
+          ${meanVal != null ? `La media acumulada de Fase II es <strong>${fmt(meanVal)}</strong>. ` : ''}
+          ${monShift != null ? `Desplazamiento respecto a Fase I: <strong>${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ</strong>. ` : ''}
+          ${monShift != null && Math.abs(monShift) >= 1.0 ? '⚠ El desplazamiento supera 1σ, puede indicar un cambio significativo en el proceso.' : monShift != null && Math.abs(monShift) >= 0.5 ? '⚠ El desplazamiento supera 0.5σ, monitorear tendencia.' : 'El proceso se mantiene centrado respecto a la referencia de Fase I.'}
         </div>`);
 
       // Tabla de entradas recientes (últimas 20)

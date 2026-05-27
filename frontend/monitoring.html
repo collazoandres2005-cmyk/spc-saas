@@ -92,6 +92,11 @@
     .mon-stat { padding: 8px 12px; background: var(--glass-card); border: 1px solid var(--border); border-radius: var(--radius); }
     .mon-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
     .mon-stat-val { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
+    .stat-shift { display: block; font-size: 11px; font-weight: 600; margin-top: 1px; }
+    .stat-shift.shift-ok    { color: #4ade80; }
+    .stat-shift.shift-warn  { color: #fb923c; }
+    .stat-shift.shift-bad   { color: #f87171; }
+    .stat-shift.shift-danger{ color: #dc2626; font-weight: 800; }
     @media (max-width: 480px) { .mon-stats { grid-template-columns: 1fr; } }
 
     /* ── Live mean preview ────────────────────────────────────── */
@@ -1093,6 +1098,23 @@
     if (sessionMeans.length === 0) { el.textContent = '—'; return; }
     const avg = sessionMeans.reduce((a,b) => a + b, 0) / sessionMeans.length;
     el.textContent = avg.toFixed(4);
+    // Attach or update sigma shift indicator
+    let shiftEl = el.querySelector('.stat-shift');
+    if (!shiftEl) { shiftEl = document.createElement('span'); shiftEl.className = 'stat-shift'; el.appendChild(shiftEl); };
+    if (phase1Limits?.main) {
+      const cl = phase1Limits.main.cl;
+      const sigma = phase1Limits.main.ucl != null && cl != null ? (phase1Limits.main.ucl - cl) / 3 : null;
+      if (sigma != null && sigma > 0) {
+        const shift = (avg - cl) / sigma;
+        const absShift = Math.abs(shift);
+        const cls = absShift < 0.5 ? 'shift-ok' : absShift < 1.0 ? 'shift-warn' : absShift < 1.5 ? 'shift-bad' : 'shift-danger';
+        shiftEl.className = `stat-shift ${cls}`;
+        shiftEl.textContent = `${shift >= 0 ? '+' : ''}${shift.toFixed(2)}σ`;
+      } else {
+        shiftEl.className = 'stat-shift';
+        shiftEl.textContent = '';
+      }
+    }
   }
 
   /* ── Pegado masivo desde Excel ─────────────────────────────── */

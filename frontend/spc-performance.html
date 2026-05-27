@@ -137,8 +137,6 @@
     .formula-eq { font-size: 13px; font-family: 'Courier New', monospace; color: var(--text); margin-bottom: 3px; }
     .formula-note { font-size: 11px; color: var(--text-muted); }
 
-    .mode-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1e40af; margin-left: 10px; }
-    .mode-pill.manual { background: #fef3c7; color: #92400e; }
 
     /* ── Empty state ──────────────────────────────────────────── */
     .empty-state {
@@ -157,7 +155,7 @@
       <div>
         <div class="top-bar-title">
           Evaluación del Desempeño SPC
-          <span id="mode-pill" class="mode-pill">Automático</span>
+
         </div>
         <span class="top-bar-breadcrumb" id="proc-crumb">Selecciona un proceso para evaluar su carta de control</span>
       </div>
@@ -247,89 +245,39 @@
             <div class="cfg-grid">
 
               <div class="cfg-field">
-                <label class="cfg-label">
-                  Límites sigma (k)
-                  <span class="from-chart-tag" id="k-tag" style="display:none">carta</span>
-                </label>
-                <select id="inp-k" class="cfg-input" onchange="recalc()">
-                  <option value="1.5">1.5 σ</option>
-                  <option value="2">2 σ</option>
-                  <option value="2.5">2.5 σ</option>
-                  <option value="3" selected>3 σ — estándar</option>
-                  <option value="3.5">3.5 σ</option>
-                  <option value="4">4 σ</option>
-                </select>
-                <p class="cfg-hint">Tomado de la carta. Puedes cambiar para simular otro k.</p>
+                <label class="cfg-label">Límites sigma (k) <span class="from-chart-tag">carta</span></label>
+                <input id="inp-k" class="cfg-input from-chart" readonly value="3">
               </div>
 
               <div class="cfg-field">
-                <label class="cfg-label">
-                  Tamaño de subgrupo (n)
-                  <span class="from-chart-tag" id="n-tag" style="display:none">carta</span>
-                </label>
-                <input id="inp-n" class="cfg-input" type="number" min="1" max="50"
-                       value="5" oninput="recalc()">
-                <p class="cfg-hint">Tomado del proceso real. Mayor n → mayor potencia de detección.</p>
+                <label class="cfg-label">Tamaño de subgrupo (n) <span class="from-chart-tag">carta</span></label>
+                <input id="inp-n" class="cfg-input from-chart" readonly value="5">
+              </div>
+
+              <div class="cfg-field">
+                <label class="cfg-label">δ real <span style="font-weight:400;text-transform:none">en σ</span></label>
+                <input id="inp-delta" class="cfg-input from-chart" readonly value="0">
+                <p class="cfg-hint" id="delta-hint">Desviación observada en Fase II</p>
+              </div>
+
+              <div class="cfg-field">
+                <label class="cfg-label">% No conformes real</label>
+                <input id="inp-pnc" class="cfg-input from-chart" readonly value="0">
+                <p class="cfg-hint">%NC real del monitoreo Fase II</p>
               </div>
 
               <div class="cfg-field">
                 <label class="cfg-label">Intervalo de muestreo (t) <span style="font-weight:400;text-transform:none">horas</span></label>
                 <input id="inp-t" class="cfg-input" type="number" min="0.25" step="0.25"
                        value="4" oninput="recalc()">
-                <p class="cfg-hint">Tiempo entre cada subgrupo inspeccionado.</p>
-              </div>
-
-              <div class="cfg-field">
-                <label class="cfg-label">Cambio a detectar (δ) <span style="font-weight:400;text-transform:none">en σ</span></label>
-                <input id="inp-delta" class="cfg-input" type="number" min="0.1" step="0.25"
-                       value="1.0" oninput="recalc()">
-                <p class="cfg-hint" id="delta-hint">
-                  δ=1.0 = la media del proceso se desplaza 1 σ del proceso.
-                </p>
-              </div>
-
-              <div class="cfg-field">
-                <label class="cfg-label">% No conformes (OOC) <span style="font-weight:400;text-transform:none">cuando proceso OOC</span></label>
-                <input id="inp-pnc" class="cfg-input" type="number" min="0.01" max="100"
-                       step="0.1" value="2.5" oninput="recalc()">
-                <p class="cfg-hint">Proporción de unidades defectuosas mientras el proceso está fuera de control.</p>
+                <p class="cfg-hint">Tiempo entre subgrupos inspeccionados.</p>
               </div>
 
               <div class="cfg-field">
                 <label class="cfg-label">Tasa de producción <span style="font-weight:400;text-transform:none">u / hora</span></label>
                 <input id="inp-prod" class="cfg-input" type="number" min="1"
                        value="100" oninput="recalc()">
-                <p class="cfg-hint">Unidades producidas por hora. Usado para calcular PPNC.</p>
-              </div>
-
-              <hr class="cfg-divider">
-
-              <div style="grid-column:1/-1">
-                <div class="toggle-row">
-                  <label class="toggle-switch">
-                    <input type="checkbox" id="chk-manual" onchange="toggleManualMode()">
-                    <span class="toggle-track"></span>
-                    <span class="toggle-knob"></span>
-                  </label>
-                  <span class="toggle-label">Modo manual — ingresar α y β directamente</span>
-                  <span style="font-size:11px;color:var(--text-muted);margin-left:4px">
-                    (para escenarios experimentales o cartas de atributos)
-                  </span>
-                </div>
-              </div>
-
-              <div class="cfg-field" id="row-alpha">
-                <label class="cfg-label">Error tipo I (α) <span id="alpha-src" style="font-weight:400;text-transform:none">calculado desde k</span></label>
-                <input id="inp-alpha" class="cfg-input" type="number" min="0.00001"
-                       max="0.5" step="0.0001" value="0.0027" disabled oninput="recalc()">
-                <p class="cfg-hint">Automático: α = 2(1−Φ(k)) para carta Shewhart 2 colas.</p>
-              </div>
-
-              <div class="cfg-field" id="row-beta">
-                <label class="cfg-label">Error tipo II (β) <span id="beta-src" style="font-weight:400;text-transform:none">calculado desde carta</span></label>
-                <input id="inp-beta" class="cfg-input" type="number" min="0.00001"
-                       max="0.9999" step="0.0001" value="0.8413" disabled oninput="recalc()">
-                <p class="cfg-hint" id="beta-hint">Automático usando los límites reales de la carta cargada.</p>
+                <p class="cfg-hint">Unidades producidas por hora.</p>
               </div>
 
             </div>
@@ -577,6 +525,13 @@ function renderMonitoringEval() {
   // Guardar para exportar
   lastEval = { mu0, mu1, sigmaP, n, deltaReal, shiftXbar, pnc0, pnc1, usl, lsl, sgCount: monitoringData.sessionSubgroups?.length || means.length };
 
+  // Rellenar parámetros de evaluación con datos reales
+  document.getElementById('inp-delta').value = Math.abs(deltaReal).toFixed(4);
+  document.getElementById('inp-pnc').value = pnc1 != null ? (pnc1 * 100).toFixed(4) : '—';
+
+  // Disparar recálculo
+  recalc();
+
   // Mostrar si ya hay una evaluación guardada
   loadSavedEvalStatus();
 }
@@ -598,11 +553,7 @@ function loadSavedEvalStatus() {
 /* ── Guardar evaluación en localStorage ────────────────────────── */
 function readConfig() {
   return {
-    k:     parseFloat(document.getElementById('inp-k').value) || 3,
-    n:     parseInt(document.getElementById('inp-n').value) || 5,
     t:     parseFloat(document.getElementById('inp-t').value) || 4,
-    delta: parseFloat(document.getElementById('inp-delta').value) || 1,
-    pnc:   parseFloat(document.getElementById('inp-pnc').value) || 2.5,
     prod:  parseFloat(document.getElementById('inp-prod').value) || 100,
     cmDelta:  parseFloat(document.getElementById('cm-delta').value) || 0.2,
     cmNMin:   parseInt(document.getElementById('cm-n-min').value) || 2,
@@ -613,8 +564,7 @@ function readConfig() {
 function applyConfig(cfg) {
   if (!cfg) return;
   const map = {
-    'inp-k': 'k', 'inp-n': 'n', 'inp-t': 't', 'inp-delta': 'delta',
-    'inp-pnc': 'pnc', 'inp-prod': 'prod', 'cm-delta': 'cmDelta',
+    'inp-t': 't', 'inp-prod': 'prod', 'cm-delta': 'cmDelta',
     'cm-n-min': 'cmNMin', 'cm-n-max': 'cmNMax'
   };
   for (const [id, key] of Object.entries(map)) {
@@ -898,25 +848,6 @@ function applyChartInfoToInputs(ci) {
   document.getElementById('inp-n').value = ci.n;
   document.getElementById('inp-k').value = ci.k;
 
-  // Marca "from chart"
-  ['n-tag','k-tag'].forEach(id => document.getElementById(id).style.display = 'inline-flex');
-  ['inp-n','inp-k'].forEach(id => document.getElementById(id).classList.add('from-chart'));
-
-  // Actualiza hint de δ con unidades reales
-  const dh = document.getElementById('delta-hint');
-  if (ci.sigmaProcess != null) {
-    const u = ci.unit;
-    dh.innerHTML = `δ=1.0 → la media se desplaza <strong>${ci.sigmaProcess.toFixed(4)}${u ? ' '+u : ''}</strong>. `
-      + `δ=2.0 → se desplaza ${(ci.sigmaProcess*2).toFixed(4)}${u ? ' '+u : ''}.`;
-  } else {
-    dh.textContent = `δ=1.0 = el estadístico se desplaza 1 σ de control (basado en límites reales de la carta).`;
-  }
-
-  // Actualiza nota del β
-  document.getElementById('beta-hint').textContent =
-    `Calculado con UCL=${ci.main.ucl.toFixed(4)}, LC=${ci.main.cl.toFixed(4)}, LCL=${ci.main.lcl?.toFixed(4) ?? '0'} de la carta real.`;
-  document.getElementById('beta-src').textContent = 'calculado desde carta real';
-
   // Columna de desplazamiento en unidades reales
   const thUnit = document.getElementById('th-shift-unit');
   thUnit.textContent = ci.sigmaProcess != null
@@ -924,32 +855,16 @@ function applyChartInfoToInputs(ci) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   TOGGLE MODO MANUAL
-══════════════════════════════════════════════════════════════ */
-function toggleManualMode() {
-  const manual = document.getElementById('chk-manual').checked;
-  ['inp-alpha','inp-beta'].forEach(id => {
-    document.getElementById(id).disabled = !manual;
-  });
-  document.getElementById('alpha-src').textContent = manual ? '(editable)' : 'calculado desde k';
-  document.getElementById('beta-src').textContent  = manual ? '(editable)' : 'calculado desde carta real';
-  const pill = document.getElementById('mode-pill');
-  pill.textContent = manual ? 'Modo manual' : 'Automático';
-  pill.className   = manual ? 'mode-pill manual' : 'mode-pill';
-  recalc();
-}
-
-/* ══════════════════════════════════════════════════════════════
    RECÁLCULO PRINCIPAL
 ══════════════════════════════════════════════════════════════ */
 function recalc() {
-  const k     = parseFloat(document.getElementById('inp-k').value) || 3;
-  const n     = Math.max(1, parseInt(document.getElementById('inp-n').value) || 5);
+  const k     = chartInfo?.k || 3;
+  const n     = chartInfo?.n || 5;
   const h     = Math.max(0.01, parseFloat(document.getElementById('inp-t').value) || 4);
   const delta = Math.max(0.01, parseFloat(document.getElementById('inp-delta').value) || 1);
-  const pnc   = Math.max(0, Math.min(100, parseFloat(document.getElementById('inp-pnc').value) || 2.5)) / 100;
+  const pnc   = parseFloat(document.getElementById('inp-pnc').value);
+  const rawPnc = (pnc == null || isNaN(pnc) || !isFinite(pnc)) ? 0.025 : Math.min(100, Math.max(0, pnc)) / 100;
   const prod  = Math.max(0, parseFloat(document.getElementById('inp-prod').value) || 100);
-  const manual = document.getElementById('chk-manual').checked;
 
   const betaParams = {
     k, delta, n,
@@ -962,25 +877,17 @@ function recalc() {
   let alpha = calcAlpha(k);
   let beta  = calcBeta(betaParams);
 
-  if (manual) {
-    alpha = Math.max(1e-9, Math.min(0.9999, parseFloat(document.getElementById('inp-alpha').value) || alpha));
-    beta  = Math.max(1e-9, Math.min(0.9999, parseFloat(document.getElementById('inp-beta').value)  || beta));
-  } else {
-    document.getElementById('inp-alpha').value = alpha.toFixed(6);
-    document.getElementById('inp-beta').value  = beta.toFixed(6);
-  }
-
   const power = Math.max(1e-9, 1 - beta);
   const arl0  = 1 / alpha;
   const arl1  = 1 / power;
   const ats0  = arl0 * h;
   const ats1  = arl1 * h;
-  const ppnc  = ats1 * pnc * prod;
+  const ppnc  = ats1 * rawPnc * prod;
 
-  renderCards({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, pnc, prod });
+  renderCards({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, pnc: rawPnc, prod });
   renderInterpretation({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, delta, n });
-  renderSensitivity({ k, n, h, delta, pnc, prod, betaParams });
-  renderCM({ k, delta, pnc, prod, betaParams });
+  renderSensitivity({ k, n, h, delta, pnc: rawPnc, prod, betaParams });
+  renderCM({ k, delta, pnc: rawPnc, prod, betaParams });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1197,7 +1104,7 @@ function renderFormulaRef(type) {
 
   const betaNote = isVar
     ? `Usando los límites reales UCL=${chartInfo?.main.ucl?.toFixed(4)??'?'}, LCL=${chartInfo?.main.lcl?.toFixed(4)??'?'}. Aprox. normal.`
-    : 'Aproximación normal al binomial/Poisson. Usa modo manual para valores exactos.';
+    : 'Aproximación normal al binomial/Poisson.';
 
   document.getElementById('formula-ref').innerHTML = `
     <div class="formula-item">

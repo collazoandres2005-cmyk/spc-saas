@@ -352,6 +352,21 @@ async function loadProcess() {
 /* ══════════════════════════════════════════════════════════════
    ANÁLISIS — FUNCIONES AUXILIARES
 ══════════════════════════════════════════════════════════════ */
+/* ── Helper: normal CDF (Hart / Hastings) ────────────────── */
+function normalCDF(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  const t = 1 / (1 + p * Math.abs(x));
+  const y = 1 - (((((a5*t + a4)*t + a3)*t + a2)*t + a1)*t * Math.exp(-x*x/2));
+  return 0.5 * (1 + sign * y);
+}
+
+/* ── Potencia de detección para carta X̄ con límites ±3σ ──── */
+function detectionPower(shiftSigma) {
+  const d = Math.abs(shiftSigma);
+  return Math.min(1, (1 - normalCDF(3 - d)) + normalCDF(-3 - d));
+}
+
 function stabilityAnalysis(cc) {
   if (!cc) return { level: 'unknown', label: 'Sin datos', color: 'info', text: '' };
   if (cc.oocCount === 0 && cc.totalSubgroups >= 20)
@@ -758,6 +773,9 @@ function renderReport() {
             <div class="rep-stat-val">${fmt(meanVal)}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Desplazamiento (σ)</div>
             <div class="rep-stat-val">${monShift != null ? `${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ` : '—'}</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Potencia detección</div>
+            <div class="rep-stat-val">${monShift != null ? (detectionPower(monShift) * 100).toFixed(1) + '%' : '—'}</div>
+            <div class="rep-stat-sub">ARL: ${monShift != null ? detectionPower(monShift) > 0 ? (1/detectionPower(monShift)).toFixed(1) : '∞' : ''}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Total entradas</div>
             <div class="rep-stat-val">${mon.sessionCount || sg.length}</div></div>
         </div>
@@ -765,6 +783,7 @@ function renderReport() {
           La sesión de monitoreo registró <strong>${sg.length}</strong> subgrupos en Fase II.
           ${meanVal != null ? `La media acumulada de Fase II es <strong>${fmt(meanVal)}</strong>. ` : ''}
           ${monShift != null ? `Desplazamiento respecto a Fase I: <strong>${monShift >= 0 ? '+' : ''}${monShift.toFixed(2)}σ</strong>. ` : ''}
+          ${monShift != null ? `Potencia de detección: <strong>${(detectionPower(monShift) * 100).toFixed(1)}%</strong> (ARL ${detectionPower(monShift) > 0 ? (1/detectionPower(monShift)).toFixed(1) : '∞'}). ` : ''}
           ${monShift != null && Math.abs(monShift) >= 1.0 ? '⚠ El desplazamiento supera 1σ, puede indicar un cambio significativo en el proceso.' : monShift != null && Math.abs(monShift) >= 0.5 ? '⚠ El desplazamiento supera 0.5σ, monitorear tendencia.' : 'El proceso se mantiene centrado respecto a la referencia de Fase I.'}
         </div>`);
 

@@ -98,6 +98,38 @@
     .centering-banner.centered { background:var(--success-bg); color:var(--success); }
     .centering-banner.slight   { background:#fef3c7; color:#92400e; }
     .centering-banner.offset   { background:var(--danger-bg);  color:var(--danger);  }
+
+    /* ── Supuestos con gráfico ──────────────────────────────── */
+    .assump-card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .assump-card.pass { border-top: 3px solid var(--success); }
+    .assump-card.fail { border-top: 3px solid var(--danger);  }
+    .assump-card.na   { border-top: 3px solid var(--text-muted); }
+    .assump-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px 6px;
+    }
+    .assump-title { font-size: 12px; font-weight: 800; color: var(--text); }
+    .assump-badge {
+      font-size: 10px; font-weight: 800; padding: 2px 9px;
+      border-radius: 99px; text-transform: uppercase; letter-spacing: .4px;
+    }
+    .assump-badge.pass { background: var(--success-bg); color: var(--success); }
+    .assump-badge.fail { background: var(--danger-bg);  color: var(--danger);  }
+    .assump-badge.na   { background: var(--glass-card); color: var(--text-muted); }
+    .assump-stat {
+      padding: 0 14px 8px;
+      font-size: 11px; color: var(--text-sec); line-height: 1.5;
+    }
+    .assump-chart { padding: 0 10px 10px; height: 160px; }
+    @media (max-width: 700px) {
+      #assumptions-grid { grid-template-columns: 1fr !important; }
+      .assump-chart { height: 130px; }
+    }
   </style>
 </head>
 <body class="app-layout">
@@ -226,11 +258,6 @@
             <div class="metric-value" id="val-sigma" style="font-size:22px">—</div>
             <div class="metric-sub" id="sub-sigma"></div>
           </div>
-          <div class="metric-card" id="card-sigma-total" style="display:none">
-            <div class="metric-label">σ Total (largo plazo)</div>
-            <div class="metric-value" id="val-sigma-total" style="font-size:22px">—</div>
-            <div class="metric-sub">desv. estándar global</div>
-          </div>
           <div class="metric-card">
             <div class="metric-label">Número de mediciones</div>
             <div class="metric-value" id="val-n" style="font-size:22px">—</div>
@@ -266,8 +293,8 @@
         <div class="card" style="margin-bottom:20px">
           <div class="card-header"><div class="card-title">Supuestos del análisis</div></div>
           <div class="card-body">
-            <div id="assumptions-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
-            <div id="assumptions-note" style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.5"></div>
+            <div id="assumptions-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px"></div>
+            <div id="assumptions-note" style="margin-top:10px;font-size:11px;color:var(--text-muted);line-height:1.5"></div>
           </div>
         </div>
 
@@ -474,12 +501,9 @@
     if (hasSubgroups) {
       document.getElementById('lbl-sigma').textContent = `Desv. Estándar σ̂w (corto plazo)`;
       document.getElementById('sub-sigma').textContent = `σ̂w = ${sigmaFormula} (dentro de subgrupos)`;
-      document.getElementById('val-sigma-total').textContent = formatNum(sigmaTotal, 4);
-      document.getElementById('card-sigma-total').style.display = '';
     } else {
       document.getElementById('lbl-sigma').textContent = 'Desv. Estándar (σ)';
       document.getElementById('sub-sigma').textContent = '';
-      document.getElementById('card-sigma-total').style.display = 'none';
     }
     document.getElementById('val-sigma').textContent = formatNum(sigma, 4);
 
@@ -569,55 +593,257 @@
     return x > 0 ? 1 - p : p;
   }
 
-  // ── Render supuestos ────────────────────────────────────────
+  // ── Render supuestos con gráficos ───────────────────────────
+  const _assumpCharts = {};
   function renderAssumptions(tests, measResult) {
     const grid = document.getElementById('assumptions-grid');
     const note = document.getElementById('assumptions-note');
-    const cards = [];
 
-    function addCard(label, ok, detail) {
-      cards.push(`<div style="background:var(--glass-card);border:1px solid ${ok ? 'var(--success-bdr)' : 'var(--danger-bdr)'};border-radius:var(--radius);padding:10px 14px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);margin-bottom:4px">${label}</div>
-        <div style="font-size:14px;font-weight:800;color:${ok ? 'var(--success)' : 'var(--danger)'}">${ok ? '✅ Válido' : '⚠ No válido'}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${detail || ''}</div>
-      </div>`);
-    }
+    // Destruir charts previos
+    Object.values(_assumpCharts).forEach(c => c.destroy());
+    Object.keys(_assumpCharts).forEach(k => delete _assumpCharts[k]);
 
-    // Normalidad
-    if (tests?.normality?.available) {
-      const n = tests.normality;
-      addCard('Normalidad (Anderson-Darling)', n.normal,
-        `A² = ${n.statistic.toFixed(4)} · p = ${n.p_value.toFixed(4)}`);
-    } else {
-      addCard('Normalidad', false, 'Prueba no disponible');
-    }
-
-    // Homocedasticidad
-    if (tests?.homoscedasticity?.available) {
-      const h = tests.homoscedasticity;
-      addCard('Homogeneidad de varianzas (Levene)', h.homoscedastic,
-        `W = ${h.statistic.toFixed(4)} · p = ${h.p_value.toFixed(4)}`);
-    } else {
-      addCard('Homogeneidad de varianzas', false, 'Se requieren ≥2 subgrupos con ≥2 obs.');
-    }
-
-    // Independencia (prueba de rachas)
-    const measArr = measResult?.data || measResult || null;
+    const measArr = measResult?.data || measResult || [];
     const rawValues = Array.isArray(measArr)
       ? measArr.map(m => parseFloat(m.value)).filter(v => !isNaN(v)).reverse()
-      : null;
-    const rt = runsTest(rawValues);
-    if (rt) {
-      addCard('Independencia (Rachas)', rt.independent,
-        `Rachas obs. = ${rt.runs} · esperadas = ${rt.expectedRuns.toFixed(1)} · p = ${rt.p.toFixed(4)}`);
-    } else if (rawValues && rawValues.length < 10) {
-      addCard('Independencia', false, `Se requieren ≥10 obs. (se tienen ${rawValues.length})`);
-    } else {
-      addCard('Independencia', false, 'No hay datos suficientes');
+      : [];
+
+    // ── 1. NORMALIDAD — Q-Q plot ────────────────────────────
+    const norm = tests?.normality;
+    const normOk  = norm?.available ? norm.normal : null;
+    const normStat = norm?.available
+      ? `A² = ${norm.statistic.toFixed(4)} · p = ${norm.p_value.toFixed(4)}`
+      : 'Se necesitan ≥ 7 observaciones';
+    const normInterpret = norm?.available
+      ? (norm.normal ? 'p > 0.05 — No se rechaza normalidad' : 'p ≤ 0.05 — Se rechaza normalidad')
+      : '—';
+
+    // ── 2. HOMOCEDASTICIDAD — rango por subgrupo ─────────────
+    const homo = tests?.homoscedasticity;
+    const homoOk  = homo?.available ? homo.homoscedastic : null;
+    const homoStat = homo?.available
+      ? `W = ${homo.statistic.toFixed(4)} · p = ${homo.p_value.toFixed(4)}`
+      : 'Se requieren ≥ 2 subgrupos con ≥ 2 obs.';
+    const homoInterpret = homo?.available
+      ? (homo.homoscedastic ? 'p > 0.05 — Varianzas homogéneas' : 'p ≤ 0.05 — Varianzas no homogéneas')
+      : '—';
+
+    // ── 3. INDEPENDENCIA — carta de corrida ─────────────────
+    const rt = runsTest(rawValues.length >= 10 ? rawValues : null);
+    const indOk  = rt ? rt.independent : null;
+    const indStat = rt
+      ? `Rachas = ${rt.runs} · esperadas ≈ ${rt.expectedRuns.toFixed(1)} · p = ${rt.p.toFixed(4)}`
+      : rawValues.length < 10
+        ? `Se requieren ≥ 10 obs. (hay ${rawValues.length})`
+        : 'Sin datos';
+    const indInterpret = rt
+      ? (rt.independent ? 'p > 0.05 — Observaciones independientes' : 'p ≤ 0.05 — Posible dependencia')
+      : '—';
+
+    function badgeCls(ok) { return ok === null ? 'na' : ok ? 'pass' : 'fail'; }
+    function badgeTxt(ok) { return ok === null ? 'N/D' : ok ? '✓ Válido' : '✗ No válido'; }
+    function cardCls(ok)  { return ok === null ? 'na'  : ok ? 'pass' : 'fail'; }
+
+    grid.innerHTML = `
+      <div class="assump-card ${cardCls(normOk)}">
+        <div class="assump-head">
+          <div class="assump-title">Normalidad</div>
+          <span class="assump-badge ${badgeCls(normOk)}">${badgeTxt(normOk)}</span>
+        </div>
+        <div class="assump-stat">${normStat}<br><em>${normInterpret}</em></div>
+        <div class="assump-chart"><canvas id="chart-qq"></canvas></div>
+      </div>
+      <div class="assump-card ${cardCls(homoOk)}">
+        <div class="assump-head">
+          <div class="assump-title">Homogeneidad de varianzas</div>
+          <span class="assump-badge ${badgeCls(homoOk)}">${badgeTxt(homoOk)}</span>
+        </div>
+        <div class="assump-stat">${homoStat}<br><em>${homoInterpret}</em></div>
+        <div class="assump-chart"><canvas id="chart-homo"></canvas></div>
+      </div>
+      <div class="assump-card ${cardCls(indOk)}">
+        <div class="assump-head">
+          <div class="assump-title">Independencia (Rachas)</div>
+          <span class="assump-badge ${badgeCls(indOk)}">${badgeTxt(indOk)}</span>
+        </div>
+        <div class="assump-stat">${indStat}<br><em>${indInterpret}</em></div>
+        <div class="assump-chart"><canvas id="chart-run"></canvas></div>
+      </div>`;
+
+    note.innerHTML = 'Los supuestos deben cumplirse para que los índices de capacidad sean válidos.';
+
+    // Dibujar gráficos
+    requestAnimationFrame(() => {
+      drawQQ(rawValues, normOk);
+      drawHomo(measArr, homoOk);
+      drawRunChart(rawValues, indOk);
+    });
+  }
+
+  // ── Gráfico Q-Q (Probabilidad Normal) ───────────────────────
+  function drawQQ(values, ok) {
+    const ctx = document.getElementById('chart-qq');
+    if (!ctx || values.length < 4) return;
+    const sorted = [...values].sort((a, b) => a - b);
+    const n = sorted.length;
+    const mu = sorted.reduce((s, v) => s + v, 0) / n;
+    const sigma = Math.sqrt(sorted.reduce((s, v) => s + (v - mu) ** 2, 0) / (n - 1));
+
+    // Cuantiles teóricos normales (aproximación Blom)
+    function normInv(p) {
+      const a = [0, -3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+                 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+      const b = [0, -5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+                 6.680131188771972e+01, -1.328068155288572e+01];
+      const c = [0, -7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+                 -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+      const d = [0, 7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+      const pLow = 0.02425, pHigh = 1 - pLow;
+      let q;
+      if (p < pLow) {
+        q = Math.sqrt(-2 * Math.log(p));
+        return (((((c[1]*q+c[2])*q+c[3])*q+c[4])*q+c[5])*q+c[6]) /
+               ((((d[1]*q+d[2])*q+d[3])*q+d[4])*q+1);
+      } else if (p <= pHigh) {
+        q = p - 0.5; const r = q * q;
+        return (((((a[1]*r+a[2])*r+a[3])*r+a[4])*r+a[5])*r+a[6])*q /
+               (((((b[1]*r+b[2])*r+b[3])*r+b[4])*r+b[5])*r+1);
+      } else {
+        q = Math.sqrt(-2 * Math.log(1 - p));
+        return -(((((c[1]*q+c[2])*q+c[3])*q+c[4])*q+c[5])*q+c[6]) /
+                ((((d[1]*q+d[2])*q+d[3])*q+d[4])*q+1);
+      }
     }
 
-    grid.innerHTML = cards.join('');
-    note.innerHTML = cards.length ? 'Los supuestos deben cumplirse para que los índices de capacidad e inferencias sean válidos.' : '';
+    const pts = sorted.map((v, i) => {
+      const p = (i + 0.5) / n;
+      return { x: normInv(p), y: v };
+    });
+
+    // Línea de referencia
+    const xMin = pts[0].x, xMax = pts[pts.length-1].x;
+    const refLine = [
+      { x: xMin, y: mu + sigma * xMin },
+      { x: xMax, y: mu + sigma * xMax }
+    ];
+
+    const color = ok === false ? '#f87171' : ok === true ? '#4ade80' : '#94a3b8';
+    _assumpCharts.qq = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label: 'Datos', data: pts, pointRadius: 3, pointBackgroundColor: color,
+            borderColor: 'transparent' },
+          { label: 'Línea normal', data: refLine, type: 'line', borderColor: '#64748b',
+            borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: p => `(${p.parsed.x.toFixed(2)}, ${p.parsed.y.toFixed(4)})`
+        }}},
+        scales: {
+          x: { title: { display: true, text: 'Cuantil teórico normal', font: { size: 10 }, color: '#94a3b8' },
+               ticks: { font: { size: 9 }, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,.06)' } },
+          y: { title: { display: true, text: 'Cuantil observado', font: { size: 10 }, color: '#94a3b8' },
+               ticks: { font: { size: 9 }, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,.06)' } }
+        }
+      }
+    });
+  }
+
+  // ── Gráfico de rangos por subgrupo (Homocedasticidad) ────────
+  function drawHomo(measArr, ok) {
+    const ctx = document.getElementById('chart-homo');
+    if (!ctx || !measArr?.length) return;
+
+    // Agrupar por subgroup_id
+    const sgMap = new Map();
+    measArr.forEach(m => {
+      const key = m.subgroup_id ?? '__all__';
+      if (!sgMap.has(key)) sgMap.set(key, []);
+      sgMap.get(key).push(parseFloat(m.value));
+    });
+    const groups = [...sgMap.values()].filter(g => g.length >= 2);
+    if (groups.length < 2) return;
+
+    const labels = groups.map((_, i) => i + 1);
+    const ranges = groups.map(g => Math.max(...g) - Math.min(...g));
+    const rBar   = ranges.reduce((s, v) => s + v, 0) / ranges.length;
+    const color  = ok === false ? 'rgba(248,113,113,.7)' : ok === true ? 'rgba(74,222,128,.7)' : 'rgba(148,163,184,.7)';
+
+    _assumpCharts.homo = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Rango', data: ranges,
+          backgroundColor: color, borderRadius: 2,
+        }]
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          annotation: { annotations: {
+            rbar: { type: 'line', yMin: rBar, yMax: rBar,
+                    borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [4,3],
+                    label: { display: true, content: `R̄=${rBar.toFixed(3)}`,
+                             font: { size: 9 }, color: '#f59e0b', position: 'end' } }
+          }}
+        },
+        scales: {
+          x: { title: { display: true, text: 'Subgrupo', font: { size: 10 }, color: '#94a3b8' },
+               ticks: { font: { size: 9 }, color: '#94a3b8', maxTicksLimit: 15 },
+               grid: { display: false } },
+          y: { title: { display: true, text: 'Rango', font: { size: 10 }, color: '#94a3b8' },
+               ticks: { font: { size: 9 }, color: '#94a3b8' },
+               grid: { color: 'rgba(255,255,255,.06)' } }
+        }
+      }
+    });
+  }
+
+  // ── Carta de corrida (Independencia) ─────────────────────────
+  function drawRunChart(values, ok) {
+    const ctx = document.getElementById('chart-run');
+    if (!ctx || values.length < 4) return;
+    const mu = values.reduce((s, v) => s + v, 0) / values.length;
+    const color = ok === false ? '#f87171' : ok === true ? '#4ade80' : '#94a3b8';
+    const pts = values.map((v, i) => ({ x: i + 1, y: v }));
+
+    _assumpCharts.run = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: 'Valor', data: pts,
+          borderColor: color, borderWidth: 1.5,
+          pointRadius: values.length > 60 ? 0 : 2,
+          pointBackgroundColor: color, fill: false, tension: 0
+        }]
+      },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: false,
+        parsing: false,
+        plugins: {
+          legend: { display: false },
+          annotation: { annotations: {
+            mean: { type: 'line', yMin: mu, yMax: mu,
+                    borderColor: '#64748b', borderWidth: 1.5, borderDash: [4,3],
+                    label: { display: true, content: `μ=${mu.toFixed(3)}`,
+                             font: { size: 9 }, color: '#94a3b8', position: 'end' } }
+          }}
+        },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Observación', font: { size: 10 }, color: '#94a3b8' },
+               ticks: { font: { size: 9 }, color: '#94a3b8', maxTicksLimit: 10 },
+               grid: { color: 'rgba(255,255,255,.06)' } },
+          y: { ticks: { font: { size: 9 }, color: '#94a3b8' },
+               grid: { color: 'rgba(255,255,255,.06)' } }
+        }
+      }
+    });
   }
 
   function renderRecommendations(cap, proc) {

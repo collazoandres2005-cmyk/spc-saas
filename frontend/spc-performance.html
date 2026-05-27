@@ -218,17 +218,15 @@
             </span>
           </div>
           <div class="card-body" style="padding:16px 20px">
-            <div class="perf-grid" style="margin-bottom:8px">
+            <div class="perf-grid">
               <div class="perf-card info"><div class="pc-label">Media Fase I (μ₀)</div><div class="pc-value" id="mon-mu0">—</div></div>
               <div class="perf-card info"><div class="pc-label">Media Fase II (μ₁)</div><div class="pc-value" id="mon-mu1">—</div></div>
-              <div class="perf-card" id="card-mon-shift"><div class="pc-label">Desplazamiento real (δ)</div><div class="pc-value" id="mon-shift">—</div><div class="pc-unit" id="mon-shift-unit">en σ del proceso</div></div>
-              <div class="perf-card" id="card-mon-power"><div class="pc-label">Potencia para δ real</div><div class="pc-value" id="mon-power">—</div><div class="pc-unit" id="mon-arl">ARL₁</div></div>
+              <div class="perf-card" id="card-mon-shift"><div class="pc-label">Desplazamiento (δ)</div><div class="pc-value" id="mon-shift">—</div><div class="pc-unit" id="mon-shift-unit">en σ del proceso</div></div>
+              <div class="perf-card"><div class="pc-label">Subgrupos en monitoreo</div><div class="pc-value" id="mon-sg-count">—</div></div>
             </div>
             <div class="perf-grid">
               <div class="perf-card" id="card-mon-pnc0"><div class="pc-label">%PNC original (μ₀)</div><div class="pc-value" id="mon-pnc0">—</div></div>
-              <div class="perf-card" id="card-mon-pnc1"><div class="pc-label">%PNC recalculado (μ₁)</div><div class="pc-value" id="mon-pnc1">—</div></div>
-              <div class="perf-card" id="card-mon-delta-pnc"><div class="pc-label">Δ%PNC</div><div class="pc-value" id="mon-delta-pnc">—</div><div class="pc-unit">puntos porcentuales</div></div>
-              <div class="perf-card"><div class="pc-label">Subgrupos en monitoreo</div><div class="pc-value" id="mon-sg-count">—</div></div>
+              <div class="perf-card" id="card-mon-pnc1" style="grid-column:span 3"><div class="pc-label">Producto No Conforme (μ₁)</div><div class="pc-value" id="mon-pnc1" style="font-size:32px">—</div><div class="pc-unit" id="mon-pnc1-desc">% fuera de especificación con la nueva media</div></div>
             </div>
           </div>
         </div>
@@ -534,11 +532,10 @@ function renderMonitoringEval() {
 
   if (mu0 == null || sigmaP == null || sigmaP <= 0) { card.style.display = 'none'; return; }
 
-  const deltaReal = (mu1 - mu0) / sigmaP;  // δ en σ del proceso
-  const shiftXbar = deltaReal * Math.sqrt(n); // δ en σ de X̄
+  const deltaReal = (mu1 - mu0) / sigmaP;
+  const shiftXbar = deltaReal * Math.sqrt(n);
 
-  // %PNC original y recalculado
-  let pnc0 = null, pnc1 = null, deltaPnc = null;
+  let pnc0 = null, pnc1 = null;
   if (usl != null && lsl != null) {
     const zLsl0 = (lsl - mu0) / sigmaP;
     const zUsl0 = (usl - mu0) / sigmaP;
@@ -546,50 +543,28 @@ function renderMonitoringEval() {
     const zLsl1 = (lsl - mu1) / sigmaP;
     const zUsl1 = (usl - mu1) / sigmaP;
     pnc1 = phi(zLsl1) + (1 - phi(zUsl1));
-    deltaPnc = pnc1 - pnc0;
   }
-
-  // Potencia de detección para este δ real
-  const betaParams = {
-    k: 3, delta: Math.abs(deltaReal), n,
-    chartType: chartInfo.type,
-    ucl: chartInfo.main.ucl, lcl: chartInfo.main.lcl, cl: chartInfo.main.cl
-  };
-  const beta = calcBeta(betaParams);
-  const power = Math.max(1e-9, 1 - beta);
-  const arl1 = 1 / power;
 
   const absDelta = Math.abs(deltaReal);
   const shiftCls = absDelta < 0.5 ? 'good' : absDelta < 1.0 ? 'warn' : 'danger';
-  const powerCls = power >= 0.70 ? 'good' : power >= 0.40 ? 'warn' : 'danger';
-  const pncCls = pnc1 != null ? (pnc1 > pnc0 + 0.001 ? 'danger' : 'good') : 'neutral';
+  const pncCls = pnc1 != null && pnc0 != null ? (pnc1 > pnc0 + 0.001 ? 'danger' : 'good') : 'neutral';
 
   card.style.display = '';
   document.getElementById('mon-mu0').textContent = mu0.toFixed(4);
   document.getElementById('mon-mu1').textContent = mu1.toFixed(4);
-
-  const shiftEl = document.getElementById('mon-shift');
-  shiftEl.textContent = `${deltaReal >= 0 ? '+' : ''}${deltaReal.toFixed(4)} σ`;
-  document.getElementById('card-mon-shift').className =
-    `perf-card ${shiftCls}`.replace(/\bneutral\b/g, shiftCls);
-  document.getElementById('mon-shift-unit').textContent =
-    `X̄: ${shiftXbar >= 0 ? '+' : ''}${shiftXbar.toFixed(2)}σ · n=${n}`;
-
-  document.getElementById('mon-power').textContent = (power * 100).toFixed(1) + '%';
-  document.getElementById('card-mon-power').className =
-    `perf-card ${powerCls}`.replace(/\bneutral\b/g, powerCls);
-  document.getElementById('mon-arl').textContent = `ARL₁: ${arl1.toFixed(1)}`;
+  document.getElementById('mon-shift').textContent = `${deltaReal >= 0 ? '+' : ''}${deltaReal.toFixed(4)} σ`;
+  document.getElementById('card-mon-shift').className = `perf-card ${shiftCls}`;
+  document.getElementById('mon-shift-unit').textContent = `X̄: ${shiftXbar >= 0 ? '+' : ''}${shiftXbar.toFixed(2)}σ · n=${n}`;
 
   const pct = v => (v * 100).toFixed(4) + '%';
   document.getElementById('mon-pnc0').textContent = pnc0 != null ? pct(pnc0) : '—';
+  document.getElementById('card-mon-pnc0').className = `perf-card ${pnc0 != null && pnc0 > 0.001 ? 'warn' : 'good'}`;
   document.getElementById('mon-pnc1').textContent = pnc1 != null ? pct(pnc1) : '—';
-  document.getElementById('card-mon-pnc0').className =
-    `perf-card ${pnc0 != null && pnc0 > 0.001 ? 'warn' : 'good'}`;
-  document.getElementById('card-mon-pnc1').className =
-    `perf-card ${pncCls}`;
-  document.getElementById('mon-delta-pnc').innerHTML = deltaPnc != null
-    ? `<span style="color:${deltaPnc > 0 ? 'var(--danger)' : 'var(--success)'}">${deltaPnc >= 0 ? '+' : ''}${(deltaPnc * 100).toFixed(4)} pp</span>`
-    : '—';
+  document.getElementById('card-mon-pnc1').className = `perf-card ${pncCls}`;
+  document.getElementById('mon-pnc1-desc').textContent = pnc0 != null && pnc1 != null
+    ? `% fuera de especificación (original: ${pct(pnc0)})`
+    : '% fuera de especificación con la nueva media';
+
   document.getElementById('mon-sg-count').textContent = monitoringData.sessionSubgroups?.length || means.length;
 }
 

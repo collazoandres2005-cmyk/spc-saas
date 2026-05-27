@@ -1232,6 +1232,45 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   MIGRACIÓN — corrige pnc0/pnc1 incorrectos en localStorage
+   (guardados con phi() errónea antes del fix de 2026-05)
+══════════════════════════════════════════════════════════════ */
+(function migrateSavedEvals() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('spc_eval_')) continue;
+      try {
+        const ev = JSON.parse(localStorage.getItem(key));
+        if (!ev || ev.mu0 == null) continue;
+
+        const sigma = ev.sigmaP;
+        const usl   = ev.usl;
+        const lsl   = ev.lsl;
+        if (!(sigma > 0) || usl == null || lsl == null) continue;
+
+        // Recalcular con phi() correcta
+        const newPnc0 = ev.mu0 != null
+          ? phi((lsl - ev.mu0) / sigma) + (1 - phi((usl - ev.mu0) / sigma))
+          : null;
+        const newPnc1 = ev.mu1 != null
+          ? phi((lsl - ev.mu1) / sigma) + (1 - phi((usl - ev.mu1) / sigma))
+          : null;
+
+        // Solo reescribir si los valores son significativamente distintos
+        const changed = (newPnc0 != null && ev.pnc0 != null && Math.abs(newPnc0 - ev.pnc0) > 1e-6)
+                     || (newPnc1 != null && ev.pnc1 != null && Math.abs(newPnc1 - ev.pnc1) > 1e-6);
+        if (changed) {
+          ev.pnc0 = newPnc0;
+          ev.pnc1 = newPnc1;
+          localStorage.setItem(key, JSON.stringify(ev));
+        }
+      } catch (_) { /* ignorar entradas corruptas */ }
+    }
+  } catch (_) {}
+})();
+
+/* ══════════════════════════════════════════════════════════════
    ARRANQUE
 ══════════════════════════════════════════════════════════════ */
 init();

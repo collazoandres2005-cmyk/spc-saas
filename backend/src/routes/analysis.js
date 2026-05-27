@@ -40,7 +40,10 @@ router.get('/capability', async (req, res) => {
     }
 
     const values = rows.map(r => parseFloat(r.value));
-    const n = simulate_n ? parseInt(simulate_n) : (process.n_size ? parseInt(process.n_size) : 0);
+    // Para cartas de variables (xbar_r / xbar_s), usar n=5 por defecto si n_size no está configurado
+    const isVarsChart = !process.chart_type || ['xbar_r', 'xbar_s'].includes(process.chart_type);
+    const defaultN = isVarsChart ? 5 : 0;
+    const n = simulate_n ? parseInt(simulate_n) : (process.n_size ? parseInt(process.n_size) : defaultN);
     let capability;
     let simulated = false;
     let testRows;   // rows with subgroup_id for statistical tests

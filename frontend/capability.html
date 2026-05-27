@@ -289,6 +289,12 @@
           </div>
         </div>
 
+        <!-- ── Fracción No Conforme ─────────────────────────────── -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><div class="card-title">Fracción No Conforme Estimada (%PNC)</div></div>
+          <div class="card-body" id="pnc-body"></div>
+        </div>
+
         <!-- ── Supuestos ───────────────────────────────────────── -->
         <div class="card" style="margin-bottom:20px">
           <div class="card-header"><div class="card-title">Supuestos del análisis</div></div>
@@ -562,7 +568,74 @@
       parseFloat(process.usl), parseFloat(process.lsl),
       parseFloat(process.nominal), xbar, sigma, histogram);
 
+    renderPNC(capability, process);
     renderRecommendations(capability, process);
+  }
+
+  // ── Normal CDF (Abramowitz & Stegun) ────────────────────────
+  function normalCDF(z) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(z));
+    const d = 0.3989423 * Math.exp(-(z * z) / 2);
+    const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.8212560 + t * 1.3302744))));
+    return z > 0 ? 1 - p : p;
+  }
+
+  // ── Fracción No Conforme ─────────────────────────────────────
+  function renderPNC(cap, proc) {
+    const el = document.getElementById('pnc-body');
+    if (!el) return;
+
+    const usl = parseFloat(proc.usl);
+    const lsl = parseFloat(proc.lsl);
+    const { xbar, sigma } = cap;
+    const unit = proc.unit || '';
+
+    if (!isFinite(usl) || !isFinite(lsl) || sigma <= 0) {
+      el.innerHTML = '<p style="font-size:12px;color:var(--text-muted)">Se requieren LSI, LSE y σ̂w para calcular el %PNC.</p>';
+      return;
+    }
+
+    const zUsl = (usl - xbar) / sigma;
+    const zLsl = (xbar - lsl) / sigma;
+    const pSup = normalCDF(-zUsl) * 100;   // % cola superior
+    const pInf = normalCDF(-zLsl) * 100;   // % cola inferior
+    const pTot = pSup + pInf;
+
+    function fmtPct(v) {
+      if (v < 0.0001) return '< 0.0001%';
+      if (v < 0.01)   return v.toFixed(4) + '%';
+      return v.toFixed(4) + '%';
+    }
+
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
+        <div style="background:var(--glass-card);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px 16px;text-align:center">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Cola Superior (LSE)</div>
+          <div style="font-size:11px;color:var(--text-sec);margin-bottom:6px">
+            Z<sub>LSE</sub> = (${usl} − ${xbar.toFixed(4)}) / ${sigma.toFixed(4)} = <strong>${zUsl.toFixed(4)}</strong>
+          </div>
+          <div style="font-size:26px;font-weight:900;color:${pSup > 1 ? 'var(--danger)' : pSup > 0.27 ? 'var(--warning)' : 'var(--success)'}">${fmtPct(pSup)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">p = Φ(−Z<sub>LSE</sub>)</div>
+        </div>
+        <div style="background:var(--glass-card);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px 16px;text-align:center">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Cola Inferior (LSI)</div>
+          <div style="font-size:11px;color:var(--text-sec);margin-bottom:6px">
+            Z<sub>LSI</sub> = (${xbar.toFixed(4)} − ${lsl}) / ${sigma.toFixed(4)} = <strong>${zLsl.toFixed(4)}</strong>
+          </div>
+          <div style="font-size:26px;font-weight:900;color:${pInf > 1 ? 'var(--danger)' : pInf > 0.27 ? 'var(--warning)' : 'var(--success)'}">${fmtPct(pInf)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">p = Φ(−Z<sub>LSI</sub>)</div>
+        </div>
+        <div style="background:var(--glass-card);border:2px solid ${pTot > 1 ? 'var(--danger)' : pTot > 0.27 ? 'var(--warning)' : 'var(--success)'};border-radius:var(--radius);padding:14px 16px;text-align:center">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">%PNC Total</div>
+          <div style="font-size:11px;color:var(--text-sec);margin-bottom:6px">p<sub>sup</sub> + p<sub>inf</sub></div>
+          <div style="font-size:26px;font-weight:900;color:${pTot > 1 ? 'var(--danger)' : pTot > 0.27 ? 'var(--warning)' : 'var(--success)'}">${fmtPct(pTot)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">fracción no conforme estimada</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.6">
+        Calculado con σ̂<sub>w</sub> = ${sigma.toFixed(4)} ${unit} y X̄ = ${xbar.toFixed(4)} ${unit}.
+        Umbral de referencia: &gt; 0.27% proceso fuera de ±3σ · &gt; 1% proceso no aceptable.
+      </div>`;
   }
 
   // ── Prueba de independencia (rachas) ────────────────────────

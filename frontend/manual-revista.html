@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual SPC SaaS — Revista Digital</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       BASE
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #1e3a8a;
+      --blue2:   #3b82f6;
+      --blue3:   #dbeafe;
+      --teal:    #0f766e;
+      --teal2:   #14b8a6;
+      --teal3:   #ccfbf1;
+      --purple:  #6d28d9;
+      --purple3: #ede9fe;
+      --amber:   #b45309;
+      --amber2:  #f59e0b;
+      --amber3:  #fef3c7;
+      --red:     #be123c;
+      --red3:    #ffe4e6;
+      --green:   #15803d;
+      --green3:  #dcfce7;
+      --dark:    #0f172a;
+      --dark2:   #1e293b;
+      --dark3:   #334155;
+      --gray:    #64748b;
+      --lgray:   #f1f5f9;
+      --white:   #ffffff;
+      --font-display: Georgia, 'Times New Roman', serif;
+      --font-body:    'Segoe UI', system-ui, sans-serif;
+      --font-mono:    'Courier New', Courier, monospace;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SCREEN LAYOUT — magazine viewer
+    ═══════════════════════════════════════════════════════════ */
+    @media screen {
+      html { background: #0f172a; }
+      body {
+        background: #0f172a;
+        padding: 30px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        font-family: var(--font-body);
+      }
+      .toolbar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 100;
+        background: rgba(15,23,42,.95);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 24px;
+        border-bottom: 1px solid rgba(255,255,255,.1);
+      }
+      .toolbar-logo {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 1px;
+      }
+      .toolbar-logo span { color: var(--blue2); }
+      .toolbar-right { display: flex; gap: 10px; align-items: center; }
+      .btn-dl {
+        background: var(--blue2);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background .15s;
+        text-decoration: none;
+      }
+      .btn-dl:hover { background: #2563eb; }
+      .btn-back {
+        background: rgba(255,255,255,.1);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background .15s;
+      }
+      .btn-back:hover { background: rgba(255,255,255,.18); }
+      body { padding-top: 72px; }
+      .page {
+        width: 794px;
+        min-height: 1123px;
+        height: 1123px;
+        box-shadow: 0 12px 60px rgba(0,0,0,.6);
+        border-radius: 2px;
+        overflow: hidden;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .page-num-badge {
+        position: absolute;
+        bottom: 14px; right: 18px;
+        font-size: 10px;
+        font-family: var(--font-body);
+        color: rgba(255,255,255,.5);
+        z-index: 10;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .page-num-badge.dark { color: rgba(0,0,0,.3); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PRINT
+    ═══════════════════════════════════════════════════════════ */
+    @media print {
+      @page { size: A4; margin: 0; }
+      html, body {
+        background: white;
+        padding: 0; margin: 0;
+        width: 210mm;
+      }
+      .toolbar { display: none !important; }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        page-break-after: always;
+        break-after: page;
+        overflow: hidden;
+        position: relative;
+      }
+      .page:last-child { page-break-after: auto; break-after: auto; }
+      .page-num-badge { display: block; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SHARED COMPONENTS
+    ═══════════════════════════════════════════════════════════ */
+    .page { background: #fff; display: flex; flex-direction: column; }
+    .page-inner { flex: 1; overflow: hidden; }
+
+    /* Eyebrow label */
+    .eyebrow {
+      font-family: var(--font-body);
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+    }
+    /* Display headline */
+    .headline {
+      font-family: var(--font-display);
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    /* Body copy */
+    .copy {
+      font-family: var(--font-body);
+      font-size: 11.5px;
+      line-height: 1.72;
+      color: #334155;
+    }
+    /* Caption */
+    .caption {
+      font-family: var(--font-body);
+      font-size: 9px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    /* Divider */
+    .divider { height: 1px; background: #e2e8f0; margin: 14px 0; }
+    /* Icon circle */
+    .icon-circle {
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+    }
+    /* Two-column text */
+    .two-col { columns: 2; column-gap: 24px; }
+    /* Highlight band */
+    .hi-band {
+      border-left: 3px solid currentColor;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      font-family: var(--font-body);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    /* Step */
+    .step { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: #fff;
+    }
+    .step-text { font-family: var(--font-body); font-size: 11px; line-height: 1.6; color: #334155; padding-top: 3px; }
+    /* Pill badge */
+    .pill {
+      display: inline-block; padding: 3px 10px;
+      border-radius: 20px; font-size: 9.5px; font-weight: 700;
+      font-family: var(--font-body);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    /* Error card */
+    .err-card { border: 1px solid #fecaca; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .err-head { background: #fef2f2; padding: 7px 12px; font-size: 10.5px; font-weight: 700; color: #be123c; font-family: var(--font-body); }
+    .err-body { padding: 8px 12px; font-size: 10.5px; color: #334155; line-height: 1.6; font-family: var(--font-body); }
+    /* Gloss card */
+    .gloss { margin-bottom: 10px; }
+    .gloss-term { font-size: 11px; font-weight: 700; color: var(--blue); font-family: var(--font-body); margin-bottom: 2px; }
+    .gloss-def  { font-size: 10.5px; color: #475569; line-height: 1.55; font-family: var(--font-body); }
+    /* Table */
+    .mag-table { width: 100%; border-collapse: collapse; font-family: var(--font-body); font-size: 10.5px; }
+    .mag-table th { background: var(--lgray); padding: 7px 10px; text-align: left; font-weight: 700; color: #475569; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #e2e8f0; }
+    .mag-table td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+    .mag-table tr:last-child td { border-bottom: none; }
+    /* Code block */
+    .code-block { background: #0f172a; color: #7dd3fc; font-family: var(--font-mono); font-size: 10px; padding: 10px 14px; border-radius: 6px; line-height: 1.7; }
+    /* Module pill row */
+    .module-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .mod-chip { padding: 6px 14px; border-radius: 20px; font-size: 10px; font-weight: 700; font-family: var(--font-body); display: flex; align-items: center; gap: 5px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       PAGE 1 — COVER
+    ═══════════════════════════════════════════════════════════ */
+    .cover {
+      background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 45%, #0f766e 100%);
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+    }
+    .cover-noise {
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: .4;
+    }
+    .cover-tag {
+      position: absolute; top: 28px; right: 28px;
+      background: var(--teal2); color: #fff;
+      font-family: var(--font-body); font-size: 9px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 2px;
+      padding: 5px 14px; border-radius: 20px;
+    }
+    .cover-vol {
+      position: absolute; top: 28px; left: 32px;
+      font-family: var(--font-body); font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,.5);
+    }
+    .cover-body { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 40px 44px 44px; }
+    .cover-eyebrow { color: var(--teal2); font-size: 10px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; font-family: var(--font-body); }
+    .cover-title { font-family: var(--font-display); font-size: 64px; font-weight: 700; color: #fff; line-height: 1.0; margin-bottom: 8px; }
+    .cover-title span { color: var(--teal2); }
+    .cover-subtitle { font-family: var(--font-display); font-size: 22px; color: rgba(255,255,255,.75); font-style: italic; margin-bottom: 28px; line-height: 1.3; }
+    .cover-desc { font-family: var(--font-body); font-size: 12px; color: rgba(255,255,255,.6); line-height: 1.65; max-width: 420px; border-left: 2px solid var(--teal2); padding-left: 14px; }
+    .cover-footer { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 16px 44px; border-top: 1px solid rgba(255,255,255,.1); }
+    .cover-footer-brand { font-family: var(--font-display); font-size: 12px; color: rgba(255,255,255,.5); }
+    .cover-footer-year { font-family: var(--font-body); font-size: 10px; color: rgba(255,255,255,.4); font-weight: 700; letter-spacing: 1px; }
+    /* Decorative chart on cover */
+    .cover-chart { position: absolute; top: 60px; right: 30px; opacity: .18; }
+
+    /* ═══════════════════════════════════════════════════════════
+       PAGE 2 — TABLE OF CONTENTS
+    ═══════════════════════════════════════════════════════════ */
+    .toc-page { background: #fff; }
+    .toc-header {
+      background: var(--dark);
+      padding: 36px 44px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+    .toc-header::after {
+      content: 'ÍNDICE';
+      position: absolute; right: -10px; top: 10px;
+      font-family: var(--font-display); font-size: 90px; font-weight: 700;
+      color: rgba(255,255,255,.04); line-height: 1;
+    }
+    .toc-header .eyebrow { color: var(--teal2); margin-bottom: 8px; display: block; }
+    .toc-header .headline { color: #fff; font-size: 32px; }
+    .toc-header p { color: rgba(255,255,255,.55); font-family: var(--font-body); font-size: 12px; margin-top: 8px; line-height: 1.6; }
+    .toc-body { padding: 28px 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+    .toc-entry { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+    .toc-entry:nth-child(odd) { border-right: 1px solid #f1f5f9; padding-right: 14px; }
+    .toc-entry:nth-child(even) { padding-left: 14px; }
+    .toc-num { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: #e2e8f0; line-height: 1; flex-shrink: 0; width: 32px; }
+    .toc-info {}
+    .toc-sec-title { font-family: var(--font-body); font-size: 12.5px; font-weight: 700; color: var(--dark); margin-bottom: 3px; }
+    .toc-sec-desc { font-family: var(--font-body); font-size: 10px; color: var(--gray); line-height: 1.5; }
+    .toc-color { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; margin-top: 4px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SECTION HEADER STRIP (reused across pages)
+    ═══════════════════════════════════════════════════════════ */
+    .sec-header {
+      padding: 26px 44px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sec-header .watermark {
+      position: absolute; right: 20px; bottom: -10px;
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 80px; line-height: 1;
+      opacity: .07; color: #fff;
+      white-space: nowrap;
+    }
+    .sec-header .eyebrow { display: block; margin-bottom: 6px; }
+    .sec-header .headline { font-size: 28px; color: #fff; margin-bottom: 6px; }
+    .sec-header p { font-family: var(--font-body); font-size: 11px; color: rgba(255,255,255,.65); max-width: 520px; line-height: 1.6; }
+    .sec-content { padding: 22px 44px; flex: 1; }
+
+    /* Color themes for section headers */
+    .bg-blue   { background: linear-gradient(120deg, #1e3a8a, #2563eb); }
+    .bg-teal   { background: linear-gradient(120deg, #0f766e, #0d9488); }
+    .bg-purple { background: linear-gradient(120deg, #5b21b6, #7c3aed); }
+    .bg-amber  { background: linear-gradient(120deg, #92400e, #d97706); }
+    .bg-red    { background: linear-gradient(120deg, #9f1239, #e11d48); }
+    .bg-green  { background: linear-gradient(120deg, #14532d, #16a34a); }
+    .bg-dark   { background: linear-gradient(120deg, #0f172a, #1e293b); }
+    .bg-indigo { background: linear-gradient(120deg, #312e81, #4338ca); }
+
+    /* ═══════════════════════════════════════════════════════════
+       PAGE FOOTER STRIP
+    ═══════════════════════════════════════════════════════════ */
+    .page-footer {
+      background: var(--lgray);
+      border-top: 1px solid #e2e8f0;
+      padding: 8px 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pf-brand { font-family: var(--font-body); font-size: 9px; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; }
+    .pf-page  { font-family: var(--font-body); font-size: 9px; color: var(--gray); font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════════════════
+       SPECIAL LAYOUTS
+    ═══════════════════════════════════════════════════════════ */
+    /* User type cards */
+    .user-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+    .user-card { border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .user-card .icon { font-size: 22px; }
+    .user-card .name { font-family: var(--font-body); font-size: 11.5px; font-weight: 700; color: var(--dark); }
+    .user-card .desc { font-family: var(--font-body); font-size: 10px; color: #475569; line-height: 1.55; }
+
+    /* Module group */
+    .mod-group { margin-bottom: 16px; }
+    .mod-group-title { font-family: var(--font-body); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--gray); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
+    .mod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .mod-item { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+    .mod-item-name { font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--dark); margin-bottom: 3px; }
+    .mod-item-desc { font-family: var(--font-body); font-size: 9.5px; color: var(--gray); line-height: 1.5; }
+    .mod-item.accent-blue { border-top: 3px solid var(--blue2); }
+    .mod-item.accent-teal { border-top: 3px solid var(--teal2); }
+    .mod-item.accent-amber { border-top: 3px solid var(--amber2); }
+    .mod-item.accent-gray { border-top: 3px solid #94a3b8; }
+
+    /* Example box */
+    .ex-box { background: var(--blue3); border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+    .ex-label { font-family: var(--font-body); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--blue); margin-bottom: 8px; }
+    .ex-title { font-family: var(--font-body); font-size: 12px; font-weight: 700; color: var(--dark2); margin-bottom: 6px; }
+    .ex-text { font-family: var(--font-body); font-size: 10.5px; color: #334155; line-height: 1.65; }
+
+    /* Contact card */
+    .contact-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; }
+    .contact-ava { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-body); font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .contact-name { font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 2px; }
+    .contact-role { font-family: var(--font-body); font-size: 10.5px; color: var(--gray); margin-bottom: 6px; }
+    .contact-email { font-family: var(--font-body); font-size: 11px; color: var(--blue2); font-weight: 600; }
+
+    /* Back cover */
+    .backcover {
+      background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 60%, #0f766e 100%);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 44px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ TOOLBAR (screen only) ═════════════════════════════════ -->
+  <div class="toolbar">
+    <div class="toolbar-logo">SPC <span>SaaS</span> · Revista Digital</div>
+    <div class="toolbar-right">
+      <a href="/manual.html" class="btn-back">← Volver al manual</a>
+      <button class="btn-dl" onclick="window.print()">
+        ⬇ Descargar PDF
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 1 — COVER
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page cover">
+    <div class="cover-noise"></div>
+
+    <!-- Decorative SPC chart SVG -->
+    <svg class="cover-chart" width="340" height="260" viewBox="0 0 340 260">
+      <!-- Grid lines -->
+      <line x1="20" y1="40"  x2="320" y2="40"  stroke="#fff" stroke-width=".5" stroke-dasharray="4,4"/>
+      <line x1="20" y1="90"  x2="320" y2="90"  stroke="#fff" stroke-width=".5" stroke-dasharray="4,4"/>
+      <line x1="20" y1="130" x2="320" y2="130" stroke="#fff" stroke-width="1"/>
+      <line x1="20" y1="170" x2="320" y2="170" stroke="#fff" stroke-width=".5" stroke-dasharray="4,4"/>
+      <line x1="20" y1="220" x2="320" y2="220" stroke="#fff" stroke-width=".5" stroke-dasharray="4,4"/>
+      <!-- Labels -->
+      <text x="6" y="44"  font-size="9" fill="rgba(255,255,255,.6)" font-family="monospace">LCS</text>
+      <text x="6" y="134" font-size="9" fill="rgba(255,255,255,.6)" font-family="monospace">LC</text>
+      <text x="6" y="224" font-size="9" fill="rgba(255,255,255,.6)" font-family="monospace">LCI</text>
+      <!-- Data line -->
+      <polyline points="30,125 60,108 90,138 120,95 150,122 180,132 210,48 240,118 270,129 300,112" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linejoin="round"/>
+      <!-- Data points -->
+      <circle cx="30"  cy="125" r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="60"  cy="108" r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="90"  cy="138" r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="120" cy="95"  r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="150" cy="122" r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="180" cy="132" r="4" fill="rgba(255,255,255,.9)"/>
+      <!-- OOC point highlighted -->
+      <circle cx="210" cy="48"  r="7" fill="#f43f5e" stroke="#fff" stroke-width="2"/>
+      <circle cx="240" cy="118" r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="270" cy="129" r="4" fill="rgba(255,255,255,.9)"/>
+      <circle cx="300" cy="112" r="4" fill="rgba(255,255,255,.9)"/>
+      <!-- OOC label -->
+      <text x="216" y="44" font-size="9" fill="#f43f5e" font-family="monospace" font-weight="bold">OOC</text>
+    </svg>
+
+    <div class="cover-vol">SPC SAAS · MANUAL DE USUARIO · V1.0</div>
+    <div class="cover-tag">Edición 2025</div>
+
+    <div class="cover-body">
+      <span class="cover-eyebrow">Manual de Manejo del Software</span>
+      <div class="cover-title">SPC<br><span>SaaS</span></div>
+      <div class="cover-subtitle">Sistema de Control Estadístico<br>de Procesos en la Nube</div>
+      <p class="cover-desc">
+        Guía completa para el uso de la plataforma: desde la instalación y configuración hasta
+        el monitoreo en tiempo real, análisis de capacidad y planes de muestreo. Todo lo que
+        necesitas para implementar SPC de forma profesional.
+      </p>
+    </div>
+
+    <div class="cover-footer">
+      <span class="cover-footer-brand">SPC SaaS — Control Estadístico de Procesos</span>
+      <span class="cover-footer-year">2025 – 2026</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 2 — TABLE OF CONTENTS
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page toc-page">
+    <div class="toc-header">
+      <span class="eyebrow" style="color:var(--teal2)">Contenido</span>
+      <div class="headline" style="color:#fff;font-size:30px">Índice de Secciones</div>
+      <p>Navega por las 11 secciones de este manual para dominar cada módulo de SPC SaaS.</p>
+      <span class="watermark">ÍNDICE</span>
+    </div>
+
+    <div class="toc-body">
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--blue2)"></div>
+        <div class="toc-num">01</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Objetivo del Programa</div>
+          <div class="toc-sec-desc">Propósito del sistema, alcance y fases del SPC implementadas.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--teal2)"></div>
+        <div class="toc-num">02</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Público Objetivo</div>
+          <div class="toc-sec-desc">Perfiles de usuario: ingenieros, analistas, docentes, supervisores.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--purple)"></div>
+        <div class="toc-num">03</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Requisitos de Instalación</div>
+          <div class="toc-sec-desc">Navegador, servidor, base de datos y variables de entorno.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--amber2)"></div>
+        <div class="toc-num">04</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Estructura de Módulos</div>
+          <div class="toc-sec-desc">Los 10 módulos del sistema organizados por grupo funcional.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--red)"></div>
+        <div class="toc-num">05</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Funciones Paso a Paso</div>
+          <div class="toc-sec-desc">6 flujos completos de operación con instrucciones detalladas.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--green)"></div>
+        <div class="toc-num">06</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Formato de Entrada de Datos</div>
+          <div class="toc-sec-desc">Manual, CSV y Excel — columnas aceptadas y ejemplos.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--blue)"></div>
+        <div class="toc-num">07</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Interpretación de Salidas</div>
+          <div class="toc-sec-desc">Cartas de control, índices Cp/Cpk y paneles de estado.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--teal)"></div>
+        <div class="toc-num">08</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Ejemplos de Uso</div>
+          <div class="toc-sec-desc">4 casos prácticos resueltos de inicio a fin.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--red)"></div>
+        <div class="toc-num">09</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Solución de Errores</div>
+          <div class="toc-sec-desc">7 errores frecuentes con causa exacta y pasos de solución.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--purple)"></div>
+        <div class="toc-num">10</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Glosario Técnico</div>
+          <div class="toc-sec-desc">18 términos de SPC y del sistema definidos con precisión.</div>
+        </div>
+      </div>
+      <div class="toc-entry">
+        <div class="toc-color" style="background:var(--dark3)"></div>
+        <div class="toc-num">11</div>
+        <div class="toc-info">
+          <div class="toc-sec-title">Contacto del Equipo</div>
+          <div class="toc-sec-desc">Datos del desarrollador, tecnologías y repositorio.</div>
+        </div>
+      </div>
+      <div class="toc-entry" style="border-bottom:none;">
+        <div class="toc-color" style="background:transparent"></div>
+        <div class="toc-num" style="color:transparent">–</div>
+        <div class="toc-info">
+          <div class="toc-sec-desc" style="font-style:italic;color:#94a3b8">
+            Este manual cubre todas las funciones de la plataforma SPC SaaS versión 1.0.<br>Para soporte: starbotsczo@gmail.com
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 2</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 3 — SECCIÓN 1: OBJETIVO
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-blue">
+      <span class="eyebrow" style="color:rgba(255,255,255,.6)">Sección 01</span>
+      <div class="headline">Objetivo del Programa</div>
+      <p>¿Qué hace SPC SaaS, para qué fue creado y qué metodología implementa?</p>
+      <span class="watermark">01</span>
+    </div>
+
+    <div class="sec-content">
+      <div style="display:grid;grid-template-columns:1fr 220px;gap:24px;align-items:start">
+        <div>
+          <p class="copy" style="margin-bottom:12px">
+            <strong style="color:var(--dark)">SPC SaaS</strong> es una plataforma web de <em>Control Estadístico de Procesos</em>
+            diseñada para ayudar a empresas e instituciones a monitorear, analizar y mejorar la calidad
+            de sus procesos productivos o de servicio mediante herramientas estadísticas estandarizadas,
+            accesibles desde cualquier navegador sin instalar software adicional.
+          </p>
+          <p class="copy" style="margin-bottom:14px">El sistema implementa las dos fases clásicas del SPC:</p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:var(--blue3);border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px">
+              <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin-bottom:5px">Fase I — Estabilización</div>
+              <div class="copy" style="font-size:10.5px">Recopilación de datos históricos, cálculo de límites de control y verificación de la estabilidad estadística del proceso.</div>
+            </div>
+            <div style="background:var(--teal3);border:1px solid #99f6e4;border-radius:8px;padding:12px 14px">
+              <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--teal);margin-bottom:5px">Fase II — Monitoreo</div>
+              <div class="copy" style="font-size:10.5px">Uso de los límites de Fase I para evaluar subgrupos nuevos en tiempo real y detectar señales de causas especiales.</div>
+            </div>
+          </div>
+
+          <p class="copy" style="margin-bottom:8px;font-weight:700;color:var(--dark)">Objetivos específicos:</p>
+          <div class="copy">
+            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Generar cartas de control (X̄-R, X̄-S, p, np, c, u) conforme a ISO y AIAG.</div>
+            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Calcular índices de capacidad Cp, Cpk, Pp, Ppk.</div>
+            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Detectar señales de causas especiales de variación.</div>
+            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Proporcionar informes exportables y historial auditado.</div>
+            <div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--blue2);font-weight:700">→</span> Diseñar planes de muestreo (MIL-STD-1916, ISO 2859).</div>
+          </div>
+        </div>
+
+        <!-- SVG: mini control chart illustration -->
+        <div style="background:var(--dark);border-radius:10px;padding:14px;overflow:hidden">
+          <div style="font-family:var(--font-body);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:8px">Carta X̄ — Ejemplo</div>
+          <svg width="190" height="130" viewBox="0 0 190 130">
+            <!-- UCL -->
+            <line x1="10" y1="22" x2="180" y2="22" stroke="#22c55e" stroke-width="1" stroke-dasharray="4,3"/>
+            <text x="3" y="19" font-size="7" fill="#22c55e" font-family="monospace">LCS</text>
+            <!-- CL -->
+            <line x1="10" y1="65" x2="180" y2="65" stroke="#60a5fa" stroke-width="1"/>
+            <text x="5" y="62" font-size="7" fill="#60a5fa" font-family="monospace">LC</text>
+            <!-- LCL -->
+            <line x1="10" y1="108" x2="180" y2="108" stroke="#22c55e" stroke-width="1" stroke-dasharray="4,3"/>
+            <text x="3" y="118" font-size="7" fill="#22c55e" font-family="monospace">LCI</text>
+            <!-- Data line -->
+            <polyline points="20,60 38,52 56,70 74,18 92,58 110,72 128,63 146,56 164,67" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5" stroke-linejoin="round"/>
+            <!-- Normal points -->
+            <circle cx="20"  cy="60"  r="3" fill="#93c5fd"/>
+            <circle cx="38"  cy="52"  r="3" fill="#93c5fd"/>
+            <circle cx="56"  cy="70"  r="3" fill="#93c5fd"/>
+            <!-- OOC -->
+            <circle cx="74"  cy="18"  r="5" fill="#f43f5e" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="92"  cy="58"  r="3" fill="#93c5fd"/>
+            <circle cx="110" cy="72"  r="3" fill="#93c5fd"/>
+            <circle cx="128" cy="63"  r="3" fill="#93c5fd"/>
+            <circle cx="146" cy="56"  r="3" fill="#93c5fd"/>
+            <circle cx="164" cy="67"  r="3" fill="#93c5fd"/>
+          </svg>
+          <div style="font-family:var(--font-body);font-size:9px;color:rgba(255,255,255,.4);margin-top:6px;text-align:center">Punto rojo = fuera de control</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 3</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 4 — SECCIÓN 2 + 3: PÚBLICO / REQUISITOS
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-teal" style="padding-bottom:14px">
+      <span class="eyebrow" style="color:rgba(255,255,255,.6)">Secciones 02 · 03</span>
+      <div class="headline">Público Objetivo &amp; Requisitos</div>
+      <p>A quién va dirigido el sistema y qué se necesita para instalarlo y usarlo.</p>
+      <span class="watermark">02</span>
+    </div>
+
+    <div class="sec-content" style="padding-top:16px">
+      <!-- Users -->
+      <div style="font-family:var(--font-body);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--gray);margin-bottom:10px">Perfiles de usuario</div>
+      <div class="user-cards" style="grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px">
+        <div class="user-card" style="background:#eff6ff;border:1px solid #bfdbfe">
+          <div class="icon">👷</div>
+          <div class="name" style="font-size:10px">Ingenieros<br>de Calidad</div>
+          <div class="desc" style="font-size:9px">Implementan SPC en producción y verifican estabilidad.</div>
+        </div>
+        <div class="user-card" style="background:var(--teal3);border:1px solid #99f6e4">
+          <div class="icon">📊</div>
+          <div class="name" style="font-size:10px">Analistas<br>Estadísticos</div>
+          <div class="desc" style="font-size:9px">Interpretan cartas e índices de capacidad.</div>
+        </div>
+        <div class="user-card" style="background:var(--amber3);border:1px solid #fde68a">
+          <div class="icon">🎓</div>
+          <div class="name" style="font-size:10px">Docentes y<br>Estudiantes</div>
+          <div class="desc" style="font-size:9px">Herramienta didáctica para aprender SPC con datos reales.</div>
+        </div>
+        <div class="user-card" style="background:var(--red3);border:1px solid #fecaca">
+          <div class="icon">🏭</div>
+          <div class="name" style="font-size:10px">Supervisores<br>de Planta</div>
+          <div class="desc" style="font-size:9px">Estado del proceso sin conocimiento estadístico profundo.</div>
+        </div>
+        <div class="user-card" style="background:var(--purple3);border:1px solid #ddd6fe">
+          <div class="icon">🔬</div>
+          <div class="name" style="font-size:10px">Laboratorios<br>y QA</div>
+          <div class="desc" style="font-size:9px">Control de medición con trazabilidad auditada.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Requirements 2-col -->
+      <div style="font-family:var(--font-body);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--gray);margin-bottom:10px">Requerimientos de instalación</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-family:var(--font-body);font-size:11px;font-weight:700;color:var(--dark);margin-bottom:8px">🖥 Cliente (usuario final)</div>
+          <table class="mag-table">
+            <tr><th>Componente</th><th>Mínimo</th></tr>
+            <tr><td>Navegador</td><td>Chrome 90 / Edge 90 / Firefox 88</td></tr>
+            <tr><td>Conexión</td><td>3 Mbps</td></tr>
+            <tr><td>Pantalla</td><td>1024 × 768 px</td></tr>
+            <tr><td>JavaScript</td><td>Habilitado ✓</td></tr>
+            <tr><td>localStorage</td><td>Habilitado ✓</td></tr>
+          </table>
+          <div class="hi-band" style="background:var(--teal3);color:var(--teal);border-color:var(--teal2);margin-top:10px;font-size:10px">
+            ✅ 100% web — no requiere instalación en el equipo del usuario.
+          </div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-body);font-size:11px;font-weight:700;color:var(--dark);margin-bottom:8px">🗄 Servidor (despliegue propio)</div>
+          <table class="mag-table">
+            <tr><th>Componente</th><th>Versión</th></tr>
+            <tr><td>Node.js</td><td>18 LTS</td></tr>
+            <tr><td>PostgreSQL</td><td>14+</td></tr>
+            <tr><td>RAM</td><td>512 MB mín / 1 GB rec.</td></tr>
+            <tr><td>Disco</td><td>5 GB mínimo</td></tr>
+            <tr><td>Puertos</td><td>80 y 443 abiertos</td></tr>
+          </table>
+          <div class="code-block" style="margin-top:10px;font-size:9px">
+DATABASE_URL=postgresql://...<br>
+JWT_SECRET=clave_secreta<br>
+NODE_ENV=production
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 4</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 5 — SECCIÓN 4: MÓDULOS
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-amber">
+      <span class="eyebrow" style="color:rgba(255,255,255,.65)">Sección 04</span>
+      <div class="headline">Estructura de Módulos</div>
+      <p>Los 10 módulos del sistema organizados por grupo funcional y fase del SPC.</p>
+      <span class="watermark">04</span>
+    </div>
+
+    <div class="sec-content">
+
+      <!-- Architecture diagram SVG -->
+      <div style="text-align:center;margin-bottom:18px">
+        <svg width="660" height="90" viewBox="0 0 660 90">
+          <!-- General group -->
+          <rect x="10"  y="10" width="180" height="70" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+          <text x="100" y="26" text-anchor="middle" font-size="8" font-weight="800" fill="#1e40af" font-family="sans-serif" letter-spacing="1">GENERAL</text>
+          <text x="100" y="40" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Panel de Control</text>
+          <text x="100" y="53" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Historial de Datos</text>
+          <text x="100" y="66" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Informes</text>
+          <!-- Arrow -->
+          <line x1="196" y1="45" x2="216" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+          <!-- Phase I -->
+          <rect x="220" y="10" width="145" height="70" rx="8" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+          <text x="293" y="26" text-anchor="middle" font-size="8" font-weight="800" fill="#15803d" font-family="sans-serif" letter-spacing="1">FASE I</text>
+          <text x="293" y="40" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Procesos</text>
+          <text x="293" y="53" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Entrada de Datos</text>
+          <text x="293" y="66" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Cartas de Control</text>
+          <!-- Arrow -->
+          <line x1="370" y1="45" x2="390" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+          <!-- Phase II -->
+          <rect x="394" y="10" width="175" height="70" rx="8" fill="#fefce8" stroke="#fde68a" stroke-width="1.5"/>
+          <text x="482" y="26" text-anchor="middle" font-size="8" font-weight="800" fill="#92400e" font-family="sans-serif" letter-spacing="1">FASE II</text>
+          <text x="482" y="40" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Capacidad del Proceso</text>
+          <text x="482" y="53" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Monitoreo SPC</text>
+          <text x="482" y="66" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Evaluación del Desempeño</text>
+          <!-- Arrow -->
+          <line x1="574" y1="45" x2="594" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+          <!-- Sampling -->
+          <rect x="598" y="20" width="54" height="50" rx="8" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1.5"/>
+          <text x="625" y="37" text-anchor="middle" font-size="8" font-weight="800" fill="#6d28d9" font-family="sans-serif">PLANES</text>
+          <text x="625" y="52" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">Diseño</text>
+          <text x="625" y="63" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">de Planes</text>
+          <defs>
+            <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+
+      <div class="mod-group">
+        <div class="mod-group-title">Módulos generales</div>
+        <div class="mod-grid">
+          <div class="mod-item accent-blue">
+            <div class="mod-item-name">🏠 Panel de Control</div>
+            <div class="mod-item-desc">KPIs globales: procesos activos, capaces (Cpk ≥ 1.33), marginales y no capaces con semáforo visual.</div>
+          </div>
+          <div class="mod-item accent-blue">
+            <div class="mod-item-name">📋 Historial de Datos</div>
+            <div class="mod-item-desc">Tabla paginada con filtros Fase I / Fase II, selección masiva y eliminación por lotes.</div>
+          </div>
+          <div class="mod-item accent-blue">
+            <div class="mod-item-name">📄 Informes</div>
+            <div class="mod-item-desc">Generación de informes de capacidad y control, exportables a PDF o imprimibles.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mod-group">
+        <div class="mod-group-title">Fase I — Estabilización</div>
+        <div class="mod-grid">
+          <div class="mod-item accent-teal">
+            <div class="mod-item-name">⚙️ Procesos</div>
+            <div class="mod-item-desc">Crear y configurar procesos: tipo de carta, tamaño de subgrupo (n) y límites de especificación LSE / LIE.</div>
+          </div>
+          <div class="mod-item accent-teal">
+            <div class="mod-item-name">✏️ Entrada de Datos</div>
+            <div class="mod-item-desc">Ingreso manual o importación CSV / Excel de hasta 5 MB. Detección automática de columnas.</div>
+          </div>
+          <div class="mod-item accent-teal">
+            <div class="mod-item-name">📈 Cartas de Control</div>
+            <div class="mod-item-desc">Visualización interactiva X̄-R, X̄-S, p, np, c, u con límites calculados automáticamente y puntos OOC resaltados.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mod-group" style="margin-bottom:0">
+        <div class="mod-group-title">Fase II — Monitoreo · Planes de Muestreo</div>
+        <div class="mod-grid">
+          <div class="mod-item accent-amber">
+            <div class="mod-item-name">🎯 Capacidad</div>
+            <div class="mod-item-desc">Cp, Cpk, Pp, Ppk, Cpm. Histograma de distribución con curva normal y bandas σ.</div>
+          </div>
+          <div class="mod-item accent-amber">
+            <div class="mod-item-name">🔍 Monitoreo SPC</div>
+            <div class="mod-item-desc">Ingreso en tiempo real de subgrupos Fase II. Alertas OOC, historial de sesión y deshacer.</div>
+          </div>
+          <div class="mod-item accent-gray">
+            <div class="mod-item-name">🗂️ Diseño de Planes</div>
+            <div class="mod-item-desc">Planes de muestreo por atributos y variables según MIL-STD-1916 e ISO 2859.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 5</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 6 — SECCIÓN 5: FUNCIONES PASO A PASO
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-red">
+      <span class="eyebrow" style="color:rgba(255,255,255,.65)">Sección 05</span>
+      <div class="headline">Funciones Paso a Paso</div>
+      <p>Guía de operación detallada para cada flujo principal del sistema.</p>
+      <span class="watermark">05</span>
+    </div>
+
+    <div class="sec-content">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+        <div>
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid var(--red)">① Crear un proceso</div>
+          <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Procesos</strong> en el menú lateral.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">Clic en <strong>+ Nuevo proceso</strong>.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">Completar: nombre, tipo de carta, tamaño de subgrupo (n), LSE / LIE.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">4</div><div class="step-text">Clic en <strong>Guardar</strong>. El proceso aparece en la lista.</div></div>
+
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:14px 0 10px;padding-bottom:4px;border-bottom:2px solid var(--red)">② Ingresar mediciones (Fase I)</div>
+          <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Entrada de Datos</strong> y seleccionar el proceso.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">Elegir método: <em>Manual</em> o <em>Importar CSV/Excel</em>.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">Manual: completar X₁…Xₙ y clic en <strong>Agregar subgrupo</strong>.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">4</div><div class="step-text">Importación: arrastrar archivo → verificar resumen de errores → <strong>Confirmar</strong>.</div></div>
+
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:14px 0 10px;padding-bottom:4px;border-bottom:2px solid var(--red)">③ Revisar la carta de control</div>
+          <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Cartas de Control</strong> y seleccionar el proceso.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">El sistema calcula automáticamente LCS, LC y LCI y dibuja la carta.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">Puntos en <span style="color:var(--red);font-weight:700">rojo</span> = fuera de control → requieren investigación.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">4</div><div class="step-text">Usar <strong>Exportar</strong> para descargar la carta como imagen.</div></div>
+        </div>
+
+        <div>
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid var(--red)">④ Análisis de capacidad</div>
+          <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Capacidad del Proceso</strong>.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">Seleccionar el proceso (debe tener LSE / LIE definidos).</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">El sistema calcula Cp, Cpk, Pp, Ppk y muestra el histograma con curva normal.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">4</div><div class="step-text">Semáforo: <span style="color:var(--green);font-weight:700">verde</span> capaz · <span style="color:var(--amber);font-weight:700">amarillo</span> marginal · <span style="color:var(--red);font-weight:700">rojo</span> no capaz.</div></div>
+
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:14px 0 10px;padding-bottom:4px;border-bottom:2px solid var(--red)">⑤ Monitoreo en tiempo real (Fase II)</div>
+          <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Monitoreo SPC</strong> y seleccionar el proceso.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">El sistema carga los límites establecidos en Fase I.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">Ingresar los valores del nuevo subgrupo y clic en <strong>Agregar</strong>.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">4</div><div class="step-text">Si hay OOC, se muestra alerta roja inmediata con número de señal.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">5</div><div class="step-text">Usar <strong>⟲ Deshacer</strong> para revertir el último punto ingresado.</div></div>
+
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin:14px 0 10px;padding-bottom:4px;border-bottom:2px solid var(--red)">⑥ Gestionar historial</div>
+          <div class="step"><div class="step-num" style="background:var(--red)">1</div><div class="step-text">Ir a <strong>Historial de Datos</strong> · filtrar por Fase I / Fase II.</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">2</div><div class="step-text">Marcar filas con checkbox o usar "seleccionar todo".</div></div>
+          <div class="step"><div class="step-num" style="background:var(--red)">3</div><div class="step-text">Clic en <strong>Eliminar seleccionados</strong> en la barra de acciones.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 6</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 7 — SECCIÓN 6 + 7: ENTRADA / SALIDAS
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-green">
+      <span class="eyebrow" style="color:rgba(255,255,255,.65)">Secciones 06 · 07</span>
+      <div class="headline">Entrada de Datos &amp; Salidas</div>
+      <p>Formatos aceptados para importación y cómo interpretar los resultados del sistema.</p>
+      <span class="watermark">06</span>
+    </div>
+
+    <div class="sec-content">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+        <div>
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:10px">Formato de entrada de datos</div>
+
+          <p class="copy" style="font-size:10.5px;margin-bottom:10px">Los datos pueden ingresarse de tres formas:</p>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+            <div style="background:var(--green3);border:1px solid #86efac;border-radius:6px;padding:9px 12px">
+              <div style="font-family:var(--font-body);font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px">📝 Manual</div>
+              <div class="copy" style="font-size:10px">Campos numéricos por subgrupo. Decimales con punto (.) o coma (,). Fecha/hora opcional (se usa la actual si se omite).</div>
+            </div>
+            <div style="background:var(--green3);border:1px solid #86efac;border-radius:6px;padding:9px 12px">
+              <div style="font-family:var(--font-body);font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px">📄 CSV</div>
+              <div class="copy" style="font-size:10px">Primera fila = encabezados. Columnas aceptadas: <code>value</code>, <code>valor</code>, <code>Valor</code>, <code>VALOR</code>, <code>medicion</code>. Columna opcional: <code>subgroup_id</code>.</div>
+            </div>
+            <div style="background:var(--green3);border:1px solid #86efac;border-radius:6px;padding:9px 12px">
+              <div style="font-family:var(--font-body);font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px">📊 Excel (.xlsx / .xls)</div>
+              <div class="copy" style="font-size:10px">Mismos encabezados que CSV. Lee la primera hoja. Tamaño máximo: <strong>5 MB</strong>. Filas inválidas se reportan en el resumen.</div>
+            </div>
+          </div>
+
+          <div style="font-family:var(--font-body);font-size:9px;font-weight:700;color:var(--gray);margin-bottom:5px">Ejemplo CSV válido:</div>
+          <div class="code-block" style="font-size:9px">
+value,subgroup_id<br>
+23.45,1<br>
+23.12,1<br>
+23.67,2<br>
+22.98,2
+          </div>
+
+          <div style="margin-top:10px">
+            <table class="mag-table">
+              <thead><tr><th>Campo</th><th>Tipo</th><th>Ejemplo</th></tr></thead>
+              <tbody>
+                <tr><td>value</td><td>Numérico</td><td>23.45</td></tr>
+                <tr><td>subgroup_id</td><td>Entero</td><td>5 (opcional)</td></tr>
+                <tr><td>defectuosos</td><td>Entero ≥ 0</td><td>3 (solo p, np)</td></tr>
+                <tr><td>n</td><td>Entero ≥ 1</td><td>50 (p, u variable)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-family:var(--font-body);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin-bottom:10px">Interpretación de salidas</div>
+
+          <p class="copy" style="font-size:10px;font-weight:700;color:var(--dark);margin-bottom:7px">Elementos de la carta de control:</p>
+          <table class="mag-table" style="margin-bottom:12px">
+            <thead><tr><th>Elemento</th><th>Significado</th></tr></thead>
+            <tbody>
+              <tr><td>LC (línea azul)</td><td>Media del proceso (X̄̄)</td></tr>
+              <tr><td>LCS (verde)</td><td>Límite superior: punto sobre esta línea = señal</td></tr>
+              <tr><td>LCI (verde)</td><td>Límite inferior: punto bajo esta línea = señal</td></tr>
+              <tr><td>● Rojo</td><td>Fuera de control — investigar causa especial</td></tr>
+              <tr><td>● Azul</td><td>Dentro de control — variabilidad natural</td></tr>
+            </tbody>
+          </table>
+
+          <p class="copy" style="font-size:10px;font-weight:700;color:var(--dark);margin-bottom:7px">Índices de capacidad:</p>
+
+          <!-- Capability visual -->
+          <div style="background:var(--dark);border-radius:8px;padding:12px;margin-bottom:10px">
+            <svg width="280" height="65" viewBox="0 0 280 65">
+              <!-- Bell curve approximation -->
+              <path d="M10,55 Q50,55 70,30 Q90,5 140,3 Q190,5 210,30 Q230,55 270,55" fill="none" stroke="#60a5fa" stroke-width="2"/>
+              <!-- LSL / USL -->
+              <line x1="50" y1="5" x2="50" y2="58" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <line x1="230" y1="5" x2="230" y2="58" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <text x="50" y="64" text-anchor="middle" font-size="8" fill="#f43f5e" font-family="monospace">LIE</text>
+              <text x="230" y="64" text-anchor="middle" font-size="8" fill="#f43f5e" font-family="monospace">LSE</text>
+              <!-- Mean -->
+              <line x1="140" y1="3" x2="140" y2="58" stroke="#60a5fa" stroke-width="1"/>
+              <text x="140" y="64" text-anchor="middle" font-size="8" fill="#60a5fa" font-family="monospace">X̄</text>
+              <!-- Cpk label -->
+              <text x="90" y="22" font-size="9" fill="#fbbf24" font-family="monospace">Cpk</text>
+            </svg>
+          </div>
+
+          <table class="mag-table" style="margin-bottom:10px">
+            <thead><tr><th>Valor Cpk</th><th>Estado</th><th>Color</th></tr></thead>
+            <tbody>
+              <tr><td>≥ 1.33</td><td>Proceso capaz ✓</td><td style="color:var(--green);font-weight:700">Verde</td></tr>
+              <tr><td>1.00 – 1.33</td><td>Proceso marginal ⚠</td><td style="color:var(--amber);font-weight:700">Amarillo</td></tr>
+              <tr><td>&lt; 1.00</td><td>No capaz ✗</td><td style="color:var(--red);font-weight:700">Rojo</td></tr>
+            </tbody>
+          </table>
+
+          <div class="hi-band" style="background:var(--blue3);color:var(--blue);border-color:var(--blue2);font-size:10px">
+            <strong>Importante:</strong> Los límites de especificación (LSE/LIE) son distintos de los límites de control (LCS/LCI). No confundirlos.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 7</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 8 — SECCIÓN 8: EJEMPLOS
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-teal">
+      <span class="eyebrow" style="color:rgba(255,255,255,.65)">Sección 08</span>
+      <div class="headline">Ejemplos de Uso</div>
+      <p>Cuatro casos prácticos resueltos de inicio a fin con el sistema SPC SaaS.</p>
+      <span class="watermark">08</span>
+    </div>
+
+    <div class="sec-content">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+        <div class="ex-box">
+          <div class="ex-label">Ejemplo 1</div>
+          <div class="ex-title">🔩 Control de diámetro de piezas maquinadas</div>
+          <div class="ex-text">
+            <strong>Contexto:</strong> Ejes con diámetro nominal 25 mm. Se quiere verificar si el proceso está bajo control estadístico.<br><br>
+            <strong>Configuración:</strong> Proceso "Eje Ø25mm", carta X̄-R, n=5, LSE=25.10 mm, LIE=24.90 mm.<br><br>
+            <strong>Resultado:</strong> 25 subgrupos ingresados. Todos dentro de límites → proceso estable. Cpk = 1.45 → proceso <span style="color:var(--green);font-weight:700">capaz</span>.
+          </div>
+        </div>
+
+        <div class="ex-box">
+          <div class="ex-label">Ejemplo 2</div>
+          <div class="ex-title">📦 Control de proporción de defectuosos (carta p)</div>
+          <div class="ex-text">
+            <strong>Contexto:</strong> Línea de ensamble con inspección de lotes de 200 unidades.<br><br>
+            <strong>Configuración:</strong> Proceso "Ensamble-L3", carta p, n=200. Se ingresan 30 lotes con sus conteos de defectuosos.<br><br>
+            <strong>Resultado:</strong> LCS_p = 0.048. En el lote 22, p = 0.065 → <span style="color:var(--red);font-weight:700">OOC detectado</span>. Se investiga y se identifica un ajuste defectuoso en la operación 7.
+          </div>
+        </div>
+
+        <div class="ex-box">
+          <div class="ex-label">Ejemplo 3</div>
+          <div class="ex-title">⏱ Monitoreo en tiempo real — Fase II</div>
+          <div class="ex-text">
+            <strong>Contexto:</strong> Operario monitorea el proceso durante el turno con los límites de Fase I ya establecidos.<br><br>
+            <strong>Pasos:</strong> Abrir Monitoreo SPC → seleccionar proceso → ingresar 5 valores del subgrupo → clic en <strong>Agregar</strong>.<br><br>
+            <strong>Resultado:</strong> El punto se grafica inmediatamente. Si cruza LCS o LCI, aparece alerta roja con el número de señal. Sin cálculo manual.
+          </div>
+        </div>
+
+        <div class="ex-box">
+          <div class="ex-label">Ejemplo 4</div>
+          <div class="ex-title">📊 Importación masiva desde Excel</div>
+          <div class="ex-text">
+            <strong>Contexto:</strong> Analista con hoja Excel de 200 mediciones históricas para establecer límites de Fase I.<br><br>
+            <strong>Pasos:</strong> Entrada de Datos → Importar Excel → arrastrar archivo .xlsx → el sistema reporta "198 filas importadas, 2 errores (filas 45 y 112: valor vacío)".<br><br>
+            <strong>Resultado:</strong> 198 mediciones cargadas. Límites de control calculados automáticamente. Las 2 filas con error se corrigen y se reimportan.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mini flow diagram -->
+      <div style="margin-top:14px;background:var(--lgray);border-radius:8px;padding:12px 16px">
+        <div style="font-family:var(--font-body);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:8px">Flujo general de trabajo</div>
+        <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:6px 12px;font-family:var(--font-body);font-size:10px;font-weight:600;color:var(--dark);text-align:center">Crear<br>Proceso</div>
+          <div style="color:var(--gray);font-size:14px;padding:0 6px">→</div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:6px 12px;font-family:var(--font-body);font-size:10px;font-weight:600;color:var(--dark);text-align:center">Ingresar<br>Datos Fase I</div>
+          <div style="color:var(--gray);font-size:14px;padding:0 6px">→</div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:6px 12px;font-family:var(--font-body);font-size:10px;font-weight:600;color:var(--dark);text-align:center">Revisar<br>Carta Control</div>
+          <div style="color:var(--gray);font-size:14px;padding:0 6px">→</div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:6px 12px;font-family:var(--font-body);font-size:10px;font-weight:600;color:var(--dark);text-align:center">Analizar<br>Capacidad</div>
+          <div style="color:var(--gray);font-size:14px;padding:0 6px">→</div>
+          <div style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:6px 12px;font-family:var(--font-body);font-size:10px;font-weight:700;color:var(--blue);text-align:center">Monitoreo<br>Fase II</div>
+          <div style="color:var(--gray);font-size:14px;padding:0 6px">→</div>
+          <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:6px 12px;font-family:var(--font-body);font-size:10px;font-weight:600;color:var(--amber);text-align:center">Informe<br>Final</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 8</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 9 — SECCIÓN 9: ERRORES FRECUENTES
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-red" style="background:linear-gradient(120deg,#7c2d12,#c2410c)">
+      <span class="eyebrow" style="color:rgba(255,255,255,.65)">Sección 09</span>
+      <div class="headline">Solución de Errores Frecuentes</div>
+      <p>Diagnóstico y resolución de los 7 problemas más comunes del sistema.</p>
+      <span class="watermark">09</span>
+    </div>
+
+    <div class="sec-content" style="padding-top:18px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div class="err-card">
+            <div class="err-head">🔴 "Se requiere process_id"</div>
+            <div class="err-body"><strong>Causa:</strong> No se seleccionó el proceso antes de guardar.<br><strong>Solución:</strong> Seleccionar un proceso del menú desplegable antes de ingresar datos.</div>
+          </div>
+          <div class="err-card">
+            <div class="err-head">🔴 "Error al obtener las mediciones"</div>
+            <div class="err-body"><strong>Causa:</strong> Problema de conexión o sesión expirada.<br><strong>Solución:</strong> Recargar página (F5). Si persiste, cerrar sesión y volver a ingresar.</div>
+          </div>
+          <div class="err-card">
+            <div class="err-head">🔴 Datos Fase II desaparecen al recargar</div>
+            <div class="err-body"><strong>Causa:</strong> Error de conexión durante el guardado o localStorage limpiado.<br><strong>Solución:</strong> El sistema recupera desde caché local automáticamente. Usar botón 🔄 <em>Recargar desde servidor</em>.</div>
+          </div>
+          <div class="err-card">
+            <div class="err-head">🔴 Carta de control aparece vacía</div>
+            <div class="err-body"><strong>Causa:</strong> Menos de 2 subgrupos o JavaScript deshabilitado.<br><strong>Solución:</strong> Ingresar al menos 2 subgrupos completos y verificar que JS esté habilitado.</div>
+          </div>
+        </div>
+        <div>
+          <div class="err-card">
+            <div class="err-head">🔴 "Archivo vacío o sin datos reconocibles"</div>
+            <div class="err-body"><strong>Causa:</strong> El archivo no tiene encabezados reconocibles en la primera fila.<br><strong>Solución:</strong> Agregar encabezado <code>value</code> (o variante aceptada) en la fila 1. Ver sección 6.</div>
+          </div>
+          <div class="err-card">
+            <div class="err-head">🔴 Cp / Cpk aparecen como "—"</div>
+            <div class="err-body"><strong>Causa:</strong> El proceso no tiene LSE / LIE definidos.<br><strong>Solución:</strong> Ir a Procesos → Editar → completar los campos LSE y/o LIE.</div>
+          </div>
+          <div class="err-card">
+            <div class="err-head">🔴 Redirige al login constantemente</div>
+            <div class="err-body"><strong>Causa:</strong> Token JWT expirado (validez 8 horas) o cookies eliminadas.<br><strong>Solución:</strong> Iniciar sesión nuevamente. No limpiar cookies del sitio durante el turno.</div>
+          </div>
+
+          <div style="background:var(--green3);border:1px solid #86efac;border-radius:8px;padding:12px 14px;margin-top:2px">
+            <div style="font-family:var(--font-body);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:6px">✅ Si el error persiste</div>
+            <div class="copy" style="font-size:10.5px">
+              Contactar al soporte indicando:<br>
+              1. Módulo donde ocurrió el error.<br>
+              2. Pasos exactos para reproducirlo.<br>
+              3. Mensaje de error completo.<br>
+              4. Captura de pantalla si es posible.<br><br>
+              <strong>Email:</strong> starbotsczo@gmail.com
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 9</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 10 — SECCIÓN 10: GLOSARIO
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-purple">
+      <span class="eyebrow" style="color:rgba(255,255,255,.65)">Sección 10</span>
+      <div class="headline">Glosario Técnico</div>
+      <p>18 términos estadísticos y del sistema definidos con precisión académica.</p>
+      <span class="watermark">GLOSS</span>
+    </div>
+
+    <div class="sec-content">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0 20px">
+        <div>
+          <div class="gloss"><div class="gloss-term">Carta de Control</div><div class="gloss-def">Gráfico temporal de un estadístico del proceso con límites de control para detectar causas especiales.</div></div>
+          <div class="gloss"><div class="gloss-term">Causa Especial</div><div class="gloss-def">Fuente de variación identificable y no aleatoria que genera puntos fuera de los límites o patrones sistemáticos.</div></div>
+          <div class="gloss"><div class="gloss-term">Causa Común</div><div class="gloss-def">Variabilidad aleatoria inherente a un proceso estable, distribuida dentro de los límites de control.</div></div>
+          <div class="gloss"><div class="gloss-term">Cp</div><div class="gloss-def">Índice de capacidad potencial: (LSE − LIE) / 6σ. No considera centrado del proceso.</div></div>
+          <div class="gloss"><div class="gloss-term">Cpk</div><div class="gloss-def">Capacidad real: min[(LSE−X̄)/3σ, (X̄−LIE)/3σ]. Considera variabilidad y centrado.</div></div>
+          <div class="gloss"><div class="gloss-term">Fase I</div><div class="gloss-def">Estabilización: recopilación histórica, cálculo de límites y verificación de estabilidad del proceso.</div></div>
+        </div>
+        <div>
+          <div class="gloss"><div class="gloss-term">Fase II</div><div class="gloss-def">Monitoreo continuo usando los límites de Fase I para evaluar subgrupos nuevos en producción.</div></div>
+          <div class="gloss"><div class="gloss-term">LC (Línea Central)</div><div class="gloss-def">Valor promedio del estadístico monitoreado (X̄̄, p̄, c̄…). Eje de referencia central de la carta.</div></div>
+          <div class="gloss"><div class="gloss-term">LCS / LCI</div><div class="gloss-def">Límites de Control Superior / Inferior. Se calculan como LC ± 3σ del estadístico muestreado.</div></div>
+          <div class="gloss"><div class="gloss-term">LSE / LIE</div><div class="gloss-def">Límites de Especificación Superior / Inferior. Definidos por cliente o diseño. Distintos a LCS/LCI.</div></div>
+          <div class="gloss"><div class="gloss-term">OOC</div><div class="gloss-def">Out of Control (fuera de control). Punto que supera LCS o está bajo LCI. Indicado en rojo en la carta.</div></div>
+          <div class="gloss"><div class="gloss-term">Pp / Ppk</div><div class="gloss-def">Índices de desempeño a largo plazo. Usan desviación estándar real (s) en lugar de σ estimado.</div></div>
+        </div>
+        <div>
+          <div class="gloss"><div class="gloss-term">Plan de Muestreo</div><div class="gloss-def">Procedimiento estadístico que define tamaño de muestra y criterios de aceptación/rechazo por lote.</div></div>
+          <div class="gloss"><div class="gloss-term">R (Rango)</div><div class="gloss-def">Diferencia entre el valor máximo y mínimo dentro de un subgrupo. Mide dispersión interna.</div></div>
+          <div class="gloss"><div class="gloss-term">σ (Sigma)</div><div class="gloss-def">Desviación estándar del proceso estimada a partir de la variabilidad dentro de los subgrupos (R̄/d₂).</div></div>
+          <div class="gloss"><div class="gloss-term">SPC</div><div class="gloss-def">Statistical Process Control. Metodología para controlar la calidad mediante herramientas estadísticas.</div></div>
+          <div class="gloss"><div class="gloss-term">Subgrupo</div><div class="gloss-def">Conjunto de n mediciones en condiciones similares, tratado como unidad en la carta de control.</div></div>
+          <div class="gloss"><div class="gloss-term">X̄ (X-barra)</div><div class="gloss-def">Media aritmética de las mediciones de un subgrupo. Estadístico principal de las cartas X̄-R y X̄-S.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 10</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       PAGE 11 — SECCIÓN 11: CONTACTO + BACK COVER
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="page">
+    <div class="sec-header bg-dark">
+      <span class="eyebrow" style="color:rgba(255,255,255,.55)">Sección 11</span>
+      <div class="headline">Equipo Desarrollador</div>
+      <p>Datos de contacto, tecnologías del sistema y repositorio del proyecto.</p>
+      <span class="watermark">11</span>
+    </div>
+
+    <div class="sec-content">
+      <!-- Contact card -->
+      <div style="margin-bottom:20px">
+        <div class="contact-card">
+          <div class="contact-ava" style="background:linear-gradient(135deg,var(--blue),var(--teal2))">AC</div>
+          <div>
+            <div class="contact-name">Andrés Collazo</div>
+            <div class="contact-role">Desarrollador Principal · Full Stack Engineer</div>
+            <div class="contact-email">starbotsczo@gmail.com</div>
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+              <span class="pill" style="background:var(--blue3);color:var(--blue)">Node.js</span>
+              <span class="pill" style="background:var(--teal3);color:var(--teal)">PostgreSQL</span>
+              <span class="pill" style="background:var(--purple3);color:var(--purple)">Chart.js</span>
+              <span class="pill" style="background:var(--amber3);color:var(--amber)">Express</span>
+              <span class="pill" style="background:var(--green3);color:var(--green)">JavaScript</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project info table -->
+      <div style="font-family:var(--font-body);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:10px">Información del proyecto</div>
+      <table class="mag-table" style="margin-bottom:20px">
+        <tbody>
+          <tr><td style="width:160px">Nombre</td><td>SPC SaaS — Control Estadístico de Procesos</td></tr>
+          <tr><td>Versión</td><td>1.0.0</td></tr>
+          <tr><td>Año de desarrollo</td><td>2025 – 2026</td></tr>
+          <tr><td>Tecnologías backend</td><td>Node.js 18, Express, PostgreSQL 14, JWT, Multer, csv-parse, XLSX</td></tr>
+          <tr><td>Tecnologías frontend</td><td>HTML5, CSS3, JavaScript ES2022, Chart.js, jsPDF</td></tr>
+          <tr><td>Despliegue</td><td>Render.com (backend) · Servidor estático (frontend)</td></tr>
+          <tr><td>Repositorio</td><td>github.com/collazoandres2005-cmyk/spc-saas</td></tr>
+          <tr><td>Soporte técnico</td><td>starbotsczo@gmail.com</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Back cover strip -->
+      <div class="backcover" style="border-radius:10px;min-height:0;height:auto;padding:28px 36px;flex:none">
+        <!-- Decorative chart -->
+        <svg width="300" height="55" viewBox="0 0 300 55" style="margin-bottom:14px;opacity:.3">
+          <line x1="0" y1="10" x2="300" y2="10" stroke="#fff" stroke-width=".8" stroke-dasharray="4,4"/>
+          <line x1="0" y1="28" x2="300" y2="28" stroke="#fff" stroke-width="1.2"/>
+          <line x1="0" y1="46" x2="300" y2="46" stroke="#fff" stroke-width=".8" stroke-dasharray="4,4"/>
+          <polyline points="10,26 40,20 70,30 100,14 130,25 160,29 190,12 220,24 250,27 280,22" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+          <circle cx="100" cy="14" r="4" fill="#f43f5e"/>
+          <circle cx="190" cy="12" r="4" fill="#f43f5e"/>
+        </svg>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:#fff;margin-bottom:6px">SPC SaaS</div>
+        <div style="font-family:var(--font-body);font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px">Control Estadístico de Procesos · Versión 1.0</div>
+        <div style="font-family:var(--font-body);font-size:10px;color:rgba(255,255,255,.4)">© 2025 – 2026 Andrés Collazo · Todos los derechos reservados</div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span class="pf-brand">SPC SaaS · Manual de Usuario</span>
+      <span class="pf-page">Página 11</span>
+    </div>
+  </div>
+
+</body>
+</html>

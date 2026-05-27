@@ -324,10 +324,13 @@ function initSidebar(activePage) {
     { id: 'control-chart', href: '/control-chart.html',  label: 'Cartas de Control'     },
   ];
 
+  const capabilityPages = [
+    { id: 'capability', href: '/capability.html', label: 'Capacidad del Proceso' },
+  ];
+
   const fase2Pages = [
-    { id: 'capability',      href: '/capability.html',      label: 'Capacidad del Proceso' },
-    { id: 'monitoring',      href: '/monitoring.html',      label: 'Monitoreo SPC'           },
-    { id: 'spc-performance', href: '/spc-performance.html', label: 'Evaluación del Desempeño'},
+    { id: 'monitoring',      href: '/monitoring.html',      label: 'Monitoreo SPC'            },
+    { id: 'spc-performance', href: '/spc-performance.html', label: 'Evaluación del Desempeño' },
   ];
 
   const mod3Pages = [
@@ -343,10 +346,11 @@ function initSidebar(activePage) {
       ${escHtml(p.label)}
     </a>`;
 
-  const topHtml   = topPages.map(makeNavItem).join('');
-  const fase1Html = fase1Pages.map(makeNavItem).join('');
-  const fase2Html = fase2Pages.map(makeNavItem).join('');
-  const mod3Html  = mod3Pages.map(makeNavItem).join('');
+  const topHtml        = topPages.map(makeNavItem).join('');
+  const fase1Html      = fase1Pages.map(makeNavItem).join('');
+  const capabilityHtml = capabilityPages.map(makeNavItem).join('');
+  const fase2Html      = fase2Pages.map(makeNavItem).join('');
+  const mod3Html       = mod3Pages.map(makeNavItem).join('');
 
   const adminHtml = user?.role === 'admin' ? `
     <div class="nav-section">Admin</div>
@@ -368,6 +372,8 @@ function initSidebar(activePage) {
       ${topHtml}
       <div class="nav-section">Fase I — Estabilización</div>
       ${fase1Html}
+      <div class="nav-section">Análisis de Capacidad</div>
+      ${capabilityHtml}
       <div class="nav-section">Fase II — Monitoreo y Desempeño</div>
       ${fase2Html}
       <div class="nav-section">Planes de Muestreo</div>

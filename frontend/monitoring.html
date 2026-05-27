@@ -1126,11 +1126,8 @@
       if (sigma != null && sigma > 0) {
         const shift = (avg - cl) / sigma;
         const absShift = Math.abs(shift);
-        const power = detectionPower(shift);
-        const arl = power > 0 ? (1 / power).toFixed(1) : '∞';
         const cls = absShift < 0.5 ? 'shift-ok' : absShift < 1.0 ? 'shift-warn' : absShift < 1.5 ? 'shift-bad' : 'shift-danger';
-        subEl.innerHTML = `<span class="stat-shift ${cls}">${shift >= 0 ? '+' : ''}${shift.toFixed(2)}σ</span>` +
-          `<span class="stat-detect">Potencia: ${(power * 100).toFixed(1)}% · ARL: ${arl}</span>`;
+        subEl.innerHTML = `<span class="stat-shift ${cls}">${shift >= 0 ? '+' : ''}${shift.toFixed(2)}σ</span>`;
       }
     }
   }

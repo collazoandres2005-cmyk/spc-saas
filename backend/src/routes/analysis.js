@@ -525,7 +525,11 @@ router.get('/report', async (req, res) => {
           const capability = hasSubgroups
             ? spc.calculateCapabilityFromSubgroups(sgValues, parseFloat(process.usl), parseFloat(process.lsl), process.nominal, type)
             : spc.calculateCapability(values, parseFloat(process.usl), parseFloat(process.lsl), process.nominal);
-          if (capability) result.capability = capability;
+          if (capability) {
+            result.capability = capability;
+            // Usar siempre el mismo σ que Cp/Cpk en el resumen de datos
+            result.dataSummary.stdDev = capability.sigma;
+          }
         } catch (e) { console.error('Report: capability error', e.message); }
       }
 

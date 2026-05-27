@@ -512,8 +512,9 @@ function renderReport() {
             <div class="rep-stat-val">${ds.n}</div><div class="rep-stat-sub">tamaño de muestra</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Media (X̄)</div>
             <div class="rep-stat-val">${fmt(ds.mean)}</div><div class="rep-stat-sub">promedio general</div></div>
-          <div class="rep-stat"><div class="rep-stat-lbl">Desv. Estándar (σ)</div>
-            <div class="rep-stat-val">${fmt(ds.stdDev)}</div><div class="rep-stat-sub">variabilidad estimada</div></div>
+          <div class="rep-stat"><div class="rep-stat-lbl">Desv. Estándar (σ̂)</div>
+            <div class="rep-stat-val">${fmt(ds.stdDev)}</div>
+            <div class="rep-stat-sub">${capable?.sigmaMethod === 'sbar_c4' ? 'σ̂ = S̄/c₄ (dentro subgrupos)' : capable?.sigmaMethod === 'rbar_d2' ? 'σ̂ = R̄/d₂ (dentro subgrupos)' : 'desviación estándar muestral'}</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Mínimo</div>
             <div class="rep-stat-val">${fmt(ds.min)}</div><div class="rep-stat-sub">valor mínimo</div></div>
           <div class="rep-stat"><div class="rep-stat-lbl">Máximo</div>

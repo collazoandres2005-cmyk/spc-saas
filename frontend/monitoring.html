@@ -1630,8 +1630,8 @@
     const allLabels  = [...p1Labels, ...p2Labels];
     const totalLen   = p1Len + p2VisLen;
 
-    const p2Colors   = main.points.map((_, i) => outOfControl.includes(i) ? '#dc2626' : '#1a2e4a');
-    const p2BgColors = main.points.map((_, i) => outOfControl.includes(i) ? '#fee2e2' : '#eff6ff');
+    const p2Colors   = main.points.map((_, i) => outOfControl.includes(i) ? '#f87171' : '#a78bfa');
+    const p2BgColors = main.points.map((_, i) => outOfControl.includes(i) ? 'rgba(248,113,113,0.2)' : 'rgba(167,139,250,0.2)');
     const p2Radii    = main.points.map((_, i) => outOfControl.includes(i) ? 8 : 4);
     const p2BorderW  = main.points.map((_, i) => outOfControl.includes(i) ? 3 : 2);
 
@@ -1653,10 +1653,11 @@
       ds.datasets[2].data  = Array(totalLen).fill(main.lcl);
       ds.datasets[3].data  = p1Len ? [...(p1Main?.points || []), ...Array(p2VisLen).fill(null)] : Array(totalLen).fill(null);
       ds.datasets[4].data              = [...Array(p1Len).fill(null), ...main.points, ...Array(futureExtra).fill(null)];
-      ds.datasets[4].pointBackgroundColor = [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')];
-      ds.datasets[4].pointBorderColor     = [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')];
-      ds.datasets[4].pointRadius           = [...Array(p1Len).fill(0), ...p2Radii,  ...Array(futureExtra).fill(0)];
-      ds.datasets[4].pointBorderWidth      = [...Array(p1Len).fill(0), ...p2BorderW,...Array(futureExtra).fill(0)];
+      ds.datasets[4].borderColor            = '#a78bfa';
+      ds.datasets[4].pointBackgroundColor   = [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')];
+      ds.datasets[4].pointBorderColor       = [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')];
+      ds.datasets[4].pointRadius             = [...Array(p1Len).fill(0), ...p2Radii,  ...Array(futureExtra).fill(0)];
+      ds.datasets[4].pointBorderWidth        = [...Array(p1Len).fill(0), ...p2BorderW,...Array(futureExtra).fill(0)];
       mainChartInst.options.scales.y.min = mainYMin;
       mainChartInst.options.scales.y.max = mainYMax;
       mainChartInst.update({ duration: 400 });
@@ -1683,16 +1684,16 @@
             {
               label: 'Fase 1 (ref.)',
               data: p1Len ? [...(p1Main?.points || []), ...Array(p2VisLen).fill(null)] : Array(totalLen).fill(null),
-              borderColor: '#c8cdd6', borderWidth: 1.5, fill: false, spanGaps: false,
-              pointBackgroundColor: Array(p1Len).fill('rgba(156,163,175,0.2)'),
-              pointBorderColor: Array(p1Len).fill('#9ca3af'),
+              borderColor: '#64748b', borderWidth: 1.5, fill: false, spanGaps: false,
+              pointBackgroundColor: Array(p1Len).fill('rgba(148,163,184,0.25)'),
+              pointBorderColor: Array(p1Len).fill('#94a3b8'),
               pointRadius: Array(p1Len).fill(p1Len ? 3 : 0),
               pointBorderWidth: Array(p1Len).fill(1.5)
             },
             {
               label: 'Monitoreo',
               data: [...Array(p1Len).fill(null), ...main.points, ...Array(futureExtra).fill(null)],
-              borderColor: '#0e1621', borderWidth: 2, fill: false, spanGaps: false,
+              borderColor: '#a78bfa', borderWidth: 2, fill: false, spanGaps: false,
               backgroundColor:      [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')],
               pointBackgroundColor: [...Array(p1Len).fill('transparent'), ...p2BgColors, ...Array(futureExtra).fill('transparent')],
               pointBorderColor:     [...Array(p1Len).fill('transparent'), ...p2Colors,   ...Array(futureExtra).fill('transparent')],
@@ -1746,9 +1747,10 @@
         ds.datasets[2].data  = Array(secTotal).fill(sec.lcl);
         ds.datasets[3].data  = [...p1SecPts, ...Array(p2VisLen).fill(null)];
         ds.datasets[4].data              = [...Array(p1SecLen).fill(null), ...sec.points, ...Array(futureExtra).fill(null)];
-        ds.datasets[4].pointBackgroundColor = [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')];
-        ds.datasets[4].pointBorderColor     = [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')];
-        ds.datasets[4].pointRadius           = [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)];
+        ds.datasets[4].borderColor            = '#b45309';
+        ds.datasets[4].pointBackgroundColor   = [...Array(p1SecLen).fill('transparent'), ...p2SBg, ...Array(futureExtra).fill('transparent')];
+        ds.datasets[4].pointBorderColor       = [...Array(p1SecLen).fill('transparent'), ...p2Sc,  ...Array(futureExtra).fill('transparent')];
+        ds.datasets[4].pointRadius             = [...Array(p1SecLen).fill(0), ...p2Sr, ...Array(futureExtra).fill(0)];
         const { min: secYMin2, max: secYMax2 } = computeYRange(sec.ucl, sec.lcl ?? 0);
         secChartInst.options.scales.y.min = secYMin2;
         secChartInst.options.scales.y.max = secYMax2;
@@ -1768,9 +1770,9 @@
               {
                 label: `${secLbl[secKey]||secKey} F1`,
                 data: [...p1SecPts, ...Array(p2VisLen).fill(null)],
-                borderColor: '#c8cdd6', borderWidth: 1.5, fill: false, spanGaps: false,
-                pointBackgroundColor: Array(p1SecLen).fill('rgba(156,163,175,0.2)'),
-                pointBorderColor:     Array(p1SecLen).fill('#9ca3af'),
+                borderColor: '#64748b', borderWidth: 1.5, fill: false, spanGaps: false,
+                pointBackgroundColor: Array(p1SecLen).fill('rgba(148,163,184,0.25)'),
+                pointBorderColor:     Array(p1SecLen).fill('#94a3b8'),
                 pointRadius:          Array(p1SecLen).fill(p1SecLen ? 3 : 0)
               },
               {
@@ -1794,7 +1796,7 @@
             })(),
             plugins: {
               ...CHART_DEFAULTS.plugins,
-              legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#344054' } },
+            legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, color: '#f1f5f9' } },
               tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: ctx => ctx.raw != null ? `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(4)}` : null } },
               annotation: { annotations: buildControlZones(sec.cl, sec.ucl) }
             }

@@ -118,11 +118,11 @@ function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
   const cpu = (usl - xbar) / (3 * sigmaW);
   const cpl = (xbar - lsl) / (3 * sigmaW);
   const cpk = Math.min(cpu, cpl);
-  // Largo plazo: usa σ_total (variación entre + dentro de subgrupos)
-  const pp  = (usl - lsl) / (6 * sigmaTotal);
-  const ppu = (usl - xbar) / (3 * sigmaTotal);
-  const ppl = (xbar - lsl) / (3 * sigmaTotal);
-  const ppk = Math.min(ppu, ppl);
+  // Corto plazo: usa σ_within para todos los índices
+  const pp  = cp;
+  const ppu = cpu;
+  const ppl = cpl;
+  const ppk = cpk;
 
   const zUpper   = (usl - xbar) / sigmaW;
   const zLower   = (xbar - lsl) / sigmaW;

@@ -452,6 +452,7 @@ router.get('/report', async (req, res) => {
     // Use the existing SPC utilities directly for the report
     if (values.length >= 2) {
       const type = process.chart_type || 'xbar_r';
+      let sgValues = null;
       try {
         let chartData = null;
         if (type === 'xbar_r' || type === 'xbar_s') {
@@ -459,7 +460,7 @@ router.get('/report', async (req, res) => {
           if (n >= 2 && n <= 10) {
             const numGroups = Math.floor(values.length / n);
             if (numGroups >= 2) {
-              const sgValues = [];
+              sgValues = [];
               for (let g = 0; g < numGroups; g++) sgValues.push(values.slice(g * n, (g + 1) * n));
               chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
             }
@@ -501,7 +502,10 @@ router.get('/report', async (req, res) => {
       // ── Capability (Fase I) ──
       if (process.usl != null && process.lsl != null) {
         try {
-          const capability = spc.calculateCapability(values, parseFloat(process.usl), parseFloat(process.lsl), process.nominal);
+          const hasSubgroups = sgValues && sgValues.length >= 2;
+          const capability = hasSubgroups
+            ? spc.calculateCapabilityFromSubgroups(sgValues, parseFloat(process.usl), parseFloat(process.lsl), process.nominal)
+            : spc.calculateCapability(values, parseFloat(process.usl), parseFloat(process.lsl), process.nominal);
           if (capability) result.capability = capability;
         } catch (e) { console.error('Report: capability error', e.message); }
       }

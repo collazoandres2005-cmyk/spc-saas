@@ -310,12 +310,16 @@ async function loadProcess() {
     // Fetch all analysis data in parallel
     const [reportRes, monitoringData] = await Promise.all([
       apiFetch(`/analysis/report?process_id=${pid}`).catch(() => null),
-      // Try loading Phase 2 cache from localStorage
+      // Try loading Phase 2 cache from localStorage (any chart type)
       Promise.resolve().then(() => {
-        try {
-          const raw = localStorage.getItem(`spc_p2_${pid}_xbar_r`);
-          return raw ? JSON.parse(raw) : null;
-        } catch { return null; }
+        const chartTypes = ['xbar_r', 'xbar_s', 'p', 'np', 'c', 'u'];
+        for (const ct of chartTypes) {
+          try {
+            const raw = localStorage.getItem(`spc_p2_${pid}_${ct}`);
+            if (raw) return JSON.parse(raw);
+          } catch {}
+        }
+        return null;
       })
     ]);
 
@@ -431,6 +435,18 @@ function renderReport() {
   const showFase1   = phase === 'all' || phase === 'fase1';
   const showFase2   = phase === 'all' || phase === 'fase2';
   const showMuestreo = phase === 'all' || phase === 'muestreo';
+
+  // Compute OOC for monitoring data from Phase I limits
+  const mon = reportData.monitoring;
+  if (mon && mon.sessionMeans?.length && d.controlChart?.summary) {
+    const lims = d.controlChart.summary;
+    const ucl = lims.ucl, lcl = lims.lcl;
+    if (ucl != null && lcl != null) {
+      mon.outOfControl = mon.sessionMeans
+        .map((v, i) => (v > ucl || v < lcl) ? i : -1)
+        .filter(i => i >= 0);
+    }
+  }
 
   const sections = [];
   const _cpk = d.capability?.cpk;
@@ -725,20 +741,24 @@ function renderReport() {
           comparada con la línea central de Fase I para evaluar la estabilidad continua del proceso.
         </div>`);
 
-      // Tabla de entradas recientes
-      const recent = mon.sessionLog?.slice(0, 20) || [];
+      // Tabla de entradas recientes (últimas 20)
+      const logAll = mon.sessionLog || [];
+      const recent = logAll.slice(-20);
       if (recent.length) {
+        const logLen = logAll.length;
+        const recentOffset = logLen - recent.length;
         sections.push(`
           <div class="rep-table-wrap">
             <table class="rep-table">
               <thead><tr><th>#</th><th>Subgrupo</th><th>Valor</th><th>Estado</th></tr></thead>
               <tbody>
                 ${recent.map((r, i) => {
-                  const oocTxt = mon.outOfControl?.includes(i) ? '⚠ OOC' : '✓ En control';
-                  const oocCls = mon.outOfControl?.includes(i) ? 'rep-ooc-bad' : 'rep-ooc-ok';
+                  const origIdx = recentOffset + i;
+                  const oocTxt = mon.outOfControl?.includes(origIdx) ? '⚠ OOC' : '✓ En control';
+                  const oocCls = mon.outOfControl?.includes(origIdx) ? 'rep-ooc-bad' : 'rep-ooc-ok';
                   return `<tr>
-                    <td>${r.n || i+1}</td>
-                    <td>SG #${r.sgId || (i+1)}</td>
+                    <td>${r.n || origIdx+1}</td>
+                    <td>SG #${r.sgId || (origIdx+1)}</td>
                     <td>${escHtml(r.displayVal || '—')}</td>
                     <td class="${oocCls}">${oocTxt}</td>
                   </tr>`;
@@ -746,7 +766,7 @@ function renderReport() {
               </tbody>
             </table>
           </div>
-          ${recent.length < (mon.sessionLog?.length || 0) ? `<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Mostrando las últimas ${recent.length} entradas de ${mon.sessionLog.length}.</div>` : ''}`);
+          ${recent.length < logLen ? `<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Mostrando las últimas ${recent.length} entradas de ${logLen}.</div>` : ''}`);
       }
     } else {
       sections.push(`

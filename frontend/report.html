@@ -862,6 +862,7 @@ function renderReport() {
           if (ev.mu0 != null && ev.deltaReal != null) {
             const evDate = new Date(ev.savedAt).toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' });
             const evShiftCls = Math.abs(ev.deltaReal) > 0.5 ? 'color:var(--danger);font-weight:700' : '';
+            const p = ev.performance;
             sections.push(`
               <div style="margin-top:16px;padding:14px 18px;background:var(--glass-card);border:1px solid var(--glass-border);border-radius:var(--radius)">
                 <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:10px">📊 Evaluación de Desempeño guardada <span style="font-weight:400;text-transform:none;color:var(--text-sec)">(${evDate})</span></div>
@@ -875,6 +876,22 @@ function renderReport() {
                   <div class="rep-stat"><div class="rep-stat-lbl">%PNC original</div><div class="rep-stat-val">${ev.pnc0 != null ? (ev.pnc0 * 100).toFixed(4) + '%' : '—'}</div></div>
                   <div class="rep-stat" style="grid-column:span 2"><div class="rep-stat-lbl">%PNC recalculado (μ₁)</div><div class="rep-stat-val" style="font-size:24px;font-weight:900">${ev.pnc1 != null ? (ev.pnc1 * 100).toFixed(4) + '%' : '—'}</div></div>
                 </div>
+                ${p ? `
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)">
+                  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px">📈 Desempeño del plan de monitoreo</div>
+                  <div class="rep-grid">
+                    <div class="rep-stat"><div class="rep-stat-lbl">Configuración</div><div class="rep-stat-val">k=${p.k}σ · n=${p.n} · t=${p.h}h · δ=${p.delta}σ</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">%NC real</div><div class="rep-stat-val">${p.rawPnc.toFixed(2)}%</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">α (error tipo I)</div><div class="rep-stat-val">${p.alpha < 0.001 ? p.alpha.toExponential(2) : p.alpha.toFixed(4)}</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">β (error tipo II)</div><div class="rep-stat-val">${p.beta.toFixed(4)}</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">Potencia (1−β)</div><div class="rep-stat-val">${(p.power*100).toFixed(1)}%</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">ARL₀</div><div class="rep-stat-val">${fmt(p.arl0)}</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">ARL₁</div><div class="rep-stat-val">${fmt(p.arl1)}</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">ATS₀</div><div class="rep-stat-val">${p.ats0.toFixed(1)} h</div></div>
+                    <div class="rep-stat"><div class="rep-stat-lbl">ATS₁</div><div class="rep-stat-val">${p.ats1.toFixed(1)} h</div></div>
+                    <div class="rep-stat" style="grid-column:span 2"><div class="rep-stat-lbl">PPNC</div><div class="rep-stat-val" style="font-size:18px;font-weight:900">${fmt(p.ppnc)} ud</div></div>
+                  </div>
+                </div>` : ''}
               </div>`);
           }
         }

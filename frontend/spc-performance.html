@@ -452,6 +452,7 @@ let chartInfo = null;       // datos reales de la carta cargada
 let monitoringData = null;  // datos de monitoreo Fase II
 let currentPid = null;      // proceso actualmente cargado
 let lastEval = null;        // últimos resultados de renderMonitoringEval
+let lastPerf = null;        // últimos resultados de recalc()
 
 /* ══════════════════════════════════════════════════════════════
    MONITOREO FASE II — Evaluación con datos reales
@@ -563,7 +564,8 @@ function savePerformanceEval() {
     chartType: chartInfo?.type || 'xbar_r',
     savedAt: new Date().toISOString(),
     config: readConfig(),
-    ...lastEval
+    ...lastEval,
+    performance: lastPerf || undefined
   };
   try {
     localStorage.setItem('spc_eval_' + currentPid, JSON.stringify(data));
@@ -868,6 +870,14 @@ function recalc() {
   renderInterpretation({ alpha, beta, power, arl0, arl1, ats0, ats1, ppnc, h, delta, n });
   renderSensitivity({ k, n, h, delta, pnc: rawPnc, prod, betaParams });
   renderCM({ k, delta, pnc: rawPnc, prod, betaParams });
+
+  // Guardar resultados completos para exportar
+  lastPerf = {
+    k, n, h, delta, prod,
+    rawPnc: rawPnc * 100,
+    alpha, beta, power, arl0, arl1, ats0, ats1, ppnc,
+    cmDelta: parseFloat(document.getElementById('cm-delta').value) || 0.2
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════

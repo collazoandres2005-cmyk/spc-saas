@@ -454,14 +454,14 @@
             <!-- Controles -->
             <div class="cfg-grid" style="margin-bottom:16px">
               <div class="cfg-field">
-                <label class="cfg-label">Incremento de CM (Δ)</label>
-                <input id="cm-delta" class="cfg-input" type="number" min="0.1" step="0.5" value="1" oninput="recalc()">
-                <p class="cfg-hint">CM objetivo = CM actual + Δ</p>
+                <label class="cfg-label">Incremento de CM (Δ%)</label>
+                <input id="cm-delta" class="cfg-input" type="number" min="0" max="1" step="0.05" value="0.2" oninput="recalc()">
+                <p class="cfg-hint">CM objetivo = CM actual × (1 + Δ%). Ej: 0.20 = +20%</p>
               </div>
               <div class="cfg-field">
                 <label class="cfg-label">CM objetivo</label>
                 <input id="cm-target-display" class="cfg-input" disabled value="—">
-                <p class="cfg-hint">Calculado automáticamente.</p>
+                <p class="cfg-hint">CM mínima requerida para el rediseño.</p>
               </div>
               <div class="cfg-field">
                 <label class="cfg-label">n mín a evaluar</label>
@@ -1182,9 +1182,18 @@ function syncCmChips() {
 function renderCM({ k, delta, pnc, prod, betaParams }) {
   const currentN = Math.max(1, parseInt(document.getElementById('inp-n').value) || 5);
   const currentT = Math.max(0.01, parseFloat(document.getElementById('inp-t').value) || 4);
+  const currentCM = currentN / currentT;
 
-  // CM actual
-  document.getElementById('cm-current-val').textContent = (currentN / currentT).toFixed(2);
+  // Incremento porcentual (0-1)
+  const pctInc = Math.max(0, Math.min(1, parseFloat(document.getElementById('cm-delta').value) || 0));
+  const targetCM = currentCM * (1 + pctInc);
+
+  // CM actual y objetivo
+  document.getElementById('cm-current-val').textContent = currentCM.toFixed(2);
+  document.getElementById('cm-cur-n').textContent = currentN;
+  document.getElementById('cm-cur-t').textContent = currentT;
+  document.getElementById('cm-cur-ats1').textContent = '—'; // se actualiza abajo
+  document.getElementById('cm-target-display').value = targetCM.toFixed(2);
 
   // Rango de n
   const nMin = Math.max(1, parseInt(document.getElementById('cm-n-min').value) || 2);
@@ -1218,10 +1227,15 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
       const arl1  = 1 / power;
       const ats1  = arl1 * ti;
       const cm    = ni / ti;
-      cells.push({ n: ni, t: ti, cm, ats1, b, power });
-      if (ats1 < minAts1) minAts1 = ats1;
+      const meetsCM = cm >= targetCM;
+      cells.push({ n: ni, t: ti, cm, ats1, b, power, meetsCM });
+      if (meetsCM && ats1 < minAts1) minAts1 = ats1;
     }
   }
+
+  // ATS₁ actual (con n,t actuales)
+  const curAts1 = cells.find(c => c.n === currentN && Math.abs(c.t - currentT) < 0.001)?.ats1;
+  if (curAts1 != null) document.getElementById('cm-cur-ats1').textContent = curAts1.toFixed(1) + ' h';
 
   // Encabezado (columnas = t)
   document.getElementById('cm-thead-row').innerHTML =
@@ -1233,18 +1247,18 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
     const isCurN = ni === currentN;
     const rowCells = tVals.map(ti => {
       const cell  = cells.find(c => c.n === ni && c.t === ti);
-      const isMin = cell.ats1 - minAts1 < 0.001;
-      const isCurCell = ni === currentN && Math.abs(ti - currentT) < 0.001;
+      const isMin = cell.meetsCM && cell.ats1 - minAts1 < 0.001;
+      const isCurCell = isCurN && Math.abs(ti - currentT) < 0.001;
 
-      const ats1Cls = cell.ats1 <= 8 ? 'cell-good' : cell.ats1 <= 24 ? 'cell-warn' : 'cell-danger';
+      const ats1Cls = !cell.meetsCM ? '' : cell.ats1 <= 8 ? 'cell-good' : cell.ats1 <= 24 ? 'cell-warn' : 'cell-danger';
       const bg = isMin ? 'background:#dcfce7;' : isCurCell ? 'background:#eff6ff;' : '';
 
       const ats1Fmt = !isFinite(cell.ats1) || cell.ats1 > 1e5
         ? '> 100 k h'
         : cell.ats1.toLocaleString('es', { maximumFractionDigits: 1 }) + ' h';
 
-      return `<td style="${bg}">
-        <span style="font-size:10px;color:var(--text-muted);display:block">CM ${cell.cm.toFixed(2)}</span>
+      return `<td style="${bg}${!cell.meetsCM ? 'opacity:.35' : ''}">
+        <span style="font-size:10px;color:var(--text-muted);display:block">CM ${cell.cm.toFixed(2)}${!cell.meetsCM ? ' ✗' : ' ✓'}</span>
         <span class="${ats1Cls}">${ats1Fmt}</span>
         ${isMin ? `<span style="font-size:9px;display:block;color:#15803d;font-weight:800">★ mín</span>` : ''}
       </td>`;
@@ -1256,16 +1270,18 @@ function renderCM({ k, delta, pnc, prod, betaParams }) {
     </tr>`;
   }).join('');
 
-  // Fila óptima
-  const opt = cells.reduce((best, c) => c.ats1 < best.ats1 ? c : best, cells[0]);
+  // Fila óptima (solo entre los que cumplen CM objetivo)
+  const validCells = cells.filter(c => c.meetsCM);
+  const opt = validCells.length ? validCells.reduce((best, c) => c.ats1 < best.ats1 ? c : best, validCells[0]) : null;
   document.getElementById('cm-optimal-row').innerHTML = opt
     ? `<div style="display:inline-flex;align-items:center;gap:12px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius);padding:10px 16px;flex-wrap:wrap">
-        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#15803d">★ Plan óptimo</span>
+        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#15803d">★ Plan óptimo (CM ≥ ${targetCM.toFixed(2)})</span>
         <span style="font-size:14px;font-weight:700;color:#166534">n = ${opt.n} &nbsp;·&nbsp; t = ${opt.t} h</span>
         <span style="font-size:12px;color:#166534">CM = ${opt.cm.toFixed(2)} u/h</span>
         <span style="font-size:12px;color:#166534">ATS₁ = ${opt.ats1.toFixed(1)} h</span>
         <span style="font-size:12px;color:#166534">Potencia = ${(opt.power * 100).toFixed(1)}%</span>
-      </div>` : '';
+      </div>`
+    : `<div style="padding:10px 14px;color:var(--danger);font-size:13px">Ningún plan alcanza la CM objetivo de ${targetCM.toFixed(2)} u/h. Aumenta n o reduce t.</div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════

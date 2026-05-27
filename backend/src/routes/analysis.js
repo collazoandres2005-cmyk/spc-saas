@@ -56,7 +56,7 @@ router.get('/capability', async (req, res) => {
       for (let g = 0; g < numGroups; g++) {
         subgroups.push(values.slice(g * n, (g + 1) * n));
       }
-      capability = spc.calculateCapabilityFromSubgroups(subgroups, parseFloat(usl), parseFloat(lsl), process.nominal);
+      capability = spc.calculateCapabilityFromSubgroups(subgroups, parseFloat(usl), parseFloat(lsl), process.nominal, process.chart_type || 'xbar_r');
       // Build rows with simulated subgroup IDs for statistical tests
       testRows = values.slice(0, numGroups * n).map((v, i) => ({
         value: v,
@@ -463,10 +463,21 @@ router.get('/report', async (req, res) => {
               sgValues = [];
               for (let g = 0; g < numGroups; g++) sgValues.push(values.slice(g * n, (g + 1) * n));
               chartData = type === 'xbar_r' ? spc.calculateXbarR(sgValues) : spc.calculateXbarS(sgValues);
-              const ranges = sgValues.map(sg => Math.max(...sg) - Math.min(...sg));
-              const rBar = spc.mean(ranges);
-              const d2 = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 }[n] || 2.326;
-              result.dataSummary.stdDev = parseFloat((rBar / d2).toFixed(4));
+              if (type === 'xbar_s') {
+                // σ̂ = S̄/c₄
+                const C4 = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727 };
+                const stdevs = sgValues.map(sg => spc.stdDev(sg));
+                const sBar = spc.mean(stdevs);
+                const c4 = C4[n] || 0.9400;
+                result.dataSummary.stdDev = parseFloat((sBar / c4).toFixed(4));
+              } else {
+                // σ̂ = R̄/d₂
+                const D2 = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
+                const ranges = sgValues.map(sg => Math.max(...sg) - Math.min(...sg));
+                const rBar = spc.mean(ranges);
+                const d2 = D2[n] || 2.326;
+                result.dataSummary.stdDev = parseFloat((rBar / d2).toFixed(4));
+              }
             }
           }
         }
@@ -512,7 +523,7 @@ router.get('/report', async (req, res) => {
         try {
           const hasSubgroups = sgValues && sgValues.length >= 2;
           const capability = hasSubgroups
-            ? spc.calculateCapabilityFromSubgroups(sgValues, parseFloat(process.usl), parseFloat(process.lsl), process.nominal)
+            ? spc.calculateCapabilityFromSubgroups(sgValues, parseFloat(process.usl), parseFloat(process.lsl), process.nominal, type)
             : spc.calculateCapability(values, parseFloat(process.usl), parseFloat(process.lsl), process.nominal);
           if (capability) result.capability = capability;
         } catch (e) { console.error('Report: capability error', e.message); }

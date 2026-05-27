@@ -3,6 +3,9 @@
 // ── Factores d₂ (estimación σ desde R̄ dentro de subgrupos) ──────────────
 const D2 = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
 
+// ── Factores c₄ (estimación σ desde S̄ dentro de subgrupos) ──────────────
+const C4 = { 2: 0.7979, 3: 0.8862, 4: 0.9213, 5: 0.9400, 6: 0.9515, 7: 0.9594, 8: 0.9650, 9: 0.9693, 10: 0.9727 };
+
 // ── Constantes para cartas X̄-R ────────────────────────────────────────────
 const XBAR_R = {
   2:  { A2: 1.880, D3: 0,     D4: 3.267 },
@@ -102,27 +105,43 @@ function calculateCapability(values, usl, lsl, nominal) {
   };
 }
 
-// ── Capacidad desde subgrupos (σ̂_w = R̄/d₂) ───────────────────────────────
-function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
-  const n = subgroups[0].length;
+// ── Capacidad desde subgrupos ──────────────────────────────────────────────
+// chartType: 'xbar_r' → σ̂_w = R̄/d₂  |  'xbar_s' → σ̂_w = S̄/c₄
+// Cp/Cpk usan σ_within (corto plazo); Pp/Ppk usan σ_total (largo plazo)
+function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal, chartType = 'xbar_r') {
+  const n        = subgroups[0].length;
   const allValues = subgroups.flat();
-  const xbar   = mean(allValues);
-  const ranges = subgroups.map(sg => Math.max(...sg) - Math.min(...sg));
-  const rBar   = mean(ranges);
-  const d2     = D2[n] || D2[5];
-  const sigmaW = rBar / d2;
+  const xbar     = mean(allValues);
+
+  let sigmaW;
+  if (chartType === 'xbar_s') {
+    const stdevs = subgroups.map(sg => stdDev(sg));
+    const sBar   = mean(stdevs);
+    const c4     = C4[n] || C4[5];
+    sigmaW = sBar / c4;
+  } else {
+    // xbar_r o cualquier otro tipo de carta de variables con rango
+    const ranges = subgroups.map(sg => Math.max(...sg) - Math.min(...sg));
+    const rBar   = mean(ranges);
+    const d2     = D2[n] || D2[5];
+    sigmaW = rBar / d2;
+  }
+
   if (sigmaW === 0) return null;
 
-  const sigmaTotal = stdDev(allValues);
+  const sigmaTotal = stdDev(allValues);  // largo plazo (Pp/Ppk)
+
+  // Índices de corto plazo (Cp/Cpk) — usan σ_within
   const cp  = (usl - lsl) / (6 * sigmaW);
   const cpu = (usl - xbar) / (3 * sigmaW);
   const cpl = (xbar - lsl) / (3 * sigmaW);
   const cpk = Math.min(cpu, cpl);
-  // Corto plazo: usa σ_within para todos los índices
-  const pp  = cp;
-  const ppu = cpu;
-  const ppl = cpl;
-  const ppk = cpk;
+
+  // Índices de largo plazo (Pp/Ppk) — usan σ_total
+  const pp  = sigmaTotal > 0 ? (usl - lsl) / (6 * sigmaTotal) : cp;
+  const ppu = sigmaTotal > 0 ? (usl - xbar) / (3 * sigmaTotal) : cpu;
+  const ppl = sigmaTotal > 0 ? (xbar - lsl) / (3 * sigmaTotal) : cpl;
+  const ppk = Math.min(ppu, ppl);
 
   const zUpper   = (usl - xbar) / sigmaW;
   const zLower   = (xbar - lsl) / sigmaW;
@@ -141,7 +160,7 @@ function calculateCapabilityFromSubgroups(subgroups, usl, lsl, nominal) {
     xbar:          round(xbar,       4),
     sigma:         round(sigmaW,     4),
     sigmaTotal:    round(sigmaTotal, 4),
-    sigmaMethod:   'within',
+    sigmaMethod:   chartType === 'xbar_s' ? 'sbar_c4' : 'rbar_d2',
     cp:            round(cp,  3),
     cpu:           round(cpu, 3),
     cpl:           round(cpl, 3),
